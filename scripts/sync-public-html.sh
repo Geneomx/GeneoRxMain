@@ -16,10 +16,15 @@ fi
 mkdir -p "$PUBLIC_HTML"
 
 # Copy web assets (.htaccess, favicon, build output, etc.) — exclude default index.php
+# and storage because cPanel may already have a real public_html/storage folder.
 if command -v rsync &>/dev/null; then
-  rsync -a --exclude='index.php' "$APP_DIR/public/" "$PUBLIC_HTML/"
+  rsync -a --exclude='index.php' --exclude='storage' "$APP_DIR/public/" "$PUBLIC_HTML/"
 else
-  find "$APP_DIR/public" -mindepth 1 -maxdepth 1 ! -name 'index.php' -exec cp -a {} "$PUBLIC_HTML/" \;
+  find "$APP_DIR/public" -mindepth 1 -maxdepth 1 ! -name 'index.php' ! -name 'storage' -exec cp -a {} "$PUBLIC_HTML/" \;
+fi
+
+if [[ ! -e "$PUBLIC_HTML/storage" ]]; then
+  ln -s "$APP_DIR/storage/app/public" "$PUBLIC_HTML/storage" 2>/dev/null || true
 fi
 
 # index.php loads Laravel from repositories/GeneoRxMain
