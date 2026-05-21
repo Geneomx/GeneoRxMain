@@ -1,0 +1,42 @@
+{
+  "cli": {
+    "version": ">= 7.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": true },
+      "env": {
+        "GENEORX_API_URL": "http://localhost:8000/api",
+        "GOOGLE_CLIENT_ID": "",
+        "GOOGLE_IOS_CLIENT_ID": "",
+        "GOOGLE_ANDROID_CLIENT_ID": ""
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": { "simulator": true },
+      "android": { "buildType": "apk" },
+      "env": {
+        "GENEORX_API_URL": "https://staging.geneorx.com/api",
+        "GOOGLE_CLIENT_ID": "",
+        "GOOGLE_IOS_CLIENT_ID": "",
+        "GOOGLE_ANDROID_CLIENT_ID": ""
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "GENEORX_API_URL": "https://geneorx.com/api",
+        "GOOGLE_CLIENT_ID": "",
+        "GOOGLE_IOS_CLIENT_ID": "",
+        "GOOGLE_ANDROID_CLIENT_ID": ""
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

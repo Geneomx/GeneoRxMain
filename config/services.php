@@ -35,4 +35,42 @@ return [
         ],
     ],
 
+    'stripe' => [
+        'key'             => env('STRIPE_KEY'),
+        'secret'          => env('STRIPE_SECRET'),
+        'webhook_secret'  => env('STRIPE_WEBHOOK_SECRET'),
+        'plus_price_id'   => env('STRIPE_PLUS_PRICE_ID'),
+    ],
+
+    /*
+    |----------------------------------------------------------------------
+    | Google OAuth (Sign in with Google)
+    |----------------------------------------------------------------------
+    | Web redirect URL is /auth/google/callback.
+    | Mobile uses its own client IDs for native sign-in via expo-auth-session.
+    */
+    'google' => [
+        'client_id'     => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect'      => env('APP_URL').'/auth/google/callback',
+    ],
+
+    /*
+    |----------------------------------------------------------------------
+    | Apple Sign In (Sign in with Apple)
+    |----------------------------------------------------------------------
+    | Web flow uses Socialite + the SocialiteProviders/Apple package.
+    | Mobile uses expo-apple-authentication (native iOS only).
+    |
+    | APPLE_CLIENT_ID   → your Services ID, e.g. com.geneorx.web
+    | APPLE_CLIENT_SECRET → pre-generated signed JWT (see docs/apple-setup.md)
+    | APPLE_BUNDLE_ID   → iOS app Bundle ID, e.g. com.geneorx.app
+    |                     (used to verify identity tokens from the mobile app)
+    */
+    'apple' => [
+        'client_id'     => env('APPLE_CLIENT_ID'),
+        'client_secret' => env('APPLE_CLIENT_SECRET'),
+        'redirect'      => env('APP_URL').'/auth/apple/callback',
+    ],
+
 ];

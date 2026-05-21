@@ -21,6 +21,7 @@ class UserProfile extends Model
         'kidney_disease',
         'anticoagulants',
         'medical_history',
+        'portal_state',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class UserProfile extends Model
         'pregnant' => 'boolean',
         'kidney_disease' => 'boolean',
         'anticoagulants' => 'boolean',
+        'portal_state' => 'array',
     ];
 
     /**

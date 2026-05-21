@@ -16,12 +16,17 @@ class CheckIn extends Model
         'insights',
         'notes',
         'status',
+        'date_checked',
+        'adherence_percentage',
+        'data',
     ];
 
     protected $casts = [
         'medications' => 'array',
         'symptoms' => 'array',
         'insights' => 'array',
+        'data' => 'array',
+        'date_checked' => 'datetime',
     ];
 
     /**

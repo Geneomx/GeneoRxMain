@@ -1,3 +1,6 @@
+# Documentation (keep locally; do not push)
+*.md
+
 *.log
 .DS_Store
 .env
@@ -13,6 +16,19 @@
 /.zed
 /auth.json
 /node_modules
+/.expo/
+
+# Mobile app (install deps locally)
+/mobile/node_modules/
+/mobile/.expo/
+/mobile/dist/
+/mobile/web-build/
+/mobile/.env
+/mobile/.env.local
+
+apps/mobile/node_modules
+apps/mobile/.expo
+apps/mobile/.env
 /public/build
 /public/hot
 /public/storage

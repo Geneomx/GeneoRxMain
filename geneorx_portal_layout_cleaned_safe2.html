@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>GeneoRx — Trusted Health Companion Portal</title>
+  <title>GeneoRx   Trusted Health Companion Portal</title>
 
   <!-- =========================================================
        ===== CSS (KEEPING ORIGINAL GENIORX BACKGROUND) =====
@@ -438,7 +438,7 @@
           <img src="geniorx logo.webp" alt="GeneoRx logo" />
         </div>
         <div>
-          <h1>GeneoRx — Trusted Health Companion Portal</h1>
+          <h1>GeneoRx   Trusted Health Companion Portal</h1>
           <p class="sub">Your trusted health companion for smarter medication, symptom, and nutrient support</p>
         </div>
       </div>
@@ -989,13 +989,13 @@ function buildRoutineFromSupplements(supps){
   const hasCoq10 = s.some(x=>x.includes("coq10"));
   const hasD = s.some(x=>x.includes("vitamin d"));
 
-  if(hasB12) routine.morning.push("Methyl B12 — morning (often energizing)");
-  if(hasD) routine.morning.push("Vitamin D3 — with a meal that includes fat");
-  if(hasCoq10) routine.midday.push("CoQ10 — with lunch (with food)");
-  if(hasMg) routine.night.push("Magnesium glycinate — evening/night (often calming)");
+  if(hasB12) routine.morning.push("Methyl B12   morning (often energizing)");
+  if(hasD) routine.morning.push("Vitamin D3   with a meal that includes fat");
+  if(hasCoq10) routine.midday.push("CoQ10   with lunch (with food)");
+  if(hasMg) routine.night.push("Magnesium glycinate   evening/night (often calming)");
 
   routine.notes.push("If nausea occurs, take supplements with food and reduce dose temporarily.");
-  routine.notes.push("Avoid stacking new supplements all at once—phase in over 3–7 days.");
+  routine.notes.push("Avoid stacking new supplements all at once phase in over 3–7 days.");
   routine.notes.push("Educational only; confirm timing/dose with clinician.");
 
   return routine;
@@ -1012,7 +1012,7 @@ function computeWeeklyCoachMessage(){
   const last = latestCheckin();
   const base = state.wellbeingBaseline || {energy:5,mood:5,sleep:5,focus:5};
   const scores = computeNutrientScores();
-  const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : "—";
+  const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : " ";
 
   if(!last){
     return {
@@ -1039,12 +1039,12 @@ function computeWeeklyCoachMessage(){
   if(last.adherencePct < 60) next = "Try one reminder and aim for 70–80% adherence this week.";
   else if((worst?.change||"") === "Worse") next = `Adjust timing/with-food strategy and reassess ${worst.symptom} next week.`;
   else if(dE <= 0 && dS <= 0) next = "Try hydration + protein at breakfast for 7 days, then reassess energy/sleep.";
-  else if(dE > 0 || dS > 0) next = "Nice trend—keep the same plan for one more week to confirm the signal.";
+  else if(dE > 0 || dS > 0) next = "Nice trend keep the same plan for one more week to confirm the signal.";
 
   const bullets = [
     `Wellbeing deltas: Energy ${dE>=0?"+":""}${dE}, Mood ${dM>=0?"+":""}${dM}, Sleep ${dS>=0?"+":""}${dS}, Focus ${dF>=0?"+":""}${dF}.`,
-    `Most improved symptom: ${best?.symptom ? `${best.symptom} (${best.change})` : "—"}.`,
-    `Least improved symptom: ${worst?.symptom ? `${worst.symptom} (${worst.change})` : "—"}.`,
+    `Most improved symptom: ${best?.symptom ? `${best.symptom} (${best.change})` : " "}.`,
+    `Least improved symptom: ${worst?.symptom ? `${worst.symptom} (${worst.change})` : " "}.`,
     `Top driver nutrient: ${topDriver}.`
   ];
 
@@ -1076,16 +1076,16 @@ function buildClinicianSnapshotText(){
   const patterns = detectHealthPatterns().map(x=>`- ${x.title} (${x.confidence})`);
 
   const supp = (state.plan.recommendedSupplements||[]);
-  const adh = last ? `${last.adherencePct}%` : "—";
+  const adh = last ? `${last.adherencePct}%` : " ";
   const labs = uniq(scores.slice(0,5).flatMap(([n]) => LAB_SUGGESTIONS[n] || [])).slice(0,8);
   const symptoms = state.symptoms.selected.length ? state.symptoms.selected.join(", ") : "None selected";
-  const lastDate = last ? fmtDate(last.dateISO) : "—";
+  const lastDate = last ? fmtDate(last.dateISO) : " ";
 
   return [
-    "GENEORX — YOUR DOCTOR VISIT SNAPSHOT",
+    "GENEORX   YOUR DOCTOR VISIT SNAPSHOT",
     "===================================",
     "",
-    `Patient: ${state.account.email || "Anonymous"}   Age: ${state.profile.age || "—"}   Gender: ${state.profile.gender || "—"}`,
+    `Patient: ${state.account.email || "Anonymous"}   Age: ${state.profile.age || " "}   Gender: ${state.profile.gender || " "}`,
     `Safety flags: ${flags.length ? flags.join(", ") : "None reported"}`,
     `Medication success prediction: ${success.score}% (${success.level})`,
     "",
@@ -1111,7 +1111,7 @@ function buildClinicianSnapshotText(){
     `Adherence (latest check-in): ${adh}`,
     "",
     "Optional labs to consider (clinical context needed):",
-    labs.length ? labs.map(x=>`- ${x}`).join("\n") : "- —",
+    labs.length ? labs.map(x=>`- ${x}`).join("\n") : "-  ",
     "",
     `Latest check-in date: ${lastDate}`,
     "",
@@ -1286,7 +1286,7 @@ function renderSummaryTop(){
   summaryTop.innerHTML = `
     <div class="tagline">
       <strong>Quick status</strong><br>
-      Age: <strong>${escapeHtml(state.profile.age||"—")}</strong> • Gender: <strong>${escapeHtml(state.profile.gender||"—")}</strong><br>
+      Age: <strong>${escapeHtml(state.profile.age||" ")}</strong> • Gender: <strong>${escapeHtml(state.profile.gender||" ")}</strong><br>
       Medications: <strong>${medsCount}</strong> • Symptoms: <strong>${symCount}</strong> • Evidence: <strong>${cov.evidenceCount}/${cov.selectedCount}</strong><br>
       <div class="fineprint" style="margin-top:8px">Safety flags: <strong>${escapeHtml(flags.length?flags.join(", "):"None")}</strong></div>
       <div class="fineprint" style="margin-top:8px">Next suggested step: <strong>${escapeHtml(next)}</strong></div>
@@ -1316,7 +1316,7 @@ function renderSide(){
 
   const blocks = [
     {k:"Account", v: `${state.account.email || "Guest"} • Consent: ${state.account.consent ? "Yes" : "No"}`},
-    {k:"Age / Gender", v: `${state.profile.age || "—"} / ${state.profile.gender || "—"}`},
+    {k:"Age / Gender", v: `${state.profile.age || " "} / ${state.profile.gender || " "}`},
     {k:"Safety flags", v: flags.length ? flags.join(", ") : "None"},
     {k:"Medications", v: meds.length ? meds.join(", ") : "None yet."},
     {k:"Symptoms selected", v: state.symptoms.selected.length ? state.symptoms.selected.join(", ") : "None yet."},
@@ -1366,7 +1366,7 @@ function renderAccount(){
   s1.className="section";
   s1.innerHTML = `
     <div class="tagline">
-      <strong>Welcome</strong> — personalized guidance based on medications, symptoms, and outcomes.
+      <strong>Welcome</strong>   personalized guidance based on medications, symptoms, and outcomes.
     </div>
 
     <div style="height:12px"></div>
@@ -1927,10 +1927,10 @@ function renderResults(){
     <div style="height:10px"></div>
 
     <div class="list">
-      <div class="item"><div class="k">Morning</div><div class="v">${routine.morning.length ? routine.morning.map(x=>`• ${escapeHtml(x)}`).join("<br>") : "—"}</div></div>
-      <div class="item"><div class="k">Midday</div><div class="v">${routine.midday.length ? routine.midday.map(x=>`• ${escapeHtml(x)}`).join("<br>") : "—"}</div></div>
-      <div class="item"><div class="k">Night</div><div class="v">${routine.night.length ? routine.night.map(x=>`• ${escapeHtml(x)}`).join("<br>") : "—"}</div></div>
-      <div class="item"><div class="k">Notes</div><div class="v">${routine.notes.length ? routine.notes.map(x=>`• ${escapeHtml(x)}`).join("<br>") : "—"}</div></div>
+      <div class="item"><div class="k">Morning</div><div class="v">${routine.morning.length ? routine.morning.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+      <div class="item"><div class="k">Midday</div><div class="v">${routine.midday.length ? routine.midday.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+      <div class="item"><div class="k">Night</div><div class="v">${routine.night.length ? routine.night.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+      <div class="item"><div class="k">Notes</div><div class="v">${routine.notes.length ? routine.notes.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
     </div>
   `;
   mainEl.appendChild(sRoutine);
@@ -2277,7 +2277,7 @@ function renderProgress(){
   const worst = items.reduce((acc,x)=> (acc===null || (x.changeScore||0)<(acc.changeScore||0)) ? x : acc, null);
 
   const scores = computeNutrientScores();
-  const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : "—";
+  const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : " ";
   const symScore = last.symptoms?.improvementScore ?? 0;
 
   const coach = computeWeeklyCoachMessage();
@@ -2313,8 +2313,8 @@ function renderProgress(){
       <div class="item">
         <div class="k">What changed (latest check-in)</div>
         <div class="v">
-          Most improved: <strong>${escapeHtml(best?.symptom || "—")}</strong> (${escapeHtml(best?.change || "—")})<br>
-          Least improved: <strong>${escapeHtml(worst?.symptom || "—")}</strong> (${escapeHtml(worst?.change || "—")})<br>
+          Most improved: <strong>${escapeHtml(best?.symptom || " ")}</strong> (${escapeHtml(best?.change || " ")})<br>
+          Least improved: <strong>${escapeHtml(worst?.symptom || " ")}</strong> (${escapeHtml(worst?.change || " ")})<br>
           Top driver nutrient: <strong>${escapeHtml(topDriver)}</strong>
         </div>
       </div>

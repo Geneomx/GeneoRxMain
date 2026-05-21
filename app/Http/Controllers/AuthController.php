@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\UserProfile;
+use App\Services\EmailOtpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -54,11 +56,12 @@ class AuthController extends Controller
     /**
      * Handle registration request
      */
-    public function register(Request $request)
+    public function register(Request $request, EmailOtpService $otps)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:40',
             'password' => 'required|min:6|confirmed',
         ]);
 
@@ -69,8 +72,15 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+        if (! empty($validated['phone'])) {
+            UserProfile::firstOrCreate(
+                ['user_id' => $user->id],
+                ['phone' => $validated['phone']]
+            );
+        }
+        $otps->send($user, true);
 
-        return redirect()->route('home')->with('success', 'Account created successfully! Welcome to GeneoRx.');
+        return redirect()->route('email.otp.show')->with('success', 'Account created. Check your email for a 6-digit verification code.');
     }
 
     /**

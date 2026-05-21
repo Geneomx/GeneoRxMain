@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "GeneoRx",
+    "slug": "geneorx",
+    "scheme": "geneorx",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.geneorx.app",
+      "buildNumber": "1",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "GeneoRx may use the camera to capture photos for your medication and symptom logs.",
+        "NSFaceIDUsageDescription": "GeneoRx uses Face ID to secure your account."
+      }
+    },
+    "android": {
+      "package": "com.geneorx.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": ["INTERNET"]
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-apple-authentication"
+    ],
+    "extra": {
+      "apiBaseUrl": "http://172.20.10.3:8000/api"
+    }
+  }
+}
