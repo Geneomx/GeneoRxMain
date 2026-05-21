@@ -40,14 +40,19 @@ STEP 3 — First install (Terminal in cPanel)
   chmod -R ug+rwx storage bootstrap/cache
 
 
-STEP 4 — GitHub webhook (auto deploy on push)
----------------------------------------------
-  1. Git Manage → Pull or Deploy → copy Webhook URL
-  2. GitHub → GeneoRxMain → Settings → Webhooks → Add webhook
-       Payload URL: (paste)
-       Events: Push only
+STEP 4 — GitHub Actions auto deploy after CI
+--------------------------------------------
+  1. GitHub → GeneoRxMain → Settings → Secrets and variables → Actions
+  2. Add repository secrets:
+       CPANEL_SSH_HOST       = your cPanel SSH host
+       CPANEL_SSH_USER       = genecisu
+       CPANEL_SSH_KEY        = private key for cPanel SSH login
+       CPANEL_SSH_PORT       = 22
+       CPANEL_DEPLOY_PATH    = /home/genecisu/repositories/GeneoRxMain
+       CPANEL_PHP_BIN        = /usr/local/bin/ea-php83
+       CPANEL_COMPOSER_BIN   = /opt/cpanel/composer/bin/composer
 
-  After this: git push on your PC → cPanel updates → public_html syncs.
+  After this: merge/push to main → CI passes → cPanel updates → public_html syncs.
 
 
 STEP 5 — Cron job

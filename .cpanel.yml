@@ -1,9 +1,10 @@
 ---
-# genecisu: repo at /home/genecisu/repositories/GeneoRxMain
-# Deploy path in cPanel must match. Syncs web files → /home/genecisu/public_html
+# Optional cPanel Git fallback.
+# Primary deploy path: GitHub Actions SSH → /home/genecisu/repositories/GeneoRxMain
+# Syncs web files → /home/genecisu/public_html
 deployment:
   tasks:
-    - export DEPLOYPATH=$DEPLOYPATH
+    - export DEPLOYPATH=${DEPLOYPATH:-/home/genecisu/repositories/GeneoRxMain}
     - export CPANEL_USER=genecisu
     - export APP_DIR=/home/genecisu/repositories/GeneoRxMain
     - export SYNC_PUBLIC_HTML=1

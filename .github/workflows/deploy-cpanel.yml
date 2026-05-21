@@ -1,4 +1,4 @@
-# Optional: deploy to cPanel over SSH when CI passes on main.
+# Deploy to cPanel over SSH when CI passes on main.
 # Enable by adding GitHub repository secrets (see docs/cpanel-deploy.txt).
 name: Deploy to cPanel
 
@@ -20,17 +20,22 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          CPANEL_DEPLOY_PATH: ${{ secrets.CPANEL_DEPLOY_PATH }}
+          CPANEL_PHP_BIN: ${{ secrets.CPANEL_PHP_BIN }}
+          CPANEL_COMPOSER_BIN: ${{ secrets.CPANEL_COMPOSER_BIN }}
         with:
           host: ${{ secrets.CPANEL_SSH_HOST }}
           username: ${{ secrets.CPANEL_SSH_USER }}
           key: ${{ secrets.CPANEL_SSH_KEY }}
-          port: ${{ secrets.CPANEL_SSH_PORT || 22 }}
-          env:
-            CPANEL_DEPLOY_PATH: ${{ secrets.CPANEL_DEPLOY_PATH }}
-            CPANEL_PHP_BIN: ${{ secrets.CPANEL_PHP_BIN }}
-            CPANEL_COMPOSER_BIN: ${{ secrets.CPANEL_COMPOSER_BIN }}
+          port: ${{ secrets.CPANEL_SSH_PORT || '22' }}
+          envs: CPANEL_DEPLOY_PATH,CPANEL_PHP_BIN,CPANEL_COMPOSER_BIN
           script: |
             set -e
+            if [ -z "$CPANEL_DEPLOY_PATH" ]; then
+              echo "CPANEL_DEPLOY_PATH secret is required."
+              exit 1
+            fi
             cd "$CPANEL_DEPLOY_PATH"
             git fetch origin main
             git reset --hard origin/main

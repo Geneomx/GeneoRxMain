@@ -7,21 +7,21 @@
   Home        : /home/genecisu/
   Default web : /home/genecisu/public_html/
 
-  Laravel app (clone here) : /home/genecisu/geneorx/
-  Production .env          : /home/genecisu/geneorx/.env
+  Laravel app (clone here) : /home/genecisu/repositories/GeneoRxMain/
+  Production .env          : /home/genecisu/repositories/GeneoRxMain/.env
 
 ================================================================================
   CHOOSE ONE SETUP
 ================================================================================
 
-  OPTION A (recommended) — change document root
+  OPTION A — change document root
   ------------------------------------------------
-  Domain document root → /home/genecisu/geneorx/public
+  Domain document root → /home/genecisu/repositories/GeneoRxMain/public
   Leave public_html unused (or for a parking page).
 
   OPTION B — keep public_html as document root
   ------------------------------------------------
-  App stays in /home/genecisu/geneorx/
+  App stays in /home/genecisu/repositories/GeneoRxMain/
   Web files live in /home/genecisu/public_html/
   Use deploy/public_html.index.php + scripts/sync-public-html.sh
   (run sync after each deploy).
@@ -36,7 +36,7 @@
 
   3. Enter:
        Clone URL         : https://github.com/Geneomx/GeneoRxMain.git
-       Repository Path   : /home/genecisu/geneorx
+       Repository Path   : /home/genecisu/repositories/GeneoRxMain
        Branch            : main
 
   4. Click Create and wait for clone to finish.
@@ -48,14 +48,14 @@
   OPTION A
   --------
   1. cPanel → Domains → (geneorx.com or your domain) → Document Root
-  2. Set to:  /home/genecisu/geneorx/public
+  2. Set to:  /home/genecisu/repositories/GeneoRxMain/public
   3. Save.
 
   OPTION B
   --------
   1. Keep document root as: /home/genecisu/public_html
   2. After Part 5, run in Terminal:
-       bash /home/genecisu/geneorx/scripts/sync-public-html.sh
+       bash /home/genecisu/repositories/GeneoRxMain/scripts/sync-public-html.sh
   3. Copy deploy/public_html.index.php to public_html/index.php
      (only once; sync script updates .htaccess and assets).
 
@@ -77,7 +77,7 @@
   PART 4 — PRODUCTION .env (one time)
 ================================================================================
 
-  1. File Manager → /home/genecisu/geneorx/
+  1. File Manager → /home/genecisu/repositories/GeneoRxMain/
   2. Copy .env.example → .env
   3. Edit .env (see deploy/env.cpanel.example for a checklist).
 
@@ -105,7 +105,7 @@
   PART 5 — FIRST INSTALL (one time, Terminal)
 ================================================================================
 
-  cd /home/genecisu/geneorx
+  cd /home/genecisu/repositories/GeneoRxMain
 
   php /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader
 
@@ -130,43 +130,65 @@
 
   cPanel → Cron Jobs → Every minute (* * * * *):
 
-  cd /home/genecisu/geneorx && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+  cd /home/genecisu/repositories/GeneoRxMain && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
 
   (Use "which php" in Terminal if that path differs, e.g. /usr/local/bin/ea-php83)
 
 ================================================================================
-  PART 7 — AUTOMATIC DEPLOY ON GIT PUSH
+  PART 7 — AUTOMATIC DEPLOY AFTER MERGE TO MAIN (RECOMMENDED)
 ================================================================================
 
-  1. Push deploy files from your PC (if not already on GitHub):
-       git add .cpanel.yml scripts/ docs/cpanel-deploy.txt deploy/
-       git commit -m "cPanel deploy for genecisu"
-       git push origin main
+  GitHub Actions deploys over SSH only after the CI workflow succeeds on main.
+  Workflow file:
+    .github/workflows/deploy-cpanel.yml
 
-  2. cPanel → Git Version Control → Manage (geneorx repo)
+  1. On cPanel, make sure SSH access is enabled for user genecisu.
 
-  3. Tab "Pull or Deploy":
-       Deploy HEAD branch to : /home/genecisu/geneorx
+  2. Create or upload an SSH key that can log in to cPanel:
+       ssh genecisu@YOUR_CPANEL_HOST
+
+  3. GitHub → GeneoRxMain → Settings → Secrets and variables → Actions.
+     Add these repository secrets:
+
+       CPANEL_SSH_HOST       = your cPanel SSH host
+       CPANEL_SSH_USER       = genecisu
+       CPANEL_SSH_KEY        = private key for cPanel SSH login
+       CPANEL_SSH_PORT       = 22
+       CPANEL_DEPLOY_PATH    = /home/genecisu/repositories/GeneoRxMain
+       CPANEL_PHP_BIN        = /usr/local/bin/ea-php83
+       CPANEL_COMPOSER_BIN   = /opt/cpanel/composer/bin/composer
+
+     If your host uses different PHP/composer paths, run `which php` in cPanel
+     Terminal and adjust CPANEL_PHP_BIN. Keep CPANEL_COMPOSER_BIN only if that
+     path exists.
+
+  4. Make sure the server repo exists:
+       cd /home/genecisu/repositories/GeneoRxMain
+       git remote -v
+       git status
+
+  5. After a pull request is merged to main:
+       CI passes → Deploy to cPanel starts → scripts/deploy-cpanel.sh runs
+
+     The script installs production dependencies, runs migrations, refreshes
+     Laravel caches, restarts queues, and syncs public assets to public_html.
+
+  6. Manual deploy is available from GitHub:
+       Actions → Deploy to cPanel → Run workflow
+
+================================================================================
+  OPTIONAL FALLBACK — CPANEL GIT WEBHOOK
+================================================================================
+
+  Use this only if GitHub Actions SSH is not available.
+
+  1. cPanel → Git Version Control → Manage (GeneoRxMain repo)
+  2. Pull or Deploy:
+       Deploy HEAD branch to : /home/genecisu/repositories/GeneoRxMain
        Enable "Automatic Deployment" if shown
-
-  4. Click "Pull or Deploy" once to test.
-
-  5. Each push to main runs:
+  3. Click "Pull or Deploy" once to test.
+  4. cPanel will run:
        .cpanel.yml → scripts/deploy-cpanel.sh
-     (composer, migrate, cache, permissions)
-
-  6. OPTION B: set environment variable in cPanel Git (if available):
-       SYNC_PUBLIC_HTML=1
-     Or after deploy run sync manually:
-       bash /home/genecisu/geneorx/scripts/sync-public-html.sh
-
-  7. GitHub webhook (instant deploy):
-       cPanel → Git Manage → copy Webhook URL
-       GitHub → GeneoRxMain → Settings → Webhooks → Add
-         Payload URL : (paste)
-         Content type: application/json
-         Events      : Push only
-         Branch      : main
 
 ================================================================================
   PART 8 — VERIFY
@@ -177,7 +199,7 @@
   https://geneorx.com/admin
   https://geneorx.com/stripe/webhook   (register in Stripe dashboard)
 
-  Logs: /home/genecisu/geneorx/storage/logs/laravel.log
+  Logs: /home/genecisu/repositories/GeneoRxMain/storage/logs/laravel.log
 
 ================================================================================
   DAILY WORKFLOW (your PC)
@@ -196,13 +218,13 @@
 ================================================================================
 
   500 error        → check .env exists, DB credentials, storage permissions
-  403 / blank      → wrong document root (use geneorx/public OR synced public_html)
+  403 / blank      → wrong document root (use repositories/GeneoRxMain/public OR synced public_html)
   Composer fail    → PHP_BIN=/usr/local/bin/ea-php83
                      COMPOSER_BIN=/opt/cpanel/composer/bin/composer
   Deploy no .env   → create .env on server before enabling auto-deploy
 
   GitHub Actions SSH deploy (optional): .github/workflows/deploy-cpanel.yml
   Secrets: CPANEL_SSH_HOST, CPANEL_SSH_USER, CPANEL_SSH_KEY,
-           CPANEL_DEPLOY_PATH=/home/genecisu/geneorx
+           CPANEL_DEPLOY_PATH=/home/genecisu/repositories/GeneoRxMain
 
 ================================================================================
