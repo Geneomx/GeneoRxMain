@@ -1,8 +1,10 @@
 ---
-# cPanel runs these tasks after "Pull or Deploy" from Git Version Control.
-# Set your deployment path in cPanel to the Laravel project root (NOT public_html).
-# Example: /home/youruser/geneorx
+# genecisu: repo at /home/genecisu/repositories/GeneoRxMain
+# Deploy path in cPanel must match. Syncs web files → /home/genecisu/public_html
 deployment:
   tasks:
     - export DEPLOYPATH=$DEPLOYPATH
+    - export CPANEL_USER=genecisu
+    - export APP_DIR=/home/genecisu/repositories/GeneoRxMain
+    - export SYNC_PUBLIC_HTML=1
     - /bin/bash $DEPLOYPATH/scripts/deploy-cpanel.sh

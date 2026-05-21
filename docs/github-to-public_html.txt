@@ -1,0 +1,118 @@
+================================================================================
+  Connect GitHub → cPanel public_html (genecisu)
+================================================================================
+
+  DO NOT clone the full Laravel repo into public_html.
+  (That would expose .env, vendor, and app code on the web.)
+
+  SAFE LAYOUT:
+
+    /home/genecisu/geneorx/          ← GitHub clone + deploy HERE
+    /home/genecisu/public_html/      ← Website files (auto-synced on deploy)
+
+  Document root stays: /home/genecisu/public_html
+
+
+================================================================================
+  STEP 1 — Connect GitHub in cPanel
+================================================================================
+
+  1. cPanel → Git™ Version Control → Create
+
+  2. Fill in EXACTLY:
+
+       Clone URL       : https://github.com/Geneomx/GeneoRxMain.git
+       Repository Path : /home/genecisu/geneorx
+       Branch          : main
+
+     (Path must NOT be public_html.)
+
+  3. Click Create.
+
+
+================================================================================
+  STEP 2 — Configure deploy (updates public_html)
+================================================================================
+
+  1. Git Version Control → Manage → repository "geneorx"
+
+  2. Tab: Pull or Deploy
+
+  3. Set:
+
+       Deploy HEAD branch to : /home/genecisu/geneorx
+
+  4. Turn ON "Automatic Deployment" (if you see it)
+
+  5. Click "Pull or Deploy" once.
+
+  What happens:
+    - Git pulls from GitHub into /home/genecisu/geneorx
+    - .cpanel.yml runs scripts/deploy-cpanel.sh
+    - Script copies web files to /home/genecisu/public_html
+    - public_html/index.php loads Laravel from ../geneorx
+
+
+================================================================================
+  STEP 3 — GitHub webhook (auto deploy on every push)
+================================================================================
+
+  1. cPanel → Git Manage → Pull or Deploy → copy "Webhook URL"
+
+  2. GitHub.com → Geneomx/GeneoRxMain → Settings → Webhooks → Add webhook
+
+       Payload URL  : (paste cPanel webhook URL)
+       Content type : application/json
+       Events       : Just the push event
+
+  3. Save.
+
+  Now: git push origin main  →  cPanel pulls  →  public_html updates.
+
+
+================================================================================
+  STEP 4 — One-time server setup (before first deploy works)
+================================================================================
+
+  A) Create .env on server (File Manager):
+       /home/genecisu/geneorx/.env
+       (copy from deploy/env.cpanel.example)
+
+  B) Terminal:
+
+       cd /home/genecisu/geneorx
+       php /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader
+       php artisan key:generate
+       php artisan migrate --force
+
+  C) Manual sync once (if public_html is empty):
+
+       bash /home/genecisu/geneorx/scripts/sync-public-html.sh
+
+  D) Cron (every minute):
+
+       cd /home/genecisu/geneorx && php artisan schedule:run >> /dev/null 2>&1
+
+
+================================================================================
+  STEP 5 — Push deploy files from your PC (if not on GitHub yet)
+================================================================================
+
+  git add .cpanel.yml scripts/ deploy/ docs/
+  git commit -m "GitHub deploy to public_html for genecisu"
+  git push origin main
+
+
+================================================================================
+  VERIFY
+================================================================================
+
+  File Manager should show:
+    public_html/index.php
+    public_html/.htaccess
+    geneorx/app/  geneorx/vendor/  geneorx/.env  (NOT inside public_html)
+
+  Browser:
+    https://geneorx.com/up
+
+================================================================================

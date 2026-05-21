@@ -1,0 +1,61 @@
+================================================================================
+  Move GeneoRx website to public_html (genecisu)
+================================================================================
+
+  DO NOT move the whole Git repo into public_html.
+  Only publish WEB files to public_html.
+
+  App (stays here):
+    /home/genecisu/repositories/GeneoRxMain
+
+  Website (browser uses this):
+    /home/genecisu/public_html
+
+
+================================================================================
+  STEPS ON CPANEL
+================================================================================
+
+  1) Git → Manage → Pull or Deploy
+     Deploy to: /home/genecisu/repositories/GeneoRxMain
+     Click Pull or Deploy
+
+  2) File Manager → repositories/GeneoRxMain
+     Copy .env.example → .env → edit DB and API keys
+
+  3) Terminal — run these commands:
+
+     cd /home/genecisu/repositories/GeneoRxMain
+
+     php /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader
+
+     php artisan key:generate
+
+     php artisan migrate --force
+
+     bash scripts/move-to-public-html.sh
+
+  4) Open in browser:
+     https://geneorx.com/up
+
+
+================================================================================
+  WHAT move-to-public-html.sh DOES
+================================================================================
+
+  - Backs up old public_html to public_html_backup_YYYYMMDD
+  - Copies .htaccess and assets from app/public/ → public_html/
+  - Sets public_html/index.php to load Laravel from repositories/GeneoRxMain
+
+  After Git push, deploy-cpanel.sh runs the same sync automatically.
+
+
+================================================================================
+  IF SITE STILL SHOWS OLD PAGE
+================================================================================
+
+  - Clear browser cache
+  - cPanel → Domains → confirm document root is public_html
+  - Run again: bash scripts/move-to-public-html.sh
+
+================================================================================

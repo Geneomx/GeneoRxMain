@@ -38,4 +38,14 @@ chmod -R ug+rwx storage bootstrap/cache 2>/dev/null || true
 $PHP_BIN artisan queue:restart 2>/dev/null || true
 $PHP_BIN artisan up 2>/dev/null || true
 
+# Publish web files to cPanel public_html (auto when folder exists; disable with SYNC_PUBLIC_HTML=0)
+CPANEL_USER="${CPANEL_USER:-$(whoami)}"
+PUBLIC_HTML="/home/${CPANEL_USER}/public_html"
+if [[ -f "$APP_DIR/scripts/sync-public-html.sh" ]]; then
+  if [[ "${SYNC_PUBLIC_HTML:-}" != "0" ]] && [[ -d "$PUBLIC_HTML" ]]; then
+    export CPANEL_USER APP_DIR PUBLIC_HTML
+    bash "$APP_DIR/scripts/sync-public-html.sh"
+  fi
+fi
+
 echo "==> Deploy finished successfully."

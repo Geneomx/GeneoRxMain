@@ -1,0 +1,82 @@
+================================================================================
+  NEXT STEPS — you already have GeneoRxMain in cPanel Git
+  Path: /home/genecisu/repositories/GeneoRxMain
+  Web:  /home/genecisu/public_html
+================================================================================
+
+STEP 1 — Pull latest code from GitHub
+--------------------------------------
+  1. Click "Manage" on GeneoRxMain
+  2. Open tab "Pull or Deploy"
+  3. Set "Deploy HEAD branch to":
+       /home/genecisu/repositories/GeneoRxMain
+  4. Turn ON "Automatic Deployment" if you see it
+  5. Click "Pull or Deploy" (or "Update from Remote")
+
+  Your server still shows old "first commit" — this step gets new code
+  (.cpanel.yml, deploy scripts, Laravel app).
+
+
+STEP 2 — Create .env on the server (one time)
+---------------------------------------------
+  1. File Manager → /home/genecisu/repositories/GeneoRxMain/
+  2. Copy .env.example → rename to .env
+  3. Edit .env (use deploy/env.cpanel.example as checklist)
+  4. Set APP_URL, MySQL DB_*, Stripe, Resend, etc.
+
+
+STEP 3 — First install (Terminal in cPanel)
+-------------------------------------------
+  cd /home/genecisu/repositories/GeneoRxMain
+
+  php /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader
+
+  php artisan key:generate
+
+  php artisan migrate --force
+
+  bash scripts/sync-public-html.sh
+
+  chmod -R ug+rwx storage bootstrap/cache
+
+
+STEP 4 — GitHub webhook (auto deploy on push)
+---------------------------------------------
+  1. Git Manage → Pull or Deploy → copy Webhook URL
+  2. GitHub → GeneoRxMain → Settings → Webhooks → Add webhook
+       Payload URL: (paste)
+       Events: Push only
+
+  After this: git push on your PC → cPanel updates → public_html syncs.
+
+
+STEP 5 — Cron job
+-----------------
+  cPanel → Cron Jobs → every minute:
+
+  cd /home/genecisu/repositories/GeneoRxMain && php artisan schedule:run >> /dev/null 2>&1
+
+
+STEP 6 — Test
+-------------
+  https://geneorx.com/up
+  https://geneorx.com/login
+
+  If 500 error: check storage/logs/laravel.log and .env DB settings.
+
+
+WARNING on your screen
+----------------------
+  "Shell access must be enabled" — ask your host to enable SSH/Terminal
+  if Pull or Deploy / composer fails. You can still use File Manager + Terminal
+  if Terminal is available separately.
+
+
+PUSH FROM YOUR PC (if deploy files not on GitHub yet)
+-----------------------------------------------------
+  git add .cpanel.yml scripts/ deploy/ docs/
+  git commit -m "cPanel deploy for repositories/GeneoRxMain"
+  git push origin main
+  Then repeat STEP 1 in cPanel.
+
+================================================================================

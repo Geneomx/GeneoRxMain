@@ -1,93 +1,208 @@
-GeneoRx — Automatic deployment on cPanel
-==========================================
+================================================================================
+  GeneoRx — cPanel deployment (genecisu account)
+================================================================================
 
-Repo: https://github.com/Geneomx/GeneoRxMain.git
+  GitHub : https://github.com/Geneomx/GeneoRxMain.git
+  cPanel user : genecisu
+  Home        : /home/genecisu/
+  Default web : /home/genecisu/public_html/
 
-IMPORTANT: Do NOT deploy Laravel into public_html root.
-Point your domain document root to:  /home/YOURUSER/geneorx/public
+  Laravel app (clone here) : /home/genecisu/geneorx/
+  Production .env          : /home/genecisu/geneorx/.env
 
+================================================================================
+  CHOOSE ONE SETUP
+================================================================================
 
-ONE-TIME SERVER SETUP
----------------------
+  OPTION A (recommended) — change document root
+  ------------------------------------------------
+  Domain document root → /home/genecisu/geneorx/public
+  Leave public_html unused (or for a parking page).
 
-1) cPanel → Git Version Control → Create
-   - Clone URL: https://github.com/Geneomx/GeneoRxMain.git
-   - Repository Path: /home/YOURUSER/geneorx
-   - Branch: main
+  OPTION B — keep public_html as document root
+  ------------------------------------------------
+  App stays in /home/genecisu/geneorx/
+  Web files live in /home/genecisu/public_html/
+  Use deploy/public_html.index.php + scripts/sync-public-html.sh
+  (run sync after each deploy).
 
-2) cPanel → Domains → your domain → Document Root
-   Change to: /home/YOURUSER/geneorx/public
+================================================================================
+  PART 1 — CLONE REPOSITORY (one time)
+================================================================================
 
-3) cPanel → Select PHP Version → choose PHP 8.2 or 8.3
-   Enable extensions: mbstring, xml, curl, zip, pdo_mysql, fileinfo, bcmath
+  1. Log in to cPanel (username: genecisu).
 
-4) Create production .env (File Manager or SSH):
-   - Copy geneorx/.env.example → geneorx/.env
-   - Set: APP_ENV=production, APP_DEBUG=false
-   - Set: APP_URL=https://yourdomain.com
-   - Use MySQL (not SQLite) for DB_* values
-   - Add Stripe, Resend, OAuth keys
+  2. Open "Git Version Control" → Create.
 
-5) First deploy (SSH or Terminal in cPanel):
-   cd ~/geneorx
-   php /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader
-   php artisan key:generate
-   php artisan migrate --force
-   php artisan geneorx:make-admin you@email.com --create
+  3. Enter:
+       Clone URL         : https://github.com/Geneomx/GeneoRxMain.git
+       Repository Path   : /home/genecisu/geneorx
+       Branch            : main
 
-6) Cron (required for reminders / billing notices):
-   * * * * * cd /home/YOURUSER/geneorx && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+  4. Click Create and wait for clone to finish.
 
-7) Queue worker (optional, if using database queue):
-   Use cPanel “Setup Python App” / Supervisor if available, or cron:
-   * * * * * cd /home/YOURUSER/geneorx && php artisan queue:work --stop-when-empty >> /dev/null 2>&1
+================================================================================
+  PART 2 — DOCUMENT ROOT
+================================================================================
 
+  OPTION A
+  --------
+  1. cPanel → Domains → (geneorx.com or your domain) → Document Root
+  2. Set to:  /home/genecisu/geneorx/public
+  3. Save.
 
-AUTOMATIC DEPLOY (recommended)
-------------------------------
+  OPTION B
+  --------
+  1. Keep document root as: /home/genecisu/public_html
+  2. After Part 5, run in Terminal:
+       bash /home/genecisu/geneorx/scripts/sync-public-html.sh
+  3. Copy deploy/public_html.index.php to public_html/index.php
+     (only once; sync script updates .htaccess and assets).
 
-1) cPanel → Git Version Control → Manage → Pull or Deploy
-   - Deployment path: /home/YOURUSER/geneorx
-   - Enable “Automatic Deployment” if your host supports it
+================================================================================
+  PART 3 — PHP & DATABASE (one time)
+================================================================================
 
-2) After each git push to main, cPanel pulls and runs:
-   - .cpanel.yml  →  scripts/deploy-cpanel.sh
-   (composer install, migrate, cache, permissions)
+  1. cPanel → Select PHP Version → PHP 8.2 or 8.3 for your domain.
 
-3) GitHub webhook (optional, instant deploy on push):
-   cPanel → Git → Manage → Pull or Deploy → copy Webhook URL
-   GitHub repo → Settings → Webhooks → Add:
-   - Payload URL: (paste cPanel webhook URL)
-   - Content type: application/json
-   - Events: Just the push event
-   - Branch filter: main
+  2. Enable extensions:
+       mbstring, xml, curl, zip, pdo_mysql, fileinfo, bcmath, openssl, tokenizer
 
+  3. cPanel → MySQL Databases:
+       - Create database (e.g. genecisu_geneorx)
+       - Create user + strong password
+       - Add user to database (ALL PRIVILEGES)
 
-IF COMPOSER FAILS IN DEPLOY SCRIPT
-----------------------------------
+================================================================================
+  PART 4 — PRODUCTION .env (one time)
+================================================================================
 
-SSH into server and find paths:
-   which php
-   which composer
-   ls /opt/cpanel/composer/bin/composer
-   ls /usr/local/bin/ea-php83
+  1. File Manager → /home/genecisu/geneorx/
+  2. Copy .env.example → .env
+  3. Edit .env (see deploy/env.cpanel.example for a checklist).
 
-Set in cPanel → Git → Environment variables (if available) OR edit deploy script:
-   PHP_BIN=/usr/local/bin/ea-php83
-   COMPOSER_BIN=/opt/cpanel/composer/bin/composer
+  Minimum values:
+    APP_ENV=production
+    APP_DEBUG=false
+    APP_URL=https://geneorx.com
 
+    DB_CONNECTION=mysql
+    DB_HOST=127.0.0.1
+    DB_DATABASE=genecisu_geneorx
+    DB_USERNAME=genecisu_xxxxx
+    DB_PASSWORD=(your DB password — not your cPanel password)
 
-GITHUB ACTIONS SSH DEPLOY (alternative)
----------------------------------------
+    MAIL_MAILER=resend
+    RESEND_KEY=...
 
-If cPanel Git webhooks are unavailable, use .github/workflows/deploy-cpanel.yml
-and add GitHub Secrets:
-   CPANEL_SSH_HOST, CPANEL_SSH_USER, CPANEL_SSH_KEY, CPANEL_DEPLOY_PATH
+    STRIPE_KEY=...
+    STRIPE_SECRET=...
+    STRIPE_WEBHOOK_SECRET=...
 
+  Never commit .env to GitHub.
 
-VERIFY
-------
+================================================================================
+  PART 5 — FIRST INSTALL (one time, Terminal)
+================================================================================
 
-https://yourdomain.com/up          → should return OK
-https://yourdomain.com/api/...   → API responds
-Stripe webhook: https://yourdomain.com/stripe/webhook
+  cd /home/genecisu/geneorx
+
+  php /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader
+
+  php artisan key:generate
+
+  php artisan migrate --force
+
+  php artisan config:cache
+  php artisan route:cache
+  php artisan view:cache
+
+  php artisan geneorx:make-admin your@email.com --create
+
+  chmod -R ug+rwx storage bootstrap/cache
+
+  # OPTION B only:
+  bash scripts/sync-public-html.sh
+
+================================================================================
+  PART 6 — CRON (one time)
+================================================================================
+
+  cPanel → Cron Jobs → Every minute (* * * * *):
+
+  cd /home/genecisu/geneorx && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+
+  (Use "which php" in Terminal if that path differs, e.g. /usr/local/bin/ea-php83)
+
+================================================================================
+  PART 7 — AUTOMATIC DEPLOY ON GIT PUSH
+================================================================================
+
+  1. Push deploy files from your PC (if not already on GitHub):
+       git add .cpanel.yml scripts/ docs/cpanel-deploy.txt deploy/
+       git commit -m "cPanel deploy for genecisu"
+       git push origin main
+
+  2. cPanel → Git Version Control → Manage (geneorx repo)
+
+  3. Tab "Pull or Deploy":
+       Deploy HEAD branch to : /home/genecisu/geneorx
+       Enable "Automatic Deployment" if shown
+
+  4. Click "Pull or Deploy" once to test.
+
+  5. Each push to main runs:
+       .cpanel.yml → scripts/deploy-cpanel.sh
+     (composer, migrate, cache, permissions)
+
+  6. OPTION B: set environment variable in cPanel Git (if available):
+       SYNC_PUBLIC_HTML=1
+     Or after deploy run sync manually:
+       bash /home/genecisu/geneorx/scripts/sync-public-html.sh
+
+  7. GitHub webhook (instant deploy):
+       cPanel → Git Manage → copy Webhook URL
+       GitHub → GeneoRxMain → Settings → Webhooks → Add
+         Payload URL : (paste)
+         Content type: application/json
+         Events      : Push only
+         Branch      : main
+
+================================================================================
+  PART 8 — VERIFY
+================================================================================
+
+  https://geneorx.com/up
+  https://geneorx.com/login
+  https://geneorx.com/admin
+  https://geneorx.com/stripe/webhook   (register in Stripe dashboard)
+
+  Logs: /home/genecisu/geneorx/storage/logs/laravel.log
+
+================================================================================
+  DAILY WORKFLOW (your PC)
+================================================================================
+
+  cd "D:\Ayaz khan\geneorx"
+  git add -A
+  git status
+  git commit -m "Describe change"
+  git push origin main
+
+  → cPanel pulls and deploy script runs automatically.
+
+================================================================================
+  TROUBLESHOOTING
+================================================================================
+
+  500 error        → check .env exists, DB credentials, storage permissions
+  403 / blank      → wrong document root (use geneorx/public OR synced public_html)
+  Composer fail    → PHP_BIN=/usr/local/bin/ea-php83
+                     COMPOSER_BIN=/opt/cpanel/composer/bin/composer
+  Deploy no .env   → create .env on server before enabling auto-deploy
+
+  GitHub Actions SSH deploy (optional): .github/workflows/deploy-cpanel.yml
+  Secrets: CPANEL_SSH_HOST, CPANEL_SSH_USER, CPANEL_SSH_KEY,
+           CPANEL_DEPLOY_PATH=/home/genecisu/geneorx
+
+================================================================================
