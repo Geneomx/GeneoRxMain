@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('analytics_events', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('name');
+            $table->string('name', 191);
             $table->json('properties')->nullable();
             $table->timestamps();
 
