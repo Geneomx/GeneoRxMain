@@ -1,14 +1,14 @@
 <?php
 
+use App\Models\Subscription;
+use App\Models\User;
+use App\Models\UserPushToken;
+use App\Notifications\BillingStatusNotification;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schedule;
-use App\Models\Subscription;
-use App\Models\User;
-use App\Models\UserPushToken;
-use App\Notifications\BillingStatusNotification;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -42,6 +42,7 @@ Artisan::command('geneorx:grant-plus {email} {--days=30} {--reason=Support overr
     $user = User::where('email', $this->argument('email'))->first();
     if (! $user) {
         $this->error('User not found.');
+
         return self::FAILURE;
     }
 
@@ -58,6 +59,7 @@ Artisan::command('geneorx:grant-plus {email} {--days=30} {--reason=Support overr
     );
 
     $this->info("Granted Plus to {$user->email} for {$days} days.");
+
     return self::SUCCESS;
 })->purpose('Grant temporary GeneoRx Plus access for support/testing');
 
@@ -101,29 +103,32 @@ Artisan::command(
         if ($this->option('create')) {
             if (User::where('email', $email)->exists()) {
                 $this->error("A user with e-mail [{$email}] already exists. Omit --create to promote them.");
+
                 return self::FAILURE;
             }
 
-            $name     = $this->option('name')     ?: $this->ask('Full name');
+            $name = $this->option('name') ?: $this->ask('Full name');
             $password = $this->option('password') ?: $this->secret('Password (min 8 chars)');
 
             if (strlen($password) < 8) {
                 $this->error('Password must be at least 8 characters.');
+
                 return self::FAILURE;
             }
 
             $user = User::create([
-                'name'              => $name,
-                'email'             => $email,
-                'password'          => Hash::make($password),
-                'is_admin'          => true,
+                'name' => $name,
+                'email' => $email,
+                'password' => Hash::make($password),
+                'is_admin' => true,
                 'email_verified_at' => now(),
             ]);
 
-            $this->info("✅  Admin user created:");
+            $this->info('✅  Admin user created:');
             $this->line("    Name  : {$user->name}");
             $this->line("    Email : {$user->email}");
             $this->line("    ID    : {$user->id}");
+
             return self::SUCCESS;
         }
 
@@ -132,37 +137,43 @@ Artisan::command(
 
         if (! $user) {
             $this->error("No user found with e-mail [{$email}].");
-            $this->line("Tip: use --create to make a brand-new admin account.");
+            $this->line('Tip: use --create to make a brand-new admin account.');
+
             return self::FAILURE;
         }
 
         if ($user->is_admin) {
             $this->warn("{$user->name} ({$email}) is already an admin. No changes made.");
+
             return self::SUCCESS;
         }
 
         $user->update(['is_admin' => true]);
         $this->info("✅  [{$user->name}] has been promoted to admin.");
+
         return self::SUCCESS;
     }
 )->purpose('Create a new admin user or promote an existing user to admin');
 
 Artisan::command('geneorx:remove-admin {email}', function () {
     $email = $this->argument('email');
-    $user  = User::where('email', $email)->first();
+    $user = User::where('email', $email)->first();
 
     if (! $user) {
         $this->error("No user found with e-mail [{$email}].");
+
         return self::FAILURE;
     }
 
     if (! $user->is_admin) {
         $this->warn("{$user->name} ({$email}) is not an admin. No changes made.");
+
         return self::SUCCESS;
     }
 
     $user->update(['is_admin' => false]);
     $this->info("✅  Admin access removed from [{$user->name}].");
+
     return self::SUCCESS;
 })->purpose('Remove admin access from a user');
 
@@ -171,6 +182,7 @@ Artisan::command('geneorx:list-admins', function () {
 
     if ($admins->isEmpty()) {
         $this->warn('No admin users found.');
+
         return self::SUCCESS;
     }
 

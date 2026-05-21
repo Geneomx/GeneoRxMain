@@ -15,7 +15,6 @@ export const ProfileStack: React.FC = () => (
   <Stack.Navigator
     screenOptions={{
       headerShown: true,
-      headerBackTitleVisible: false,
       headerTintColor: colors.primary,
       headerStyle: { backgroundColor: colors.background },
       headerShadowVisible: false,

@@ -23,7 +23,7 @@ class PlanService
         $plus = $this->isPlus($user);
 
         return [
-            'plan'   => 'plus',   // All logged-in users treated as Plus in the UI
+            'plan' => 'plus',   // All logged-in users treated as Plus in the UI
             'status' => $subscription->status,
             'isPlus' => true,     // Always unlocked
             'isTrialing' => $this->isTrialing($subscription),
@@ -33,11 +33,11 @@ class PlanService
             'currentPeriodEndsAt' => $subscription->current_period_ends_at?->toIso8601String(),
             'canceledAt' => $subscription->canceled_at?->toIso8601String(),
             'features' => [
-                'maxFreeCheckins'      => 999,
-                'doctorExport'         => true,
+                'maxFreeCheckins' => 999,
+                'doctorExport' => true,
                 'pushReminderScheduling' => true,
-                'advancedTrends'       => true,
-                'insightHistory'       => true,
+                'advancedTrends' => true,
+                'insightHistory' => true,
             ],
         ];
     }
@@ -69,8 +69,11 @@ class PlanService
 
     public function featureLocked(User $user, string $feature, int $currentCount = 0): bool
     {
-        // All authenticated users have full access — no feature gates.
-        return false;
+        if ($this->isPlus($user)) {
+            return false;
+        }
+
+        return $feature === 'checkins' && $currentCount > self::FREE_CHECKIN_LIMIT;
     }
 
     private function isTrialing(Subscription $subscription): bool

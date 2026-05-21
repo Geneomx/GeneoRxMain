@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Services\EmailOtpService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -75,7 +74,7 @@ class SocialAuthController extends Controller
             if ($user && ! $user->social_provider_id) {
                 // Link provider to existing account
                 $user->update([
-                    'social_provider'    => $provider,
+                    'social_provider' => $provider,
                     'social_provider_id' => $providerId,
                 ]);
             }
@@ -85,15 +84,15 @@ class SocialAuthController extends Controller
         if (! $user) {
             if (! $email) {
                 return redirect()->route('login')
-                    ->withErrors(['email' => 'We could not retrieve your email from ' . ucfirst($provider) . '. Please sign in with a different method.']);
+                    ->withErrors(['email' => 'We could not retrieve your email from '.ucfirst($provider).'. Please sign in with a different method.']);
             }
 
             $user = User::create([
-                'name'               => $name ?: Str::beforeLast($email, '@'),
-                'email'              => $email,
-                'password'           => bcrypt(Str::random(40)), // unusable random password
-                'email_verified_at'  => now(),                   // social = email verified
-                'social_provider'    => $provider,
+                'name' => $name ?: Str::beforeLast($email, '@'),
+                'email' => $email,
+                'password' => bcrypt(Str::random(40)), // unusable random password
+                'email_verified_at' => now(),                   // social = email verified
+                'social_provider' => $provider,
                 'social_provider_id' => $providerId,
             ]);
         }

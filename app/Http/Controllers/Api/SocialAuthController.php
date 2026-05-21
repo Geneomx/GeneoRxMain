@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Firebase\JWT\JWT;
 use Firebase\JWT\JWK;
+use Firebase\JWT\JWT;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -36,10 +36,10 @@ class SocialAuthController extends Controller
             ], 422);
         }
 
-        $profile  = $response->json();
-        $googleId = $profile['sub']   ?? null;
-        $email    = $profile['email'] ?? null;
-        $name     = $profile['name']  ?? null;
+        $profile = $response->json();
+        $googleId = $profile['sub'] ?? null;
+        $email = $profile['email'] ?? null;
+        $name = $profile['name'] ?? null;
 
         if (! $googleId) {
             return response()->json([
@@ -72,7 +72,7 @@ class SocialAuthController extends Controller
         }
 
         $email = $request->string('email') ?: null;
-        $name  = $request->string('name')  ?: null;
+        $name = $request->string('name') ?: null;
 
         return $this->loginOrCreate('apple', $appleId, $email, $name);
     }
@@ -94,10 +94,11 @@ class SocialAuthController extends Controller
             if (! $res->ok()) {
                 throw new \RuntimeException('Failed to fetch Apple public keys.');
             }
+
             return $res->json(); // { "keys": [...] }
         });
 
-        $keySet  = JWK::parseKeySet($jwks);
+        $keySet = JWK::parseKeySet($jwks);
         $decoded = JWT::decode($identityToken, $keySet);
 
         // The audience claim must match our iOS bundle ID
@@ -138,7 +139,7 @@ class SocialAuthController extends Controller
 
             if ($user && ! $user->social_provider_id) {
                 $user->update([
-                    'social_provider'    => $provider,
+                    'social_provider' => $provider,
                     'social_provider_id' => $providerId,
                 ]);
             }
@@ -148,17 +149,17 @@ class SocialAuthController extends Controller
         if (! $user) {
             if (! $email) {
                 return response()->json([
-                    'message' => 'We could not retrieve your email from ' . ucfirst($provider) . '. '
-                        . 'Please try a different sign-in method.',
+                    'message' => 'We could not retrieve your email from '.ucfirst($provider).'. '
+                        .'Please try a different sign-in method.',
                 ], 422);
             }
 
             $user = User::create([
-                'name'               => $name ?: Str::beforeLast($email, '@'),
-                'email'              => $email,
-                'password'           => bcrypt(Str::random(40)), // unusable random password
-                'email_verified_at'  => now(),                   // social = already verified
-                'social_provider'    => $provider,
+                'name' => $name ?: Str::beforeLast($email, '@'),
+                'email' => $email,
+                'password' => bcrypt(Str::random(40)), // unusable random password
+                'email_verified_at' => now(),                   // social = already verified
+                'social_provider' => $provider,
                 'social_provider_id' => $providerId,
             ]);
         }
@@ -174,10 +175,10 @@ class SocialAuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'user'  => [
-                'id'            => $user->id,
-                'name'          => $user->name,
-                'email'         => $user->email,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
                 'emailVerified' => true, // social login = email already verified by provider
                 'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ],

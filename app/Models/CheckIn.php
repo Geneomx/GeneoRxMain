@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CheckIn extends Model
 {
     protected $table = 'check_ins';
-    
+
     protected $fillable = [
         'user_id',
         'medications',

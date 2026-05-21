@@ -36,10 +36,10 @@ return [
     ],
 
     'stripe' => [
-        'key'             => env('STRIPE_KEY'),
-        'secret'          => env('STRIPE_SECRET'),
-        'webhook_secret'  => env('STRIPE_WEBHOOK_SECRET'),
-        'plus_price_id'   => env('STRIPE_PLUS_PRICE_ID'),
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'plus_price_id' => env('STRIPE_PLUS_PRICE_ID'),
     ],
 
     /*
@@ -50,9 +50,9 @@ return [
     | Mobile uses its own client IDs for native sign-in via expo-auth-session.
     */
     'google' => [
-        'client_id'     => env('GOOGLE_CLIENT_ID'),
+        'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect'      => env('APP_URL').'/auth/google/callback',
+        'redirect' => env('APP_URL').'/auth/google/callback',
     ],
 
     /*
@@ -68,9 +68,9 @@ return [
     |                     (used to verify identity tokens from the mobile app)
     */
     'apple' => [
-        'client_id'     => env('APPLE_CLIENT_ID'),
+        'client_id' => env('APPLE_CLIENT_ID'),
         'client_secret' => env('APPLE_CLIENT_SECRET'),
-        'redirect'      => env('APP_URL').'/auth/apple/callback',
+        'redirect' => env('APP_URL').'/auth/apple/callback',
     ],
 
 ];

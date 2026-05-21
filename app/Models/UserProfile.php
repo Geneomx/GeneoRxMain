@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class UserProfile extends Model
 {
     protected $table = 'user_profiles';
-    
+
     protected $fillable = [
         'user_id',
         'plan',
@@ -40,4 +40,3 @@ class UserProfile extends Model
         return $this->belongsTo(User::class);
     }
 }
-

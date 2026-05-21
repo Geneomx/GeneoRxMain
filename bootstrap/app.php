@@ -1,8 +1,14 @@
 <?php
 
+use App\Http\Middleware\AdminMiddleware;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'admin' => AdminMiddleware::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'stripe/webhook',
@@ -24,25 +30,25 @@ return Application::configure(basePath: dirname(__DIR__))
         // ── Render exceptions ──────────────────────────────────────────────
         // API requests (/api/*) always get a JSON response.
         // Web requests fall through to Blade error pages or Laravel's default handler.
-        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (Throwable $e, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
 
                 // Validation errors keep their detail
-                if ($e instanceof \Illuminate\Validation\ValidationException) {
+                if ($e instanceof ValidationException) {
                     return response()->json([
                         'message' => 'The given data was invalid.',
-                        'errors'  => $e->errors(),
+                        'errors' => $e->errors(),
                     ], 422);
                 }
 
                 // Auth errors
-                if ($e instanceof \Illuminate\Auth\AuthenticationException) {
+                if ($e instanceof AuthenticationException) {
                     return response()->json(['message' => 'Unauthenticated.'], 401);
                 }
 
                 // 404
-                if ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
+                if ($e instanceof NotFoundHttpException) {
                     return response()->json(['message' => 'Not found.'], 404);
                 }
 
@@ -60,14 +66,14 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // ── Report exceptions ──────────────────────────────────────────────
         // Log all non-HTTP 4xx errors to the default log channel.
-        $exceptions->report(function (\Throwable $e) {
+        $exceptions->report(function (Throwable $e) {
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 0;
             if ($status >= 500 || $status === 0) {
-                \Illuminate\Support\Facades\Log::error($e->getMessage(), [
+                Log::error($e->getMessage(), [
                     'exception' => get_class($e),
-                    'file'      => $e->getFile(),
-                    'line'      => $e->getLine(),
-                    'trace'     => $e->getTraceAsString(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
         })->stop(); // stop() prevents double-reporting via the default reporter

@@ -21,7 +21,7 @@ class ResetPasswordNotification extends Notification
     {
         return (new MailMessage)
             ->subject('Reset your GeneoRx password')
-            ->greeting('Hello ' . $notifiable->name . ',')
+            ->greeting('Hello '.$notifiable->name.',')
             ->line('We received a request to reset the password for your GeneoRx account.')
             ->action('Reset password', $this->resetUrl)
             ->line('This link will expire in 60 minutes.')

@@ -21,7 +21,6 @@ export const AuthStack: React.FC = () => (
   <Stack.Navigator
     screenOptions={{
       headerShown: false,
-      headerBackTitleVisible: false,
       headerTintColor: colors.primary,
       headerStyle: { backgroundColor: colors.background },
       headerShadowVisible: false,

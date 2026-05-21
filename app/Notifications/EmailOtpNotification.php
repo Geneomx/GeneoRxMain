@@ -10,9 +10,7 @@ class EmailOtpNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly string $code)
-    {
-    }
+    public function __construct(private readonly string $code) {}
 
     /**
      * @return array<int, string>

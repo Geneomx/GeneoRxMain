@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\UserProfile;
 use App\Models\User;
+use App\Models\UserProfile;
 use App\Notifications\ResetPasswordNotification;
 use App\Services\EmailOtpService;
 use Illuminate\Http\Request;
@@ -113,13 +113,13 @@ class TokenAuthController extends Controller
                 $token = Str::random(64);
 
                 DB::table('password_reset_tokens')->insert([
-                    'email'      => $user->email,
-                    'token'      => Hash::make($token),
+                    'email' => $user->email,
+                    'token' => Hash::make($token),
                     'created_at' => Carbon::now(),
                 ]);
 
                 // Deep-link URL for mobile app   geneorx://reset?token=...&email=...
-                $resetUrl = 'geneorx://reset?token=' . urlencode($token) . '&email=' . urlencode($user->email);
+                $resetUrl = 'geneorx://reset?token='.urlencode($token).'&email='.urlencode($user->email);
 
                 $user->notify(new ResetPasswordNotification($resetUrl));
             }
@@ -137,8 +137,8 @@ class TokenAuthController extends Controller
     public function resetPassword(Request $request)
     {
         $validated = $request->validate([
-            'token'    => 'required|string',
-            'email'    => 'required|email',
+            'token' => 'required|string',
+            'email' => 'required|email',
             'password' => 'required|min:8|confirmed',
         ]);
 

@@ -24,9 +24,9 @@ class Medication extends Model
 
     protected $casts = [
         'symptom_chips' => 'array',
-        'claims'        => 'array',
-        'is_active'     => 'boolean',
-        'sort_order'    => 'integer',
+        'claims' => 'array',
+        'is_active' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     public function scopeActive($query)
@@ -46,10 +46,10 @@ class Medication extends Model
             ->orderBy('name')
             ->get()
             ->map(fn ($m) => [
-                'id'           => $m->slug,
-                'name'         => $m->name,
+                'id' => $m->slug,
+                'name' => $m->name,
                 'symptomChips' => $m->symptom_chips ?? [],
-                'claims'       => $m->claims ?? [],
+                'claims' => $m->claims ?? [],
             ])
             ->toArray();
     }

@@ -19,6 +19,7 @@ class AuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('home');
         }
+
         return view('auth.login');
     }
 
@@ -34,6 +35,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+
             return redirect()->route('treatments')->with('success', 'Welcome back!');
         }
 
@@ -50,6 +52,7 @@ class AuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('home');
         }
+
         return view('auth.register');
     }
 

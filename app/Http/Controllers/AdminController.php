@@ -21,13 +21,13 @@ class AdminController extends Controller
     public function dashboard()
     {
         $stats = [
-            'total_users'    => User::count(),
+            'total_users' => User::count(),
             'verified_users' => User::whereNotNull('email_verified_at')->count(),
-            'free_users'     => User::whereDoesntHave('subscription', fn ($q) => $q->where('plan', 'plus')->whereIn('status', ['active', 'trialing']))->count(),
-            'plus_users'     => Subscription::where('plan', 'plus')->whereIn('status', ['active', 'trialing'])->count()
+            'free_users' => User::whereDoesntHave('subscription', fn ($q) => $q->where('plan', 'plus')->whereIn('status', ['active', 'trialing']))->count(),
+            'plus_users' => Subscription::where('plan', 'plus')->whereIn('status', ['active', 'trialing'])->count()
                                 + Subscription::whereNotNull('admin_override_ends_at')->where('admin_override_ends_at', '>', now())->count(),
             'total_checkins' => CheckIn::count(),
-            'checkins_week'  => CheckIn::where('created_at', '>=', now()->subDays(7))->count(),
+            'checkins_week' => CheckIn::where('created_at', '>=', now()->subDays(7))->count(),
             'new_users_week' => User::where('created_at', '>=', now()->subDays(7))->count(),
         ];
 
@@ -36,7 +36,7 @@ class AdminController extends Controller
             ->take(10)
             ->get()
             ->map(fn ($u) => [
-                'user'   => $u,
+                'user' => $u,
                 'isPlus' => $this->plans->isPlus($u),
             ]);
 
@@ -49,13 +49,13 @@ class AdminController extends Controller
 
         if ($search = $request->input('q')) {
             $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")
-                                       ->orWhere('email', 'like', "%{$search}%"));
+                ->orWhere('email', 'like', "%{$search}%"));
         }
 
         if ($plan = $request->input('plan')) {
             if ($plan === 'plus') {
                 $query->whereHas('subscription', fn ($q) => $q->where('plan', 'plus')->whereIn('status', ['active', 'trialing']))
-                      ->orWhereHas('subscription', fn ($q) => $q->whereNotNull('admin_override_ends_at')->where('admin_override_ends_at', '>', now()));
+                    ->orWhereHas('subscription', fn ($q) => $q->whereNotNull('admin_override_ends_at')->where('admin_override_ends_at', '>', now()));
             } elseif ($plan === 'free') {
                 $query->whereDoesntHave('subscription', fn ($q) => $q->where('plan', 'plus')->whereIn('status', ['active', 'trialing']));
             }
@@ -72,9 +72,9 @@ class AdminController extends Controller
         $users = $query->latest()->paginate(20)->withQueryString();
 
         $users->getCollection()->transform(fn ($u) => [
-            'user'        => $u,
-            'isPlus'      => $this->plans->isPlus($u),
-            'checkinCount'=> $u->checkIns->count(),
+            'user' => $u,
+            'isPlus' => $this->plans->isPlus($u),
+            'checkinCount' => $u->checkIns->count(),
         ]);
 
         return view('admin.users', compact('users'));
@@ -83,7 +83,7 @@ class AdminController extends Controller
     public function userDetail(User $user)
     {
         $user->load(['subscription', 'profile', 'checkIns' => fn ($q) => $q->latest()->take(10)]);
-        $isPlus       = $this->plans->isPlus($user);
+        $isPlus = $this->plans->isPlus($user);
         $subscription = $this->plans->subscriptionFor($user);
 
         return view('admin.user-detail', compact('user', 'isPlus', 'subscription'));
@@ -94,10 +94,10 @@ class AdminController extends Controller
         $sub = $this->plans->subscriptionFor($user);
         $sub->update([
             'admin_override_ends_at' => now()->addYear(),
-            'admin_override_reason'  => 'Granted by admin on ' . now()->toDateString(),
+            'admin_override_reason' => 'Granted by admin on '.now()->toDateString(),
         ]);
 
-        return back()->with('success', "Plus access granted to {$user->name} until " . now()->addYear()->toDateString() . '.');
+        return back()->with('success', "Plus access granted to {$user->name} until ".now()->addYear()->toDateString().'.');
     }
 
     public function revokePlus(User $user)
@@ -105,7 +105,7 @@ class AdminController extends Controller
         $sub = $this->plans->subscriptionFor($user);
         $sub->update([
             'admin_override_ends_at' => null,
-            'admin_override_reason'  => null,
+            'admin_override_reason' => null,
         ]);
 
         return back()->with('success', "Plus override removed for {$user->name}.");
@@ -123,20 +123,22 @@ class AdminController extends Controller
     public function updateUser(Request $request, User $user): RedirectResponse
     {
         $request->validate([
-            'name'  => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'email' => "required|email|max:255|unique:users,email,{$user->id}",
         ]);
 
         $emailChanged = $user->email !== $request->email;
 
         $user->update([
-            'name'              => $request->name,
-            'email'             => $request->email,
+            'name' => $request->name,
+            'email' => $request->email,
             'email_verified_at' => $emailChanged ? null : $user->email_verified_at,
         ]);
 
-        $msg = "User updated.";
-        if ($emailChanged) $msg .= " Email changed  verification cleared.";
+        $msg = 'User updated.';
+        if ($emailChanged) {
+            $msg .= ' Email changed  verification cleared.';
+        }
 
         return back()->with('success', $msg);
     }
@@ -148,7 +150,7 @@ class AdminController extends Controller
             return back()->with('error', 'You cannot change your own admin status.');
         }
 
-        $user->update(['is_admin' => !$user->is_admin]);
+        $user->update(['is_admin' => ! $user->is_admin]);
         $state = $user->is_admin ? 'granted' : 'removed';
 
         return back()->with('success', "Admin access {$state} for {$user->name}.");
@@ -179,7 +181,7 @@ class AdminController extends Controller
         $user->delete();
 
         return redirect()->route('admin.users')
-                         ->with('success', "User \"{$name}\" and all their data deleted.");
+            ->with('success', "User \"{$name}\" and all their data deleted.");
     }
 
     // ── Create user ───────────────────────────────────────────────────────────
@@ -191,23 +193,23 @@ class AdminController extends Controller
     public function storeUser(Request $request): RedirectResponse
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|max:255|unique:users,email',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
             'password' => ['required', 'confirmed', Rules\Password::min(8)],
             'is_admin' => 'nullable|boolean',
             'verified' => 'nullable|boolean',
         ]);
 
         $user = User::create([
-            'name'              => $request->name,
-            'email'             => $request->email,
-            'password'          => Hash::make($request->password),
-            'is_admin'          => (bool) $request->input('is_admin', false),
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'is_admin' => (bool) $request->input('is_admin', false),
             'email_verified_at' => $request->boolean('verified') ? now() : null,
         ]);
 
         return redirect()->route('admin.user-detail', $user)
-                         ->with('success', "User \"{$user->name}\" created successfully.");
+            ->with('success', "User \"{$user->name}\" created successfully.");
     }
 
     // ── Set password directly ─────────────────────────────────────────────────
@@ -229,7 +231,7 @@ class AdminController extends Controller
 
         if ($search = $request->input('q')) {
             $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")
-                                       ->orWhere('email', 'like', "%{$search}%"));
+                ->orWhere('email', 'like', "%{$search}%"));
         }
         if ($plan = $request->input('plan')) {
             if ($plan === 'plus') {
@@ -248,15 +250,15 @@ class AdminController extends Controller
 
         $users = $query->latest()->get();
 
-        $lines   = [];
+        $lines = [];
         $lines[] = implode(',', ['ID', 'Name', 'Email', 'Verified', 'Plan', 'Admin', 'Joined']);
 
         foreach ($users as $u) {
-            $plan    = $this->plans->isPlus($u) ? 'Plus' : 'Free';
+            $plan = $this->plans->isPlus($u) ? 'Plus' : 'Free';
             $lines[] = implode(',', [
                 $u->id,
-                '"' . str_replace('"', '""', $u->name) . '"',
-                '"' . str_replace('"', '""', $u->email) . '"',
+                '"'.str_replace('"', '""', $u->name).'"',
+                '"'.str_replace('"', '""', $u->email).'"',
                 $u->email_verified_at ? 'Yes' : 'No',
                 $plan,
                 $u->is_admin ? 'Yes' : 'No',
@@ -267,8 +269,8 @@ class AdminController extends Controller
         $csv = implode("\n", $lines);
 
         return response($csv, 200, [
-            'Content-Type'        => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="geneorx-users-' . now()->format('Y-m-d') . '.csv"',
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="geneorx-users-'.now()->format('Y-m-d').'.csv"',
         ]);
     }
 
@@ -278,7 +280,7 @@ class AdminController extends Controller
         $active = Subscription::with('user')
             ->where(function ($q) {
                 $q->where(fn ($q2) => $q2->where('plan', 'plus')->whereIn('status', ['active', 'trialing']))
-                  ->orWhere(fn ($q2) => $q2->whereNotNull('admin_override_ends_at')->where('admin_override_ends_at', '>', now()));
+                    ->orWhere(fn ($q2) => $q2->whereNotNull('admin_override_ends_at')->where('admin_override_ends_at', '>', now()));
             })
             ->latest()
             ->paginate(25);
@@ -291,10 +293,10 @@ class AdminController extends Controller
             ->get();
 
         $stats = [
-            'total_plus'      => Subscription::where('plan', 'plus')->whereIn('status', ['active', 'trialing'])->count(),
+            'total_plus' => Subscription::where('plan', 'plus')->whereIn('status', ['active', 'trialing'])->count(),
             'admin_overrides' => Subscription::whereNotNull('admin_override_ends_at')->where('admin_override_ends_at', '>', now())->count(),
-            'stripe_active'   => Subscription::where('plan', 'plus')->where('status', 'active')->whereNotNull('stripe_id')->count(),
-            'expiring_soon'   => $expiringOverrides->count(),
+            'stripe_active' => Subscription::where('plan', 'plus')->where('status', 'active')->whereNotNull('stripe_id')->count(),
+            'expiring_soon' => $expiringOverrides->count(),
         ];
 
         return view('admin.subscriptions', compact('active', 'expiringOverrides', 'stats'));
@@ -305,14 +307,14 @@ class AdminController extends Controller
         // Total events and daily counts for the last 30 days
         $totalEvents = AnalyticsEvent::count();
 
-        $dailyCounts = AnalyticsEvent::selectRaw("DATE(created_at) as date, COUNT(*) as count")
+        $dailyCounts = AnalyticsEvent::selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->where('created_at', '>=', now()->subDays(30))
             ->groupBy('date')
             ->orderBy('date')
             ->get();
 
         // Top 10 event names
-        $topEvents = AnalyticsEvent::selectRaw("name, COUNT(*) as count")
+        $topEvents = AnalyticsEvent::selectRaw('name, COUNT(*) as count')
             ->groupBy('name')
             ->orderByDesc('count')
             ->limit(10)

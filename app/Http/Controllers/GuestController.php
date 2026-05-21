@@ -21,8 +21,8 @@ class GuestController extends Controller
         $guest = User::firstOrCreate(
             ['email' => 'guest@geneorx.local'],
             [
-                'name'              => 'Guest',
-                'password'          => bcrypt(Str::random(40)),
+                'name' => 'Guest',
+                'password' => bcrypt(Str::random(40)),
                 'email_verified_at' => now(),
             ]
         );

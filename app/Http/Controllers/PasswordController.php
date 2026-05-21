@@ -50,8 +50,8 @@ class PasswordController extends Controller
         $token = Str::random(64);
 
         DB::table('password_reset_tokens')->insert([
-            'email'      => $user->email,
-            'token'      => Hash::make($token),
+            'email' => $user->email,
+            'token' => Hash::make($token),
             'created_at' => Carbon::now(),
         ]);
 
@@ -80,8 +80,8 @@ class PasswordController extends Controller
     public function resetPassword(Request $request): RedirectResponse
     {
         $request->validate([
-            'token'    => 'required|string',
-            'email'    => 'required|email',
+            'token' => 'required|string',
+            'email' => 'required|email',
             'password' => 'required|min:8|confirmed',
         ]);
 
@@ -96,6 +96,7 @@ class PasswordController extends Controller
         // Links expire after 60 minutes
         if (Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
             DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
             return back()->withErrors(['token' => 'This reset link has expired. Please request a new one.']);
         }
 

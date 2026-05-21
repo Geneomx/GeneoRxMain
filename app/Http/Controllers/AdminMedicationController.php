@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Medication;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AdminMedicationController extends Controller
@@ -16,7 +17,7 @@ class AdminMedicationController extends Controller
 
         if ($search = $request->input('q')) {
             $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%");
+                ->orWhere('slug', 'like', "%{$search}%");
         }
 
         if ($request->input('status') === 'active') {
@@ -44,7 +45,7 @@ class AdminMedicationController extends Controller
         Medication::create($data);
 
         return redirect()->route('admin.medications')
-                         ->with('success', "Medication \"{$data['name']}\" created.");
+            ->with('success', "Medication \"{$data['name']}\" created.");
     }
 
     // ── Edit form ─────────────────────────────────────────────────────────────
@@ -61,13 +62,13 @@ class AdminMedicationController extends Controller
         $medication->update($data);
 
         return redirect()->route('admin.medications')
-                         ->with('success', "Medication \"{$medication->name}\" updated.");
+            ->with('success', "Medication \"{$medication->name}\" updated.");
     }
 
     // ── Toggle active ─────────────────────────────────────────────────────────
     public function toggle(Medication $medication): RedirectResponse
     {
-        $medication->update(['is_active' => !$medication->is_active]);
+        $medication->update(['is_active' => ! $medication->is_active]);
         $state = $medication->is_active ? 'activated' : 'deactivated';
 
         return back()->with('success', "\"{$medication->name}\" {$state}.");
@@ -80,52 +81,52 @@ class AdminMedicationController extends Controller
         $medication->delete();
 
         return redirect()->route('admin.medications')
-                         ->with('success', "Medication \"{$name}\" deleted.");
+            ->with('success', "Medication \"{$name}\" deleted.");
     }
 
     // ── Validation helper ─────────────────────────────────────────────────────
     private function validate(Request $request, ?int $ignoreId = null): array
     {
-        $slugRule = 'required|alpha_dash|max:100|unique:medications,slug' . ($ignoreId ? ",{$ignoreId}" : '');
+        $slugRule = 'required|alpha_dash|max:100|unique:medications,slug'.($ignoreId ? ",{$ignoreId}" : '');
 
         $validated = $request->validate([
-            'name'          => 'required|string|max:200',
-            'slug'          => $slugRule,
-            'description'   => 'nullable|string|max:500',
-            'sort_order'    => 'nullable|integer|min:0',
-            'is_active'     => 'nullable|boolean',
+            'name' => 'required|string|max:200',
+            'slug' => $slugRule,
+            'description' => 'nullable|string|max:500',
+            'sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
             'symptom_chips' => 'nullable|string',
-            'claims_json'   => 'nullable|string',
+            'claims_json' => 'nullable|string',
         ]);
 
         // Parse textarea JSON fields
         $symptomChips = [];
-        if (!empty($validated['symptom_chips'])) {
+        if (! empty($validated['symptom_chips'])) {
             $symptomChips = array_filter(
                 array_map('trim', explode("\n", $validated['symptom_chips']))
             );
         }
 
         $claims = [];
-        if (!empty($validated['claims_json'])) {
+        if (! empty($validated['claims_json'])) {
             try {
                 $decoded = json_decode($validated['claims_json'], true, 512, JSON_THROW_ON_ERROR);
-                $claims  = is_array($decoded) ? $decoded : [];
+                $claims = is_array($decoded) ? $decoded : [];
             } catch (\JsonException $e) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'claims_json' => 'Claims must be valid JSON (array of claim objects).',
                 ]);
             }
         }
 
         return [
-            'name'          => $validated['name'],
-            'slug'          => $validated['slug'],
-            'description'   => $validated['description'] ?? null,
-            'sort_order'    => (int) ($validated['sort_order'] ?? 0),
-            'is_active'     => (bool) ($validated['is_active'] ?? true),
+            'name' => $validated['name'],
+            'slug' => $validated['slug'],
+            'description' => $validated['description'] ?? null,
+            'sort_order' => (int) ($validated['sort_order'] ?? 0),
+            'is_active' => (bool) ($validated['is_active'] ?? true),
             'symptom_chips' => array_values($symptomChips),
-            'claims'        => $claims,
+            'claims' => $claims,
         ];
     }
 }

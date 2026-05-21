@@ -16,8 +16,8 @@ class HomeController extends Controller
 {
     public function treatment()
     {
-        $user   = auth()->user();
-        $medDb  = Medication::toMedDb(); // Pass DB-managed catalog to frontend
+        $user = auth()->user();
+        $medDb = Medication::toMedDb(); // Pass DB-managed catalog to frontend
 
         return view('treatments', ['user' => $user, 'medDb' => $medDb]);
     }
@@ -37,15 +37,15 @@ class HomeController extends Controller
         // Return a clean empty profile for guest sessions so they always start fresh
         if (session('is_web_guest')) {
             return response()->json([
-                'user'         => ['name' => 'Guest', 'email' => '', 'emailVerified' => true],
-                'profile'      => null,
-                'account'      => ['email' => '', 'consent' => false],
-                'plan'         => null,
+                'user' => ['name' => 'Guest', 'email' => '', 'emailVerified' => true],
+                'profile' => null,
+                'account' => ['email' => '', 'consent' => false],
+                'plan' => null,
                 'subscription' => $plans->stateFor($user),
                 'portal_state' => [],
-                'medications'  => [],
-                'symptoms'     => [],
-                'checkins'     => [],
+                'medications' => [],
+                'symptoms' => [],
+                'checkins' => [],
             ]);
         }
 

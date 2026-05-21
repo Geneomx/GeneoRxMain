@@ -13,8 +13,7 @@ class BillingStatusNotification extends Notification
     public function __construct(
         private readonly string $subjectLine,
         private readonly string $messageLine,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<int, string>
