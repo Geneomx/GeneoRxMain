@@ -1,0 +1,40 @@
+# Optional: deploy to cPanel over SSH when CI passes on main.
+# Enable by adding GitHub repository secrets (see docs/cpanel-deploy.txt).
+name: Deploy to cPanel
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: SSH deploy
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.CPANEL_SSH_HOST }}
+          username: ${{ secrets.CPANEL_SSH_USER }}
+          key: ${{ secrets.CPANEL_SSH_KEY }}
+          port: ${{ secrets.CPANEL_SSH_PORT || 22 }}
+          env:
+            CPANEL_DEPLOY_PATH: ${{ secrets.CPANEL_DEPLOY_PATH }}
+            CPANEL_PHP_BIN: ${{ secrets.CPANEL_PHP_BIN }}
+            CPANEL_COMPOSER_BIN: ${{ secrets.CPANEL_COMPOSER_BIN }}
+          script: |
+            set -e
+            cd "$CPANEL_DEPLOY_PATH"
+            git fetch origin main
+            git reset --hard origin/main
+            export DEPLOYPATH="$CPANEL_DEPLOY_PATH"
+            export PHP_BIN="${CPANEL_PHP_BIN:-php}"
+            export COMPOSER_BIN="${CPANEL_COMPOSER_BIN:-composer}"
+            bash scripts/deploy-cpanel.sh

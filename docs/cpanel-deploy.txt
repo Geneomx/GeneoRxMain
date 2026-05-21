@@ -1,0 +1,93 @@
+GeneoRx — Automatic deployment on cPanel
+==========================================
+
+Repo: https://github.com/Geneomx/GeneoRxMain.git
+
+IMPORTANT: Do NOT deploy Laravel into public_html root.
+Point your domain document root to:  /home/YOURUSER/geneorx/public
+
+
+ONE-TIME SERVER SETUP
+---------------------
+
+1) cPanel → Git Version Control → Create
+   - Clone URL: https://github.com/Geneomx/GeneoRxMain.git
+   - Repository Path: /home/YOURUSER/geneorx
+   - Branch: main
+
+2) cPanel → Domains → your domain → Document Root
+   Change to: /home/YOURUSER/geneorx/public
+
+3) cPanel → Select PHP Version → choose PHP 8.2 or 8.3
+   Enable extensions: mbstring, xml, curl, zip, pdo_mysql, fileinfo, bcmath
+
+4) Create production .env (File Manager or SSH):
+   - Copy geneorx/.env.example → geneorx/.env
+   - Set: APP_ENV=production, APP_DEBUG=false
+   - Set: APP_URL=https://yourdomain.com
+   - Use MySQL (not SQLite) for DB_* values
+   - Add Stripe, Resend, OAuth keys
+
+5) First deploy (SSH or Terminal in cPanel):
+   cd ~/geneorx
+   php /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader
+   php artisan key:generate
+   php artisan migrate --force
+   php artisan geneorx:make-admin you@email.com --create
+
+6) Cron (required for reminders / billing notices):
+   * * * * * cd /home/YOURUSER/geneorx && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+
+7) Queue worker (optional, if using database queue):
+   Use cPanel “Setup Python App” / Supervisor if available, or cron:
+   * * * * * cd /home/YOURUSER/geneorx && php artisan queue:work --stop-when-empty >> /dev/null 2>&1
+
+
+AUTOMATIC DEPLOY (recommended)
+------------------------------
+
+1) cPanel → Git Version Control → Manage → Pull or Deploy
+   - Deployment path: /home/YOURUSER/geneorx
+   - Enable “Automatic Deployment” if your host supports it
+
+2) After each git push to main, cPanel pulls and runs:
+   - .cpanel.yml  →  scripts/deploy-cpanel.sh
+   (composer install, migrate, cache, permissions)
+
+3) GitHub webhook (optional, instant deploy on push):
+   cPanel → Git → Manage → Pull or Deploy → copy Webhook URL
+   GitHub repo → Settings → Webhooks → Add:
+   - Payload URL: (paste cPanel webhook URL)
+   - Content type: application/json
+   - Events: Just the push event
+   - Branch filter: main
+
+
+IF COMPOSER FAILS IN DEPLOY SCRIPT
+----------------------------------
+
+SSH into server and find paths:
+   which php
+   which composer
+   ls /opt/cpanel/composer/bin/composer
+   ls /usr/local/bin/ea-php83
+
+Set in cPanel → Git → Environment variables (if available) OR edit deploy script:
+   PHP_BIN=/usr/local/bin/ea-php83
+   COMPOSER_BIN=/opt/cpanel/composer/bin/composer
+
+
+GITHUB ACTIONS SSH DEPLOY (alternative)
+---------------------------------------
+
+If cPanel Git webhooks are unavailable, use .github/workflows/deploy-cpanel.yml
+and add GitHub Secrets:
+   CPANEL_SSH_HOST, CPANEL_SSH_USER, CPANEL_SSH_KEY, CPANEL_DEPLOY_PATH
+
+
+VERIFY
+------
+
+https://yourdomain.com/up          → should return OK
+https://yourdomain.com/api/...   → API responds
+Stripe webhook: https://yourdomain.com/stripe/webhook
