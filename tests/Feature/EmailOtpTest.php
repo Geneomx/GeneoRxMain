@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\EmailOtp;
-use App\Models\Subscription;
 use App\Models\User;
 use App\Notifications\EmailOtpNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -58,12 +57,6 @@ class EmailOtpTest extends TestCase
     public function test_push_token_can_be_registered(): void
     {
         $user = User::factory()->create();
-        Subscription::create([
-            'user_id' => $user->id,
-            'plan' => 'plus',
-            'status' => 'active',
-            'provider' => 'stripe',
-        ]);
         Sanctum::actingAs($user);
 
         $this->postJson('/api/mobile/push-token', [
