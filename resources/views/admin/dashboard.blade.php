@@ -23,16 +23,6 @@
     <div class="stat-sub">{{ $stats['total_users'] > 0 ? round($stats['verified_users'] / $stats['total_users'] * 100) : 0 }}% of users</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Plus subscribers</div>
-    <div class="stat-value teal">{{ number_format($stats['plus_users']) }}</div>
-    <div class="stat-sub">Active and overridden</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Free users</div>
-    <div class="stat-value">{{ number_format($stats['free_users']) }}</div>
-    <div class="stat-sub">Potential upgrades</div>
-  </div>
-  <div class="stat-card">
     <div class="stat-label">Total check-ins</div>
     <div class="stat-value">{{ number_format($stats['total_checkins']) }}</div>
     <div class="stat-sub">{{ $stats['checkins_week'] }} in last 7 days</div>
@@ -55,7 +45,6 @@
           <th>User</th>
           <th>Email</th>
           <th>Verified</th>
-          <th>Plan</th>
           <th>Joined</th>
           <th></th>
         </tr>
@@ -79,13 +68,6 @@
                 <span class="pill pill-verified">Verified</span>
               @else
                 <span class="pill pill-unverified">Pending</span>
-              @endif
-            </td>
-            <td>
-              @if($row['isPlus'])
-                <span class="pill pill-plus">Plus</span>
-              @else
-                <span class="pill pill-free">Free</span>
               @endif
             </td>
             <td style="color:var(--text-muted);white-space:nowrap;">{{ $u->created_at->format('M j, Y') }}</td>
@@ -116,13 +98,6 @@
       <div style="font-weight:700;font-size:15px;margin-bottom:5px;">Medications catalog</div>
       <div style="font-size:13.5px;color:var(--text-muted);margin-bottom:14px;line-height:1.55;">Add, edit, or deactivate medications shown in the app.</div>
       <a href="{{ route('admin.medications') }}" class="btn btn-primary" style="width:100%;">Manage medications</a>
-    </div>
-  </div>
-  <div class="admin-card" style="margin-bottom:0;">
-    <div class="admin-card-bd">
-      <div style="font-weight:700;font-size:15px;margin-bottom:5px;">Grant Plus access</div>
-      <div style="font-size:13.5px;color:var(--text-muted);margin-bottom:14px;line-height:1.55;">Search for a user and grant admin-override Plus subscription.</div>
-      <a href="{{ route('admin.users') }}?plan=free" class="btn btn-ghost" style="width:100%;">Find free users</a>
     </div>
   </div>
 </div>

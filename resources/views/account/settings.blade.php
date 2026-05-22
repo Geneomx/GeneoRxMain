@@ -110,7 +110,7 @@
   <div class="settings-head">
     <div>
       <h1 class="settings-page-title">Account settings</h1>
-      <p class="settings-page-sub">Manage your password, subscription, and account data.</p>
+      <p class="settings-page-sub">Manage your password and account data.</p>
     </div>
     <a href="{{ route('treatments') }}" class="btn btn-outline">Back to dashboard</a>
   </div>
@@ -185,39 +185,10 @@
     </div>
   </div>
 
-  {{-- ── Subscription ────────────────────────────────────────────── --}}
-  <div class="settings-card">
-    <div class="settings-card-header">
-      <div class="settings-card-icon">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="2"/></svg>
-      </div>
-      <div>
-        <div class="settings-card-title">Subscription</div>
-        <div class="settings-card-desc">Manage your GeneoRx Plus plan.</div>
-      </div>
-    </div>
-    <div class="settings-card-body">
-      @php
-        $sub = $user->subscription;
-        $isPlus = $sub && $sub->stripe_status === 'active';
-      @endphp
-      @if ($isPlus)
-        <p style="font-size:14px;color:var(--text-soft);margin-bottom:16px;">You are on <strong>GeneoRx Plus</strong>. Use the portal below to view invoices, change your plan, or cancel.</p>
-        <form method="POST" action="{{ route('billing.portal') }}">
-          @csrf
-          <button type="submit" class="btn btn-primary">Open billing portal</button>
-        </form>
-      @else
-        <p style="font-size:14px;color:var(--text-soft);margin-bottom:16px;">You are on the <strong>Free plan</strong>. Upgrade to Plus for unlimited interaction checks and full nutrient depletion reports.</p>
-        <a href="{{ route('billing.show') }}" class="btn btn-primary">Upgrade to Plus</a>
-      @endif
-    </div>
-  </div>
-
   {{-- ── Danger zone ─────────────────────────────────────────────── --}}
   <div class="danger-zone">
     <h3>Danger zone</h3>
-    <p>Deleting your account is <strong>permanent and cannot be undone</strong>. All your medications, check-ins, symptoms, health notes, and subscription data will be immediately and irreversibly removed from our servers.</p>
+    <p>Deleting your account is <strong>permanent and cannot be undone</strong>. All your medications, check-ins, symptoms, and health notes will be immediately and irreversibly removed from our servers.</p>
 
     <details>
       <summary>

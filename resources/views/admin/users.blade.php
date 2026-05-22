@@ -22,14 +22,6 @@
     <input type="search" name="q" value="{{ request('q') }}" placeholder="Name or email…" style="width:100%;">
   </div>
   <div>
-    <label style="font-size:11.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Plan</label>
-    <select name="plan">
-      <option value="">All plans</option>
-      <option value="plus" {{ request('plan') === 'plus' ? 'selected' : '' }}>Plus</option>
-      <option value="free" {{ request('plan') === 'free' ? 'selected' : '' }}>Free</option>
-    </select>
-  </div>
-  <div>
     <label style="font-size:11.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;">Verified</label>
     <select name="verified">
       <option value="">All</option>
@@ -54,7 +46,6 @@
           <th>User</th>
           <th>Email</th>
           <th>Verified</th>
-          <th>Plan</th>
           <th>Check-ins</th>
           <th>Joined</th>
           <th style="text-align:right;">Actions</th>
@@ -81,13 +72,6 @@
                 <span class="pill pill-verified">Verified</span>
               @else
                 <span class="pill pill-unverified">Pending</span>
-              @endif
-            </td>
-            <td>
-              @if($row['isPlus'])
-                <span class="pill pill-plus">Plus</span>
-              @else
-                <span class="pill pill-free">Free</span>
               @endif
             </td>
             <td style="color:var(--text-muted);font-size:13px;">{{ $row['checkinCount'] }}</td>

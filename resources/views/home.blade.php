@@ -233,9 +233,20 @@
     overflow: hidden;
     padding: 80px 0 0;
     background:
-      radial-gradient(900px 500px at 85% 18%, rgba(63, 179, 154, 0.18), transparent 60%),
-      radial-gradient(700px 400px at 10% 90%, rgba(14, 124, 102, 0.10), transparent 60%),
+      radial-gradient(900px 500px at 85% 18%, rgba(63, 179, 154, 0.14), transparent 60%),
+      radial-gradient(700px 400px at 10% 90%, rgba(14, 124, 102, 0.08), transparent 60%),
+      radial-gradient(500px 350px at 50% 60%, rgba(14, 124, 102, 0.04), transparent 70%),
       linear-gradient(180deg, var(--bg) 0%, var(--bg-warm) 100%);
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, var(--teal-200) 50%, transparent 100%);
+    opacity: 0.5;
   }
 
   .hero-orbits {
@@ -248,8 +259,9 @@
   .hero-orbits::after {
     content: '';
     position: absolute;
-    border: 1px solid rgba(14, 124, 102, 0.07);
+    border: 1px solid rgba(14, 124, 102, 0.06);
     border-radius: 50%;
+    animation: orbitPulse 12s ease-in-out infinite;
   }
   .hero-orbits::before {
     width: 800px; height: 800px;
@@ -258,8 +270,33 @@
   .hero-orbits::after {
     width: 540px; height: 540px;
     right: -110px; top: -60px;
-    border-color: rgba(14, 124, 102, 0.10);
+    border-color: rgba(14, 124, 102, 0.08);
+    animation-delay: 3s;
   }
+  @keyframes orbitPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.04); opacity: 0.6; }
+  }
+
+  /* Decorative dots in hero */
+  .hero-dots {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .hero-dots span {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--teal);
+    opacity: 0.10;
+  }
+  .hero-dots span:nth-child(1) { top: 15%; left: 8%; width: 8px; height: 8px; opacity: 0.08; }
+  .hero-dots span:nth-child(2) { top: 35%; left: 3%; width: 5px; height: 5px; opacity: 0.12; }
+  .hero-dots span:nth-child(3) { bottom: 20%; left: 12%; opacity: 0.07; }
+  .hero-dots span:nth-child(4) { top: 10%; right: 15%; width: 4px; height: 4px; opacity: 0.10; }
+  .hero-dots span:nth-child(5) { bottom: 30%; right: 5%; width: 7px; height: 7px; opacity: 0.06; }
 
   .hero-inner {
     position: relative;
@@ -275,24 +312,29 @@
   .hero-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 14px 6px 8px;
+    gap: 9px;
+    padding: 6px 16px 6px 8px;
     border-radius: 999px;
-    background: var(--bg);
-    border: 1px solid var(--border-soft);
-    box-shadow: var(--shadow-xs);
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--teal-100);
+    box-shadow: 0 2px 8px rgba(14, 124, 102, 0.08);
     margin-bottom: 28px;
+    backdrop-filter: blur(8px);
+    animation: heroBlockIn 0.5s ease forwards;
+    opacity: 0;
+    transform: translateY(16px);
   }
   .hero-eyebrow-dot {
-    width: 22px; height: 22px;
+    width: 24px; height: 24px;
     border-radius: 50%;
-    background: var(--teal);
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
     color: #fff;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: 11px;
     font-weight: 800;
+    box-shadow: 0 2px 8px rgba(14, 124, 102, 0.30);
   }
   .hero-eyebrow-text {
     font-size: 12.5px;
@@ -315,37 +357,148 @@
     font-weight: 400;
     color: var(--teal-dark);
     letter-spacing: -1px;
+    position: relative;
   }
-
-  .hero-sub {
-    font-size: 18.5px;
-    line-height: 1.62;
-    color: var(--text-soft);
-    margin-bottom: 36px;
-    max-width: 540px;
+  .hero h1 em::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--teal), var(--teal-light));
+    border-radius: 2px;
+    opacity: 0.35;
   }
 
   .hero-actions {
     display: flex;
-    gap: 12px;
+    gap: 14px;
     align-items: center;
     flex-wrap: wrap;
+    margin-top: 8px;
+    padding-top: 10px;
   }
-  .hero-meta {
-    margin-top: 26px;
+  .hero-actions .btn-dark {
+    box-shadow: 0 2px 0 rgba(0,0,0,0.06), 0 8px 24px rgba(15, 31, 27, 0.18);
+  }
+  .hero-actions .btn-dark:hover {
+    box-shadow: 0 2px 0 rgba(0,0,0,0.06), 0 14px 36px rgba(14, 124, 102, 0.28);
+  }
+  .hero-actions .btn-outline {
+    box-shadow: var(--shadow-xs);
+  }
+  .hero-actions .btn-outline:hover {
+    box-shadow: 0 6px 20px rgba(14, 124, 102, 0.12);
+  }
+
+  /* HERO INFO — about blocks inside hero */
+  .hero-info {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .hero-info-block {
+    padding: 22px 24px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--teal-200);
+    backdrop-filter: blur(6px);
+    transition: all 0.25s ease;
+    opacity: 0;
+    transform: translateY(16px);
+    animation: heroBlockIn 0.6s ease forwards;
+  }
+  .hero-info-block:nth-child(1) { animation-delay: 0.15s; }
+  .hero-info-block:nth-child(2) { animation-delay: 0.30s; }
+  .hero-info-block:nth-child(3) { animation-delay: 0.45s; }
+  .hero-info-block:nth-child(4) { animation-delay: 0.60s; }
+  @keyframes heroBlockIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero-info-block:hover {
+    border-left-color: var(--teal);
+    box-shadow: 0 8px 28px rgba(14, 124, 102, 0.10);
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.92);
+  }
+  .hero-info-block h3 {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
     display: flex;
     align-items: center;
-    gap: 18px;
-    font-size: 13px;
-    color: var(--text-muted);
-    flex-wrap: wrap;
+    gap: 9px;
   }
-  .hero-meta-item {
+  .hero-info-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: var(--teal-50);
+    color: var(--teal-dark);
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    flex-shrink: 0;
   }
-  .hero-meta svg { color: var(--teal); flex-shrink: 0; }
+  .hero-info-icon svg { width: 15px; height: 15px; }
+  .hero-info-block p {
+    font-size: 14px;
+    color: var(--text-soft);
+    line-height: 1.65;
+    margin: 0;
+    padding-left: 37px;
+  }
+  .hero-info-block p + p { margin-top: 8px; }
+  .hero-info-block ul {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0;
+    padding-left: 37px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .hero-info-block li {
+    position: relative;
+    padding-left: 24px;
+    font-size: 14px;
+    color: var(--text-soft);
+    line-height: 1.55;
+  }
+  .hero-info-block li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 5px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--teal);
+    opacity: 0.12;
+  }
+  .hero-info-block li::after {
+    content: '';
+    position: absolute;
+    left: 4px; top: 9px;
+    width: 6px; height: 3px;
+    border-left: 1.5px solid var(--teal);
+    border-bottom: 1.5px solid var(--teal);
+    transform: rotate(-45deg);
+    opacity: 0.7;
+  }
+  .hero-info-block li strong { color: var(--text); font-weight: 600; }
+  .hero-info-highlight {
+    background: linear-gradient(135deg, rgba(14, 124, 102, 0.06) 0%, rgba(63, 179, 154, 0.04) 100%);
+    border: 1px solid var(--teal-100);
+    border-left: 3px solid var(--teal);
+    border-radius: 14px;
+  }
+  .hero-info-highlight:hover {
+    background: linear-gradient(135deg, rgba(14, 124, 102, 0.10) 0%, rgba(63, 179, 154, 0.06) 100%);
+    border-left-color: var(--teal-dark);
+  }
+  .hero-info-highlight h3 { color: var(--teal-dark); }
 
   /* HERO VISUAL  GIF/Demo player */
   .hero-visual {
@@ -422,37 +575,6 @@
     object-fit: cover;
     background: var(--bg-soft);
     position: relative;
-  }
-
-  /* Fallback placeholder shown when no GIF is set */
-  .demo-placeholder {
-    min-height: 340px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    background: linear-gradient(160deg, var(--teal-50) 0%, var(--bg) 100%);
-    padding: 40px 28px;
-  }
-  .demo-placeholder-icon {
-    width: 64px; height: 64px;
-    border-radius: 18px;
-    background: var(--teal);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 12px 32px rgba(14, 124, 102, 0.30);
-  }
-  .demo-placeholder-label {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-align: center;
-    line-height: 1.55;
-  }
-  .demo-placeholder-sub {
-    font-size: 12.5px;
-    color: var(--text-dim, #9CA8A4);
-    text-align: center;
   }
 
   /* Floating badge on the frame */
@@ -632,38 +754,6 @@
   }
 
   /* =============================================
-     SOCIAL PROOF STRIP
-  ============================================= */
-  .strip {
-    background: var(--bg);
-    border-top: 1px solid var(--border-soft);
-    border-bottom: 1px solid var(--border-soft);
-    padding: 28px 0;
-  }
-  .strip-inner {
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 0 28px;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 32px;
-  }
-  .strip-item { text-align: center; }
-  .strip-num {
-    font-size: 32px;
-    font-weight: 800;
-    color: var(--teal-dark);
-    letter-spacing: -0.8px;
-    line-height: 1;
-  }
-  .strip-label {
-    margin-top: 6px;
-    font-size: 12.5px;
-    color: var(--text-muted);
-    font-weight: 500;
-  }
-
-  /* =============================================
      SECTION TYPE
   ============================================= */
   section { scroll-margin-top: 80px; }
@@ -697,6 +787,18 @@
     font-style: italic;
     font-weight: 400;
     color: var(--teal-dark);
+    position: relative;
+  }
+  .section-title em::after {
+    content: '';
+    position: absolute;
+    bottom: 1px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--teal), var(--teal-light));
+    border-radius: 2px;
+    opacity: 0.25;
   }
   .section-desc {
     font-size: 16.5px;
@@ -704,121 +806,6 @@
     max-width: 620px;
     line-height: 1.65;
   }
-
-  /* =============================================
-     ABOUT
-  ============================================= */
-  .about {
-    background: var(--bg);
-    padding: 110px 0;
-  }
-  .about-inner {
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 0 28px;
-  }
-  .about-head { margin-bottom: 56px; max-width: 720px; }
-
-  .about-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
-  }
-  .about-card {
-    position: relative;
-    background: var(--bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 16px;
-    padding: 36px;
-    transition: all 0.22s ease;
-    overflow: hidden;
-  }
-  .about-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 0; height: 3px;
-    background: var(--teal);
-    transition: width 0.3s ease;
-  }
-  .about-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow);
-    border-color: var(--border);
-  }
-  .about-card:hover::before { width: 100%; }
-
-  .about-num {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--teal-light);
-    margin-bottom: 14px;
-    font-family: 'Source Serif 4', serif;
-    font-style: italic;
-  }
-  .about-card h3 {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.4px;
-    color: var(--text);
-    margin-bottom: 14px;
-  }
-  .about-card p {
-    font-size: 15.5px;
-    line-height: 1.7;
-    color: var(--text-soft);
-  }
-  .about-card ul {
-    list-style: none;
-    margin-top: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 11px;
-  }
-  .about-card li {
-    position: relative;
-    padding-left: 26px;
-    font-size: 15px;
-    line-height: 1.55;
-    color: var(--text-soft);
-  }
-  .about-card li::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 8px;
-    width: 14px;
-    height: 14px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Ccircle cx='7' cy='7' r='7' fill='%230E7C66' fill-opacity='0.12'/%3E%3Cpath d='M4 7l2 2 4-4' stroke='%230E7C66' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-  }
-  .about-card li strong { color: var(--text); font-weight: 600; }
-
-  .about-card-summary {
-    background:
-      radial-gradient(circle at top right, rgba(63, 179, 154, 0.18), transparent 55%),
-      var(--teal-deeper);
-    color: #fff;
-    border-color: var(--teal-deeper);
-  }
-  .about-card-summary::before { background: var(--teal-light); }
-  .about-card-summary h3 { color: #fff; }
-  .about-card-summary p  { color: rgba(255, 255, 255, 0.85); }
-  .about-card-summary .about-num { color: var(--teal-light); }
-  .about-card-summary a {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 22px;
-    padding: 9px 16px;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #fff;
-    transition: background 0.15s;
-  }
-  .about-card-summary a:hover { background: rgba(255, 255, 255, 0.20); }
 
   /* =============================================
      STEPS   HOW IT WORKS
@@ -859,25 +846,33 @@
     border-radius: 16px;
     padding: 32px 28px;
     position: relative;
-    transition: all 0.22s ease;
+    transition: all 0.28s ease;
   }
   .step-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow);
+    transform: translateY(-6px);
+    box-shadow: 0 16px 48px rgba(14, 124, 102, 0.12);
+    border-color: var(--teal-100);
   }
   .step-num {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px; height: 44px;
-    border-radius: 12px;
-    background: var(--teal-50);
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--teal-50), var(--teal-100));
     color: var(--teal-dark);
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 800;
     font-family: 'Source Serif 4', serif;
     font-style: italic;
     margin-bottom: 22px;
+    box-shadow: 0 4px 12px rgba(14, 124, 102, 0.10);
+    transition: all 0.28s ease;
+  }
+  .step-card:hover .step-num {
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(14, 124, 102, 0.25);
   }
   .step-card h3 {
     font-size: 19px;
@@ -965,21 +960,22 @@
   .demo-submit {
     width: 100%;
     height: 54px;
-    background: var(--text);
+    background: linear-gradient(135deg, var(--text) 0%, var(--teal-deeper) 100%);
     color: #fff;
     font-size: 15.5px;
     font-weight: 700;
     border: none;
-    border-radius: 10px;
+    border-radius: 12px;
     cursor: pointer;
     font-family: inherit;
-    transition: all 0.18s ease;
+    transition: all 0.22s ease;
     letter-spacing: 0.1px;
+    box-shadow: 0 4px 14px rgba(15, 31, 27, 0.15);
   }
   .demo-submit:hover {
-    background: var(--teal-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 10px 24px rgba(14, 124, 102, 0.30);
+    background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal-deeper) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(14, 124, 102, 0.30);
   }
 
   .result {
@@ -1086,6 +1082,13 @@
     border-radius: 16px;
     padding: 32px;
     backdrop-filter: blur(8px);
+    transition: all 0.28s ease;
+  }
+  .quote:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.20);
   }
   .quote-mark {
     font-family: 'Source Serif 4', serif;
@@ -1122,122 +1125,6 @@
   .quote-role { font-size: 12.5px; color: rgba(255, 255, 255, 0.55); }
 
   /* =============================================
-     PRICING
-  ============================================= */
-  .pricing-section {
-    background: var(--bg-warm);
-    padding: 110px 0;
-  }
-  .pricing-inner {
-    max-width: 920px;
-    margin: 0 auto;
-    padding: 0 28px;
-  }
-  .pricing-head { text-align: center; margin-bottom: 56px; }
-  .pricing-head .section-tag { justify-content: center; }
-  .pricing-head .section-desc { margin: 0 auto; }
-
-  .pricing-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-  .plan {
-    background: var(--bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 18px;
-    padding: 36px;
-    position: relative;
-    transition: all 0.22s ease;
-  }
-  .plan:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow);
-  }
-  .plan-featured {
-    border-color: var(--teal);
-    box-shadow: var(--shadow-xl);
-    background:
-      radial-gradient(circle at top right, rgba(63, 179, 154, 0.10), transparent 60%),
-      var(--bg);
-  }
-  .plan-badge {
-    position: absolute;
-    top: -12px; right: 28px;
-    padding: 6px 12px;
-    background: var(--teal);
-    color: #fff;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.7px;
-    text-transform: uppercase;
-  }
-  .plan-name {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-    text-transform: uppercase;
-    letter-spacing: 1.4px;
-    margin-bottom: 16px;
-  }
-  .plan-featured .plan-name { color: var(--teal); }
-  .plan-price {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-    margin-bottom: 6px;
-  }
-  .plan-price-num {
-    font-size: 48px;
-    font-weight: 800;
-    letter-spacing: -1.5px;
-    color: var(--text);
-    line-height: 1;
-  }
-  .plan-price-period { font-size: 15px; color: var(--text-muted); }
-  .plan-tagline {
-    font-size: 14.5px;
-    color: var(--text-muted);
-    margin: 12px 0 26px;
-    line-height: 1.5;
-  }
-  .plan-divider {
-    height: 1px;
-    background: var(--border-soft);
-    margin: 26px 0;
-  }
-  .plan-features {
-    list-style: none;
-    margin-bottom: 30px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .plan-features li {
-    position: relative;
-    padding-left: 28px;
-    font-size: 14.5px;
-    color: var(--text-soft);
-    line-height: 1.55;
-  }
-  .plan-features li::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 2px;
-    width: 18px;
-    height: 18px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18' fill='none'%3E%3Ccircle cx='9' cy='9' r='9' fill='%230E7C66'/%3E%3Cpath d='M5.5 9.5L7.5 11.5L12.5 6.5' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-  }
-  .plan-features li.muted { color: var(--text-muted); }
-  .plan-features li.muted::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18' fill='none'%3E%3Ccircle cx='9' cy='9' r='8.5' stroke='%23DDE6E3'/%3E%3C/svg%3E");
-  }
-  .plan-cta { display: block; width: 100%; text-align: center; }
-
-  /* =============================================
      FAQ
   ============================================= */
   .faq-section {
@@ -1259,11 +1146,15 @@
     border-radius: 12px;
     padding: 0;
     overflow: hidden;
-    transition: all 0.18s ease;
+    transition: all 0.22s ease;
+  }
+  details.faq:hover {
+    border-color: var(--teal-200);
   }
   details.faq[open] {
     border-color: var(--teal-100);
-    box-shadow: var(--shadow-xs);
+    box-shadow: 0 4px 16px rgba(14, 124, 102, 0.08);
+    background: linear-gradient(180deg, var(--bg) 0%, var(--teal-50) 100%);
   }
   details.faq summary {
     padding: 22px 26px;
@@ -1479,9 +1370,15 @@
     .demo-badge.b1 { bottom: -10px; left: -8px; }
     .demo-badge.b2 { top: 48px; right: -8px; }
     .hero h1 { font-size: 46px; letter-spacing: -1.2px; }
-    .hero-sub { font-size: 17px; }
-    .strip-inner { grid-template-columns: repeat(2, 1fr); gap: 24px; }
-    .about-grid, .pricing-grid, .testimonials-grid { grid-template-columns: 1fr; }
+
+    /* Hero info cards — tablet */
+    .hero-info { gap: 12px; }
+    .hero-info-block { padding: 20px 22px; }
+
+    /* Hide decorative dots on tablet and below */
+    .hero-dots { display: none; }
+
+    .testimonials-grid { grid-template-columns: 1fr; }
     .steps-flow { grid-template-columns: 1fr; }
     .section-title { font-size: 32px; }
     .final-cta h2 { font-size: 34px; }
@@ -1492,13 +1389,79 @@
     .nav-toggle { display: inline-flex; }
   }
   @media (max-width: 520px) {
-    .hero h1 { font-size: 38px; }
+    .hero { padding: 60px 0 0; }
+    .hero h1 { font-size: 34px; letter-spacing: -1px; }
+    .hero h1 em::after { height: 2px; bottom: 1px; }
+
+    /* Hero info cards — mobile */
+    .hero-info { gap: 10px; margin-top: 24px; }
+    .hero-info-block {
+      padding: 16px 16px;
+      border-radius: 12px;
+      border-left-width: 3px;
+    }
+    .hero-info-block h3 { font-size: 14.5px; gap: 8px; }
+    .hero-info-icon { width: 24px; height: 24px; border-radius: 6px; }
+    .hero-info-icon svg { width: 13px; height: 13px; }
+    .hero-info-block p { font-size: 13.5px; padding-left: 32px; }
+    .hero-info-block ul { padding-left: 32px; gap: 6px; }
+    .hero-info-block li { font-size: 13.5px; padding-left: 22px; }
+    .hero-info-block li::before { width: 12px; height: 12px; top: 4px; }
+    .hero-info-block li::after { left: 3px; top: 8px; width: 5px; height: 2.5px; }
+    .hero-info-highlight { padding: 16px 16px !important; }
+
+    /* CTA full width on mobile */
+    .hero-actions { flex-direction: column; gap: 10px; }
     .hero-actions .btn { width: 100%; }
+
+    /* Eyebrow smaller */
+    .hero-eyebrow { padding: 5px 12px 5px 6px; gap: 7px; }
+    .hero-eyebrow-dot { width: 20px; height: 20px; font-size: 10px; }
+    .hero-eyebrow-text { font-size: 11.5px; }
+
+    /* Section titles — smaller underline */
+    .section-title em::after { height: 2px; }
+
+    /* Steps section */
+    .steps-section { padding: 80px 0; }
+    .step-num { width: 42px; height: 42px; font-size: 17px; border-radius: 11px; }
+
+    /* Demo card */
+    .demo-section { padding: 80px 0; }
     .demo-card-hd, .demo-card-bd { padding: 22px; }
-    .about-card, .plan, .step-card, .quote { padding: 26px; }
+
+    /* Testimonials */
+    .testimonials { padding: 80px 0; }
+    .step-card, .quote { padding: 26px; }
+
+    /* FAQ */
+    .faq-section { padding: 80px 0; }
+    details.faq summary { padding: 18px 20px; font-size: 15px; }
+    .faq-body { padding: 0 20px 20px; font-size: 14px; }
+
+    /* Final CTA */
+    .final-cta { padding: 80px 0; }
     .final-cta h2 { font-size: 28px; }
-    .final-cta-card { padding: 44px 24px; }
+    .final-cta-card { padding: 44px 24px; border-radius: 18px; }
+    .final-cta p { font-size: 15px; }
+    .final-cta-actions { flex-direction: column; }
+    .final-cta-actions .btn { width: 100%; }
+
+    /* Footer */
+    .footer { padding: 40px 20px 28px; }
     .footer-top { grid-template-columns: 1fr; gap: 28px; }
+    .footer-bottom { flex-direction: column; text-align: center; gap: 8px; }
+  }
+
+  /* Extra small phones */
+  @media (max-width: 380px) {
+    .hero h1 { font-size: 30px; }
+    .hero-info-block p, .hero-info-block ul { padding-left: 0; }
+    .hero-info-block h3 { font-size: 14px; }
+    .hero-info-block p, .hero-info-block li { font-size: 13px; }
+    .hero-eyebrow-text { font-size: 11px; }
+    .section-title { font-size: 28px; }
+    .final-cta h2 { font-size: 24px; }
   }
 </style>
 </head>
@@ -1513,12 +1476,8 @@
     </a>
 
     <div class="nav-links">
-      <a href="#about" class="nav-link">About</a>
       <a href="#how" class="nav-link">How it works</a>
       <a href="#demo" class="nav-link">Demo</a>
-      @guest
-      <a href="#pricing" class="nav-link">Pricing</a>
-      @endguest
       <a href="#faq" class="nav-link">FAQ</a>
     </div>
 
@@ -1526,7 +1485,7 @@
       @auth
         <a href="{{ route('treatments') }}" class="btn btn-primary">Open dashboard</a>
       @else
-        <a href="{{ route('guest') }}"    class="btn btn-ghost nav-cta-extra">Try demo</a>
+        <a href="{{ route('guest') }}"    class="btn btn-ghost nav-cta-extra">Guest login</a>
         <a href="{{ route('login') }}"    class="btn btn-outline nav-cta-extra">Sign in</a>
         <a href="{{ route('register') }}" class="btn btn-primary">Create account</a>
       @endauth
@@ -1540,19 +1499,15 @@
   <!-- Mobile menu -->
   <div class="mobile-menu" id="mobileMenu">
     <ul>
-      <li><a href="#about">About</a></li>
       <li><a href="#how">How it works</a></li>
       <li><a href="#demo">Demo</a></li>
-      @guest
-      <li><a href="#pricing">Pricing</a></li>
-      @endguest
       <li><a href="#faq">FAQ</a></li>
     </ul>
     <div class="mobile-menu-cta">
       @auth
         <a href="{{ route('treatments') }}" class="btn btn-primary">Open dashboard</a>
       @else
-        <a href="{{ route('guest') }}"    class="btn btn-ghost">Try demo</a>
+        <a href="{{ route('guest') }}"    class="btn btn-ghost">Guest login</a>
         <a href="{{ route('login') }}"    class="btn btn-outline">Sign in</a>
         <a href="{{ route('register') }}" class="btn btn-primary">Create account</a>
       @endauth
@@ -1563,6 +1518,7 @@
 <!-- HERO -->
 <header class="hero">
   <div class="hero-orbits"></div>
+  <div class="hero-dots"><span></span><span></span><span></span><span></span><span></span></div>
   <div class="hero-inner">
     <div class="hero-content">
       <div class="hero-eyebrow">
@@ -1570,26 +1526,60 @@
         <span class="hero-eyebrow-text">Personal medication intelligence platform</span>
       </div>
       <h1>The <em>clarity</em> behind<br>your medications.</h1>
-      <p class="hero-sub"> 
-        GeneoRx connects your medications, symptoms, and nutrient levels into a single, intelligent view  so you can finally understand what is happening in your body, and have better conversations with your doctor.
-      </p>
-      <div class="hero-actions">
-        <a href="{{ route('register') }}" class="btn btn-dark btn-lg">Create your account</a>
-        <a href="{{ route('guest') }}" class="btn btn-outline btn-lg">Try the demo</a>
+
+      <div class="hero-info">
+        <div class="hero-info-block">
+          <h3>
+            <span class="hero-info-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+            What is GeneoRx?
+          </h3>
+          <p>GeneoRx is your personal medication intelligence platform connecting medications, symptoms, and nutrient levels to help you understand what's really going on in your body giving you a clearer picture of your health.</p>
+        </div>
+        <div class="hero-info-block">
+          <h3>
+            <span class="hero-info-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            </span>
+            How does it work?
+          </h3>
+          <p>GeneoRx analyzes:</p>
+          <ul>
+            <li>Your medications</li>
+            <li>Your symptoms over time</li>
+            <li>Known drug–nutrient interactions</li>
+          </ul>
+          <p>As you check in regularly, it builds a personalized profile, spotting patterns and improving accuracy over time.</p>
+        </div>
+        <div class="hero-info-block">
+          <h3>
+            <span class="hero-info-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </span>
+            How does it help you?
+          </h3>
+          <ul>
+            <li><strong>Explains symptoms</strong> – Understand possible links to medications or nutrient imbalances</li>
+            <li><strong>Finds root causes</strong> – Highlights what may be driving issues like fatigue or brain fog</li>
+            <li><strong>Tracks progress</strong> – Monitors changes over time</li>
+            <li><strong>Prepares you for doctor visits</strong> – Provides a quick health summary for your doctor</li>
+          </ul>
+        </div>
+        <div class="hero-info-block hero-info-highlight">
+          <h3>
+            <span class="hero-info-icon" style="background:var(--teal);color:#fff;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </span>
+            In short
+          </h3>
+          <p>GeneoRx helps you connect the dots between your medications, symptoms, and nutrition so you can make smarter health decisions.</p>
+        </div>
       </div>
-      <div class="hero-meta">
-        <span class="hero-meta-item">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Free to start
-        </span>
-        <span class="hero-meta-item">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          No credit card
-        </span>
-        <span class="hero-meta-item">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Private by design
-        </span>
+
+      <div class="hero-actions">
+        <a href="{{ route('register') }}" class="btn btn-dark btn-lg">Create your free account</a>
+        <a href="{{ route('guest') }}" class="btn btn-outline btn-lg">Try as guest</a>
       </div>
     </div>
 
@@ -1724,86 +1714,6 @@
   </div>
 </header>
 
-<!-- STAT STRIP -->
-<section class="strip">
-  <div class="strip-inner">
-    <div class="strip-item">
-      <div class="strip-num">240+</div>
-      <div class="strip-label">Average insight time</div>
-    </div>
-    <div class="strip-item">
-      <div class="strip-num">4</div>
-      <div class="strip-label">Drug-nutrient interactions</div>
-    </div>
-    <div class="strip-item">
-      <div class="strip-num">100%</div>
-      <div class="strip-label">Simple check-in steps</div>
-    </div>
-    <div class="strip-item">
-      <div class="strip-num" style="font-size:28px;">&#x1F512;</div>
-      <div class="strip-label">Private &amp; encrypted data</div>
-    </div>
-  </div>
-</section>
-
-<!-- ABOUT -->
-<section class="about" id="about">
-  <div class="about-inner">
-    <div class="about-head reveal">
-      <div class="section-tag">About GeneoRx</div>
-      <h2 class="section-title">A <em>clearer</em> picture of your health.</h2>
-      <p class="section-desc"> 
-        GeneoRx is built around how medications, symptoms, and nutrition actually interact turning everyday signals into useful insight.
-      </p>
-    </div>
-
-    <div class="about-grid">
-      <div class="about-card reveal">
-        <div class="about-num">01</div>
-        <h3>What is GeneoRx?</h3>
-        <p> 
-          GeneoRx is your personal medication intelligence platform connecting medications, symptoms, and nutrient levels to help you understand what is really going on in your body, giving you a clearer picture of your health.
-        </p>
-      </div>
-
-      <div class="about-card reveal">
-        <div class="about-num">02</div>
-        <h3>How does it work?</h3>
-        <p>GeneoRx analyzes:</p>
-        <ul>
-          <li>Your medications</li>
-          <li>Your symptoms over time</li>
-          <li>Known drug–nutrient interactions</li>
-        </ul>
-        <p style="margin-top:16px;">As you check in regularly, it builds a personalized profile, spotting patterns and improving accuracy over time.</p>
-      </div>
-
-      <div class="about-card reveal">
-        <div class="about-num">03</div>
-        <h3>How does it help you?</h3>
-        <ul> 
-          <li><strong>Explains symptoms</strong>   Possible links to medications or nutrient imbalances</li>
-          <li><strong>Finds root causes</strong   What may be driving fatigue or brain fog</li>
-          <li><strong>Tracks progress</strong>  Monitors chan es over time</li>
-          <li><strong>Prepares you for doctor visits</strong>  A quick health summary for your doctor</li>
-        </ul>
-      </div>
-
-      <div class="about-card about-card-summary reveal">
-        <div class="about-num">04</div>
-        <h3>In short.</h3>
-        <p> 
-          GeneoRx helps you connect the dots between your medications, symptoms, and nutrition  so you can make smarter health decisions.
-        </p>
-        <a href="#demo">
-          Try it now
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </a>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- HOW IT WORKS -->
 <section class="steps-section" id="how">
   <div class="steps-inner">
@@ -1816,18 +1726,18 @@
     <div class="steps-flow">
       <div class="step-card reveal">
         <div class="step-num">i</div>
-        <h3>Add your medications</h3>
-        <p>Tell GeneoRx what you take. We support commonly prescribed medications and their known nutrient interactions.</p>
+        <h3>Add your medications or symptoms</h3>
+        <p>Tell GeneoRx what you take and how you feel. We support commonly prescribed medications and their known nutrient interactions.</p>
       </div>
       <div class="step-card reveal">
         <div class="step-num">ii</div>
-        <h3>Log your symptoms</h3>
-        <p>Describe how you have been feeling. Weekly check-ins build a personal profile that spots patterns over time.</p>
+        <h3>Log your check-ins</h3>
+        <p>Weekly check-ins build a personal profile that spots patterns over time, tracking energy, mood, sleep, and focus.</p>
       </div>
       <div class="step-card reveal">
         <div class="step-num">iii</div>
-        <h3>Get your insight</h3> 
-        <p>Receive a plain-language explanation of possible connections  plus specific questions to bring to your doctor.</p>
+        <h3>Get your insight</h3>
+        <p>Receive a plain-language explanation of possible connections plus specific questions to bring to your doctor.</p>
       </div>
     </div>
   </div>
@@ -1955,70 +1865,6 @@
   </div>
 </section>
 
-@guest
-<!-- PRICING -->
-<section class="pricing-section" id="pricing">
-  <div class="pricing-inner">
-    <div class="pricing-head reveal">
-      <div class="section-tag">Pricing</div>
-      <h2 class="section-title">Start free.<br>Upgrade when you <em>need more</em>.</h2>
-      <p class="section-desc">No card required for the Free plan. Cancel Plus anytime.</p>
-    </div>
-
-    <div class="pricing-grid">
-      <!-- FREE -->
-      <div class="plan reveal">
-        <div class="plan-name">Free</div>
-        <div class="plan-price">
-          <span class="plan-price-num">$0</span>
-          <span class="plan-price-period">/ forever</span>
-        </div>
-        <p class="plan-tagline">Start tracking with the essentials.</p>
-        <div class="plan-divider"></div>
-        <ul class="plan-features">
-          <li>Account and email verification</li>
-          <li>Medication and symptom insights</li>
-          <li>Up to 2 check-ins</li>
-          <li>Doctor snapshot preview</li>
-          <li class="muted">Unlimited check-ins</li>
-          <li class="muted">Full doctor report export</li>
-        </ul>
-        <a href="{{ route('register') }}" class="btn btn-outline plan-cta">Start for free</a>
-      </div>
-
-      <!-- PLUS -->
-      <div class="plan plan-featured reveal">
-        <div class="plan-badge">Recommended</div>
-        <div class="plan-name">Plus</div>
-        <div class="plan-price">
-          <span class="plan-price-num">$9</span>
-          <span class="plan-price-period">/ month</span>
-        </div>
-        <p class="plan-tagline">For people who want the full picture.</p>
-        <div class="plan-divider"></div>
-        <ul class="plan-features">
-          <li>Everything in Free</li>
-          <li>Unlimited weekly check-ins</li>
-          <li>Full doctor report export and share</li>
-          <li>Insight history and trend analysis</li>
-          <li>Push reminder scheduling</li>
-          <li>Priority support</li>
-        </ul>
-        @auth
-          <form method="POST" action="{{ route('billing.checkout') }}">
-            @csrf
-            <input type="hidden" name="source" value="home_pricing">
-            <button type="submit" class="btn btn-primary plan-cta">Upgrade to Plus</button>
-          </form>
-        @else
-          <a href="{{ route('register') }}" class="btn btn-primary plan-cta">Get started with Plus</a>
-        @endauth
-      </div>
-    </div>
-  </div>
-</section>
-@endguest
-
 <!-- FAQ -->
 <section class="faq-section" id="faq">
   <div class="faq-inner">
@@ -2056,12 +1902,6 @@
         </div>
       </details>
 
-      <details class="faq reveal">
-        <summary>Can I cancel Plus anytime?</summary>
-        <div class="faq-body"> 
-          Yes. Plus is a monthly subscription with no commitment  cancel from your account at any time and you will keep Plus features until the end of your billing period.
-        </div>
-      </details>
     </div>
   </div>
 </section>
@@ -2075,7 +1915,7 @@
         <p>Join people who use GeneoRx to turn their medications and symptoms into something useful.</p>
         <div class="final-cta-actions">
           <a href="{{ route('register') }}" class="btn btn-light btn-lg">Create your free account</a>
-          <a href="{{ route('guest') }}" class="btn btn-on-dark btn-lg">Try the demo first</a>
+          <a href="{{ route('guest') }}" class="btn btn-on-dark btn-lg">Try as guest</a>
         </div>
       </div>
     </div>
@@ -2099,12 +1939,8 @@
       <div class="footer-col">
         <h4>Product</h4>
         <ul>
-          <li><a href="#about">About</a></li>
           <li><a href="#how">How it works</a></li>
           <li><a href="#demo">Demo</a></li>
-          @guest
-          <li><a href="#pricing">Pricing</a></li>
-          @endguest
         </ul>
       </div>
 
@@ -2216,10 +2052,8 @@
   // Nav scroll-spy — highlight the active section link
   (function () {
     const spySections = [
-      { id: 'about',   href: '#about'   },
       { id: 'how',     href: '#how'     },
       { id: 'demo',    href: '#demo'    },
-      { id: 'pricing', href: '#pricing' },
       { id: 'faq',     href: '#faq'     },
     ];
     const navLinkEls = document.querySelectorAll('.nav-links .nav-link');

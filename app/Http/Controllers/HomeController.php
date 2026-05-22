@@ -7,7 +7,6 @@ use App\Models\Medication;
 use App\Models\Symptom;
 use App\Models\UserProfile;
 use App\Services\AnalyticsService;
-use App\Services\PlanService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -30,7 +29,7 @@ class HomeController extends Controller
     /**
      * Get user's health profile data
      */
-    public function getProfile(PlanService $plans)
+    public function getProfile()
     {
         $user = auth()->user();
 
@@ -41,7 +40,6 @@ class HomeController extends Controller
                 'profile' => null,
                 'account' => ['email' => '', 'consent' => false],
                 'plan' => null,
-                'subscription' => $plans->stateFor($user),
                 'portal_state' => [],
                 'medications' => [],
                 'symptoms' => [],
@@ -81,7 +79,6 @@ class HomeController extends Controller
                 'consent' => (bool) data_get($portal, 'account.consent', false),
             ],
             'plan' => data_get($portal, 'plan'),
-            'subscription' => $plans->stateFor($user),
             'portal_state' => $portal,
             'medications' => $medications->map(fn ($m) => [
                 'id' => $m->id,
@@ -120,7 +117,7 @@ class HomeController extends Controller
     /**
      * Save user health profile data
      */
-    public function saveProfile(Request $request, PlanService $plans, AnalyticsService $analytics)
+    public function saveProfile(Request $request, AnalyticsService $analytics)
     {
         $user = auth()->user();
 
@@ -220,16 +217,6 @@ class HomeController extends Controller
         }
 
         if (array_key_exists('checkins', $validated) && is_array($validated['checkins'])) {
-            if ($plans->featureLocked($user, 'checkins', count($validated['checkins']))) {
-                $analytics->track('locked_feature_viewed', ['feature' => 'third_checkin'], $user);
-
-                return response()->json([
-                    'message' => 'Upgrade to Plus to keep tracking weekly progress.',
-                    'feature' => 'checkins',
-                    'subscription' => $plans->stateFor($user),
-                ], 402);
-            }
-
             CheckIn::where('user_id', $user->id)->delete();
             foreach ($validated['checkins'] as $row) {
                 if (! is_array($row)) {

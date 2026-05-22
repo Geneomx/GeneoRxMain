@@ -67,28 +67,9 @@
   <p>We reserve the right to suspend or terminate accounts that violate these Terms or that we determine, in our sole discretion, are being used in a harmful or fraudulent manner.</p>
 </section>
 
-<section class="doc-section" id="subscription">
-  <h2>5. Subscription and billing</h2>
-
-  <h3>Free tier</h3>
-  <p>Basic features of GeneoRx are available at no charge. Free accounts are subject to usage limits as described in the app.</p>
-
-  <h3>GeneoRx Plus</h3>
-  <p>A paid "Plus" subscription unlocks unlimited interaction checks, full nutrient depletion reports, and priority support. Pricing is displayed in the app and on the website at the time of purchase.</p>
-
-  <h3>Billing</h3>
-  <ul>
-    <li>Subscriptions are billed on a recurring monthly or annual basis, depending on the plan you select.</li>
-    <li>Payment is processed by <strong>Stripe, Inc.</strong> We do not store your card details.</li>
-    <li>Your subscription renews automatically unless cancelled before the renewal date.</li>
-    <li>You may cancel your subscription at any time via the billing portal accessible from your account settings. Cancellation takes effect at the end of the current billing period; no partial-period refunds are issued unless required by applicable law.</li>
-  </ul>
-
-  <h3>Free trial</h3>
-  <p>We may offer free trials from time to time. Unless you cancel before the trial ends, your payment method will be charged at the standard subscription rate.</p>
-
-  <h3>Price changes</h3>
-  <p>We will give you at least 30 days' notice before changing subscription pricing. Continued use of Plus after the effective date constitutes acceptance of the new price.</p>
+<section class="doc-section" id="cost">
+  <h2>5. Cost</h2>
+  <p>GeneoRx is free to use. All features are available at no charge to registered users.</p>
 </section>
 
 <section class="doc-section" id="acceptable-use">

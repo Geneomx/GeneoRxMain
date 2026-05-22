@@ -15,12 +15,6 @@
   </div>
 
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-    @if($isPlus)
-      <span class="pill pill-plus" style="padding:6px 12px;font-size:13px;">Plus</span>
-    @else
-      <span class="pill pill-free" style="padding:6px 12px;font-size:13px;">Free</span>
-    @endif
-
     @if($user->email_verified_at)
       <span class="pill pill-verified" style="padding:6px 12px;font-size:13px;">Email verified</span>
     @else
@@ -120,74 +114,6 @@
   </div>
 </div>
 <style>.ud-hidden { display:none !important; }</style>
-
-<!-- SUBSCRIPTION -->
-<div class="admin-card">
-  <div class="admin-card-hd">
-    <div>
-      <h2>Subscription</h2>
-      <p>Current plan and billing status.</p>
-    </div>
-  </div>
-  <div class="admin-card-bd">
-    <div class="info-grid" style="margin-bottom:18px;">
-      <div class="info-item">
-        <div class="info-label">Plan</div>
-        <div class="info-value">{{ ucfirst($subscription->plan ?? 'free') }}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Status</div>
-        <div class="info-value">{{ ucfirst($subscription->status ?? 'free') }}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Admin Override Until</div>
-        <div class="info-value">
-          @if($subscription->admin_override_ends_at && $subscription->admin_override_ends_at->isFuture())
-            <span style="color:var(--teal);">{{ $subscription->admin_override_ends_at->format('M j, Y') }}</span>
-          @else
-            <span style="color:var(--text-muted);"> </span>
-          @endif
-        </div>
-      </div>
-      <div class="info-item">
-        <div class="info-label">Override Reason</div>
-        <div class="info-value muted">{{ $subscription->admin_override_reason ?? ' ' }}</div>
-      </div>
-      @if($subscription->current_period_ends_at)
-        <div class="info-item">
-          <div class="info-label">Billing Period Ends</div>
-          <div class="info-value muted">{{ $subscription->current_period_ends_at->format('M j, Y') }}</div>
-        </div>
-      @endif
-      @if($subscription->canceled_at)
-        <div class="info-item">
-          <div class="info-label">Canceled At</div>
-          <div class="info-value muted">{{ $subscription->canceled_at->format('M j, Y') }}</div>
-        </div>
-      @endif
-    </div>
-
-    <!-- GRANT / REVOKE -->
-    <div style="display:flex;gap:10px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.08);padding-top:16px;">
-      @if(!$isPlus || !($subscription->admin_override_ends_at && $subscription->admin_override_ends_at->isFuture()))
-        <form method="POST" action="{{ route('admin.grant-plus', $user) }}">
-          @csrf
-          <button type="submit" class="btn btn-primary">Grant Plus (1 year)</button>
-        </form>
-      @endif
-
-      @if($subscription->admin_override_ends_at && $subscription->admin_override_ends_at->isFuture())
-        <form method="POST" action="{{ route('admin.revoke-plus', $user) }}">
-          @csrf
-          @method('DELETE')
-          <button type="submit" class="btn btn-danger" onclick="return confirm('Remove admin override for {{ addslashes($user->name) }}?')">
-            Remove Override
-          </button>
-        </form>
-      @endif
-    </div>
-  </div>
-</div>
 
 <!-- SET PASSWORD -->
 <div class="admin-card">

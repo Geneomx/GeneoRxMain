@@ -1,9 +1,7 @@
 <?php
 
-use App\Models\Subscription;
 use App\Models\User;
 use App\Models\UserPushToken;
-use App\Notifications\BillingStatusNotification;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
@@ -38,31 +36,6 @@ Artisan::command('geneorx:send-checkin-reminders', function () {
     $this->info("Sent {$tokens->count()} GeneoRx check-in reminders.");
 })->purpose('Send GeneoRx weekly check-in push reminders');
 
-Artisan::command('geneorx:grant-plus {email} {--days=30} {--reason=Support override}', function () {
-    $user = User::where('email', $this->argument('email'))->first();
-    if (! $user) {
-        $this->error('User not found.');
-
-        return self::FAILURE;
-    }
-
-    $days = max(1, (int) $this->option('days'));
-    Subscription::updateOrCreate(
-        ['user_id' => $user->id],
-        [
-            'plan' => 'plus',
-            'status' => 'active',
-            'provider' => 'admin',
-            'admin_override_ends_at' => now()->addDays($days),
-            'admin_override_reason' => (string) $this->option('reason'),
-        ]
-    );
-
-    $this->info("Granted Plus to {$user->email} for {$days} days.");
-
-    return self::SUCCESS;
-})->purpose('Grant temporary GeneoRx Plus access for support/testing');
-
 Artisan::command('geneorx:prune-push-tokens', function () {
     // Hard-delete push token rows that have been disabled for more than 30 days.
     // Expo TTL-expires tokens after ~90 days but we clean them proactively to keep
@@ -75,23 +48,6 @@ Artisan::command('geneorx:prune-push-tokens', function () {
 
     $this->info("Pruned {$count} expired push token(s) (disabled before {$cutoff->toDateString()}).");
 })->purpose('Remove push tokens disabled more than 30 days ago');
-
-Artisan::command('geneorx:send-trial-ending-notices', function () {
-    $subscriptions = Subscription::query()
-        ->with('user')
-        ->where('status', 'trialing')
-        ->whereBetween('trial_ends_at', [now(), now()->addDays(2)])
-        ->get();
-
-    foreach ($subscriptions as $subscription) {
-        $subscription->user?->notify(new BillingStatusNotification(
-            'GeneoRx Plus trial ending soon',
-            'Your Plus trial is ending soon. You can manage billing or cancel from your GeneoRx billing page.'
-        ));
-    }
-
-    $this->info("Sent {$subscriptions->count()} trial ending notices.");
-})->purpose('Send GeneoRx Plus trial ending notices');
 
 // ── Admin user management ───────────────────────────────────────────────────
 Artisan::command(

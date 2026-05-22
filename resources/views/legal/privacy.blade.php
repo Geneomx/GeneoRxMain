@@ -40,7 +40,6 @@
     <li><strong>Account information:</strong> name, email address, and password (stored as a one-way hash) when you create an account.</li>
     <li><strong>Health profile:</strong> medications, supplements, dosage schedules, allergy history, and symptoms you choose to enter. This is always voluntary.</li>
     <li><strong>Communication:</strong> messages or support requests you send to us.</li>
-    <li><strong>Subscription details:</strong> if you upgrade to Plus, our payment processor (Stripe) handles card data directly. We store only your Stripe customer ID and subscription status   never raw card numbers.</li>
   </ul>
 
   <h3>Information collected automatically</h3>
@@ -63,7 +62,7 @@
   <h2>3. How we use your information</h2>
   <ul>
     <li><strong>Provide the Service:</strong> run interaction checks, surface nutrient depletion alerts, and personalise results based on the profile you build.</li>
-    <li><strong>Account management:</strong> authenticate you, verify your email address, and manage your subscription.</li>
+    <li><strong>Account management:</strong> authenticate you and verify your email address.</li>
     <li><strong>Transactional email:</strong> send email verification codes, password reset links, and receipts. We never send marketing email without your explicit opt-in.</li>
     <li><strong>Push notifications:</strong> send medication reminders you have configured, or important account notices. Notification permission is opt-in.</li>
     <li><strong>Product improvement:</strong> aggregate, anonymised usage data helps us understand which features are useful and which need improvement.</li>
@@ -80,7 +79,6 @@
   <p>We engage trusted third-party vendors who process data on our behalf, under strict confidentiality obligations:</p>
   <ul>
     <li><strong>Resend</strong>   transactional email delivery</li>
-    <li><strong>Stripe</strong>   payment processing and subscription management</li>
     <li><strong>Expo / Apple Push Notification service / Firebase Cloud Messaging</strong>   push notification delivery</li>
     <li><strong>Cloud hosting providers</strong>   server infrastructure and database hosting</li>
   </ul>

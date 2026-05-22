@@ -257,8 +257,7 @@ const defaultState = () => ({
   plan: { started:false, startDate:null, recommendedSupplements:[], routine:{} },
   checkins: [],
   feedback: [],
-  reminderPreferences: { enabled:false, day:"Sunday", time:"09:00", timezone:Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" },
-  subscription: { plan:"free", status:"free", isPlus:false, isTrialing:false, isGrace:false, features:{ maxFreeCheckins:2, doctorExport:false, pushReminderScheduling:false, advancedTrends:false, insightHistory:false } }
+  reminderPreferences: { enabled:false, day:"Sunday", time:"09:00", timezone:Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" }
 });
 let state = load();
 let backendSaveTimer = null;
@@ -300,9 +299,6 @@ async function loadFromBackend() {
     if(data.account) {
       state.account.email = data.account.email || "";
       state.account.consent = data.account.consent || false;
-    }
-    if(data.subscription && typeof data.subscription==='object') {
-      state.subscription = { ...defaultState().subscription, ...data.subscription, features:{ ...defaultState().subscription.features, ...((data.subscription && data.subscription.features) || {}) } };
     }
     if(data.medications && Array.isArray(data.medications)) {
       state.meds = data.medications;
@@ -385,15 +381,6 @@ async function saveToBackend() {
         const data = await response.json();
         message = data.message || message;
       } catch(e) {}
-      if(response.status === 402) {
-        setSaveStatus("error", "Limit reached");
-        showToast("Free limit reached. Upgrade to Plus to continue.");
-        const upgrade = document.createElement("div");
-        upgrade.className = "banner";
-        upgrade.innerHTML = `<strong>Plus feature</strong><br>${escapeHtml(message)}<div class="btns"><a class="primary" href="/billing?feature=checkins" style="text-decoration:none;padding:11px 14px;border-radius:12px;">See Plus options</a></div>`;
-        mainEl.prepend(upgrade);
-        return;
-      }
       setSaveStatus("error", "Save issue");
       showToast(message);
       return;
@@ -1074,11 +1061,6 @@ function computePopulationInsights(){
 }
 
 function downloadDoctorReport(){
-  if(!state.subscription?.isPlus){
-    showToast("Upgrade to Plus to download the full doctor report.");
-    window.location.href = "/billing?feature=doctor_export";
-    return;
-  }
   const snapshot = buildClinicianSnapshotText();
   const html = printableSnapshotHtml(snapshot);
   const blob = new Blob([html], {type:'text/html'});
@@ -1554,8 +1536,7 @@ function renderSummaryTop(){
       <strong>Quick status</strong><br>
       Age: <strong>${escapeHtml(state.profile.age||" ")}</strong> • Gender: <strong>${escapeHtml(state.profile.gender||" ")}</strong><br>
       Medications: <strong>${medsCount}</strong> • Symptoms: <strong>${symCount}</strong> • Evidence: <strong>${cov.evidenceCount}/${cov.selectedCount}</strong><br>
-      <div class="fineprint" style="margin-top:8px">Subscription: <strong>${state.subscription?.isPlus ? "Plus" : "Free"}</strong> • Routine: <strong>${state.plan.started ? "Started" : "Not started"}</strong> • Reminders: <strong>${state.reminderPreferences?.enabled ? "On" : "Off"}</strong> • Check-ins: <strong>${state.checkins.length}</strong></div>
-      ${state.subscription?.isPlus ? "" : `<div class="fineprint" style="margin-top:8px"><a class="mailto" href="/billing">Upgrade to Plus</a> for unlimited check-ins, doctor report export, reminder scheduling, and advanced trends.</div>`}
+      <div class="fineprint" style="margin-top:8px">Routine: <strong>${state.plan.started ? "Started" : "Not started"}</strong> • Reminders: <strong>${state.reminderPreferences?.enabled ? "On" : "Off"}</strong> • Check-ins: <strong>${state.checkins.length}</strong></div>
       <div class="fineprint" style="margin-top:8px">Safety flags: <strong>${escapeHtml(flags.length?flags.join(", "):"None")}</strong></div>
       <div class="fineprint" style="margin-top:8px">Next suggested step: <strong>${escapeHtml(next)}</strong></div>
       <div class="quickActions">
@@ -2749,7 +2730,7 @@ function renderProgress(){
     <div class="btns"><button class="primary" id="btnExportReport">Download doctor report</button></div>
   `;
   mainEl.appendChild(timeline);
-  document.getElementById("btnExportReport").addEventListener("click", ()=>{ downloadDoctorReport(); if(state.subscription?.isPlus) showToast("Doctor report downloaded ✓"); });
+  document.getElementById("btnExportReport").addEventListener("click", ()=>{ downloadDoctorReport(); showToast("Doctor report downloaded"); });
 
   mainEl.appendChild(navButtons(true,true));
 }
