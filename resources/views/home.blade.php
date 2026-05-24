@@ -343,34 +343,6 @@
     letter-spacing: 0.15px;
   }
 
-  .hero h1 {
-    font-size: 64px;
-    line-height: 1.04;
-    font-weight: 800;
-    letter-spacing: -1.8px;
-    color: var(--text);
-    margin-bottom: 22px;
-  }
-  .hero h1 em {
-    font-family: 'Source Serif 4', serif;
-    font-style: italic;
-    font-weight: 400;
-    color: var(--teal-dark);
-    letter-spacing: -1px;
-    position: relative;
-  }
-  .hero h1 em::after {
-    content: '';
-    position: absolute;
-    bottom: 2px;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: linear-gradient(90deg, var(--teal), var(--teal-light));
-    border-radius: 2px;
-    opacity: 0.35;
-  }
-
   .hero-actions {
     display: flex;
     gap: 14px;
@@ -392,74 +364,116 @@
     box-shadow: 0 6px 20px rgba(14, 124, 102, 0.12);
   }
 
-  /* HERO INFO — about blocks inside hero */
+  /* HERO INFO — popup-style colorful cards */
   .hero-info {
-    margin-top: 32px;
+    margin-top: 24px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
   }
   .hero-info-block {
-    padding: 22px 24px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid var(--border-soft);
-    border-left: 3px solid var(--teal-200);
-    backdrop-filter: blur(6px);
-    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+    padding: 26px 28px;
+    border-radius: 20px;
+    background: #fff;
+    border: 1px solid;
+    border-left-width: 5px;
+    box-shadow: 0 14px 36px rgba(15, 31, 27, 0.07), 0 4px 10px rgba(15, 31, 27, 0.04);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease;
     opacity: 0;
     transform: translateY(16px);
     animation: heroBlockIn 0.6s ease forwards;
   }
-  .hero-info-block:nth-child(1) { animation-delay: 0.15s; }
-  .hero-info-block:nth-child(2) { animation-delay: 0.30s; }
-  .hero-info-block:nth-child(3) { animation-delay: 0.45s; }
-  .hero-info-block:nth-child(4) { animation-delay: 0.60s; }
+  .hero-info-block::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* Shine sweep effect on hover */
+  .hero-info-block::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
+    transform: skewX(-20deg);
+    transition: left 0.7s ease;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .hero-info-block:hover::after { left: 130%; }
+  .hero-info-block > * { position: relative; z-index: 1; }
+  .hero-info-block:nth-child(1) { animation-delay: 0.10s; }
+  .hero-info-block:nth-child(2) { animation-delay: 0.22s; }
+  .hero-info-block:nth-child(3) { animation-delay: 0.34s; }
+  .hero-info-block:nth-child(4) { animation-delay: 0.46s; }
   @keyframes heroBlockIn {
     to { opacity: 1; transform: translateY(0); }
   }
   .hero-info-block:hover {
-    border-left-color: var(--teal);
-    box-shadow: 0 8px 28px rgba(14, 124, 102, 0.10);
-    transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.92);
+    transform: translateY(-6px) scale(1.015);
   }
+  .hero-info-block:hover .hero-info-icon {
+    transform: scale(1.08) rotate(-3deg);
+  }
+
+  /* Numbered badge in corner */
+  .hero-info-num {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    font-family: 'Source Serif 4', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 36px;
+    line-height: 1;
+    z-index: 1;
+    opacity: 0.15;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .hero-info-block:hover .hero-info-num { opacity: 0.28; transform: scale(1.08); }
+
   .hero-info-block h3 {
-    font-size: 15.5px;
+    font-size: 17px;
     font-weight: 700;
-    color: var(--text);
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 12px;
+    color: var(--text);
   }
   .hero-info-icon {
-    width: 28px; height: 28px;
-    border-radius: 8px;
-    background: var(--teal-50);
-    color: var(--teal-dark);
+    width: 42px; height: 42px;
+    border-radius: 12px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    color: #fff;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .hero-info-icon svg { width: 15px; height: 15px; }
+  .hero-info-icon svg { width: 20px; height: 20px; }
   .hero-info-block p {
-    font-size: 14px;
+    font-size: 14.5px;
     color: var(--text-soft);
     line-height: 1.65;
     margin: 0;
-    padding-left: 37px;
+    padding-left: 54px;
   }
   .hero-info-block p + p { margin-top: 8px; }
   .hero-info-block ul {
     list-style: none;
     padding: 0;
     margin: 8px 0;
-    padding-left: 37px;
+    padding-left: 54px;
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 8px;
   }
   .hero-info-block li {
     position: relative;
@@ -485,96 +499,205 @@
     border-left: 1.5px solid var(--teal);
     border-bottom: 1.5px solid var(--teal);
     transform: rotate(-45deg);
-    opacity: 0.7;
+    opacity: 0.85;
   }
   .hero-info-block li strong { color: var(--text); font-weight: 600; }
-  .hero-info-highlight {
-    background: linear-gradient(135deg, rgba(14, 124, 102, 0.06) 0%, rgba(63, 179, 154, 0.04) 100%);
-    border: 1px solid var(--teal-100);
-    border-left: 3px solid var(--teal);
-    border-radius: 14px;
+
+  /* TEAL — What is GeneoRx? */
+  .hero-info-teal {
+    border-color: rgba(14, 124, 102, 0.18);
+    border-left-color: #0E7C66;
   }
-  .hero-info-highlight:hover {
-    background: linear-gradient(135deg, rgba(14, 124, 102, 0.10) 0%, rgba(63, 179, 154, 0.06) 100%);
-    border-left-color: var(--teal-dark);
+  .hero-info-teal::before {
+    background: linear-gradient(135deg, rgba(14, 124, 102, 0.10), rgba(63, 179, 154, 0.04));
   }
-  .hero-info-highlight h3 { color: var(--teal-dark); }
+  .hero-info-teal:hover {
+    box-shadow: 0 24px 56px rgba(14, 124, 102, 0.28), 0 8px 18px rgba(14, 124, 102, 0.14);
+  }
+  .hero-info-teal .hero-info-icon {
+    background: linear-gradient(135deg, #0E7C66, #075F4F);
+    box-shadow: 0 6px 16px rgba(14, 124, 102, 0.40);
+  }
+  .hero-info-teal h3 { color: #075F4F; }
+  .hero-info-teal .hero-info-num { color: #0E7C66; }
+
+  /* BLUE — How does it work? */
+  .hero-info-blue {
+    border-color: rgba(79, 107, 237, 0.18);
+    border-left-color: #4F6BED;
+  }
+  .hero-info-blue::before {
+    background: linear-gradient(135deg, rgba(79, 107, 237, 0.10), rgba(99, 127, 255, 0.04));
+  }
+  .hero-info-blue:hover {
+    box-shadow: 0 24px 56px rgba(79, 107, 237, 0.30), 0 8px 18px rgba(79, 107, 237, 0.14);
+  }
+  .hero-info-blue .hero-info-icon {
+    background: linear-gradient(135deg, #4F6BED, #3D52C9);
+    box-shadow: 0 6px 16px rgba(79, 107, 237, 0.42);
+  }
+  .hero-info-blue h3 { color: #3D52C9; }
+  .hero-info-blue .hero-info-num { color: #4F6BED; }
+  .hero-info-blue li::before { background: #4F6BED; opacity: 0.15; }
+  .hero-info-blue li::after { border-color: #4F6BED; }
+
+  /* VIOLET — How does it help you? */
+  .hero-info-violet {
+    border-color: rgba(139, 92, 246, 0.18);
+    border-left-color: #8B5CF6;
+  }
+  .hero-info-violet::before {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.10), rgba(167, 139, 250, 0.04));
+  }
+  .hero-info-violet:hover {
+    box-shadow: 0 24px 56px rgba(139, 92, 246, 0.30), 0 8px 18px rgba(139, 92, 246, 0.14);
+  }
+  .hero-info-violet .hero-info-icon {
+    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.42);
+  }
+  .hero-info-violet h3 { color: #6D28D9; }
+  .hero-info-violet .hero-info-num { color: #8B5CF6; }
+  .hero-info-violet li::before { background: #8B5CF6; opacity: 0.15; }
+  .hero-info-violet li::after { border-color: #8B5CF6; }
+
+  /* AMBER — In short */
+  .hero-info-amber {
+    border-color: rgba(245, 158, 11, 0.22);
+    border-left-color: #F59E0B;
+  }
+  .hero-info-amber::before {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(252, 176, 64, 0.05));
+  }
+  .hero-info-amber:hover {
+    box-shadow: 0 24px 56px rgba(245, 158, 11, 0.32), 0 8px 18px rgba(245, 158, 11, 0.14);
+  }
+  .hero-info-amber .hero-info-icon {
+    background: linear-gradient(135deg, #F59E0B, #D97706);
+    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.45);
+  }
+  .hero-info-amber h3 { color: #B45309; }
+  .hero-info-amber .hero-info-num { color: #F59E0B; }
 
   /* HERO VISUAL  GIF/Demo player */
   .hero-visual {
     position: relative;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    min-height: 480px;
+    min-height: 620px;
   }
 
-  /* Browser mockup frame */
+  /* Pulsing teal halo behind phone */
+  .phone-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 420px;
+    height: 420px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(14, 124, 102, 0.35) 0%, rgba(63, 179, 154, 0.18) 35%, transparent 70%);
+    filter: blur(8px);
+    z-index: 0;
+    pointer-events: none;
+    animation: haloPulse 4s ease-in-out infinite;
+  }
+  @keyframes haloPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.65; }
+    50%      { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  }
+
+  /* iPhone mockup frame */
   .demo-frame {
     position: relative;
+    z-index: 2;
     width: 100%;
-    max-width: 520px;
-    border-radius: 16px;
-    overflow: hidden;
+    max-width: 320px;
+    aspect-ratio: 9 / 19.5;
+    border-radius: 42px;
+    padding: 12px;
+    background: linear-gradient(160deg, #1a2622 0%, #0F1F1B 50%, #050B09 100%);
     box-shadow:
-      0 0 0 1px rgba(14, 124, 102, 0.12),
-      0 24px 64px rgba(14, 124, 102, 0.18),
-      0 4px 16px rgba(0,0,0,0.08);
-    background: #fff;
+      0 0 0 1.5px rgba(255, 255, 255, 0.08) inset,
+      0 0 0 2px #050B09,
+      0 30px 80px rgba(7, 95, 79, 0.30),
+      0 10px 28px rgba(0, 0, 0, 0.20);
     animation: demoFloat 7s ease-in-out infinite;
+    transform: perspective(1200px) rotateY(-4deg) rotateX(2deg);
+    transform-style: preserve-3d;
+  }
+  /* Dynamic Island */
+  .demo-frame::before {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 28px;
+    background: #000;
+    border-radius: 16px;
+    z-index: 5;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4) inset;
+  }
+  /* Side button (subtle detail on right edge) */
+  .demo-frame::after {
+    content: '';
+    position: absolute;
+    top: 110px;
+    right: -1px;
+    width: 3px;
+    height: 60px;
+    background: linear-gradient(180deg, #2a3631, #1a2622);
+    border-radius: 0 2px 2px 0;
   }
 
-  /* Browser chrome bar */
-  .demo-frame-bar {
-    height: 38px;
-    background: linear-gradient(180deg, #F7F8F9 0%, #F0F1F2 100%);
-    border-bottom: 1px solid rgba(0,0,0,0.08);
-    display: flex;
-    align-items: center;
-    padding: 0 14px;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .demo-frame-dot {
-    width: 11px; height: 11px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .demo-frame-dot.red    { background: #FF5F57; }
-  .demo-frame-dot.yellow { background: #FEBC2E; }
-  .demo-frame-dot.green  { background: #28C840; }
-  .demo-frame-url {
-    flex: 1;
-    height: 22px;
-    background: #fff;
-    border: 1px solid rgba(0,0,0,0.10);
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    padding: 0 8px;
-    font-size: 11px;
-    color: #6B7B77;
-    font-family: monospace;
-    letter-spacing: -0.2px;
-    margin: 0 8px;
-    gap: 5px;
+  /* Inner screen */
+  .demo-frame-screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 30px;
     overflow: hidden;
-    white-space: nowrap;
-  }
-  .demo-frame-lock {
-    width: 8px; height: 8px; flex-shrink: 0;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230E7C66'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'/%3E%3C/svg%3E") no-repeat center/contain;
+    background: var(--bg-soft);
   }
 
-  /* The GIF itself */
+  /* The GIF itself (if user drops in public/demo.gif) */
   .demo-frame-gif {
     display: block;
     width: 100%;
-    height: auto;
-    min-height: 300px;
+    height: 100%;
     object-fit: cover;
     background: var(--bg-soft);
     position: relative;
+  }
+
+  /* Slide navigation dots below phone */
+  .demo-dots {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
+  }
+  .demo-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--border);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.4s ease;
+  }
+  .demo-dot:hover { background: var(--teal-200); }
+  .demo-dot.active {
+    width: 30px;
+    background: var(--teal);
+    box-shadow: 0 2px 8px rgba(14, 124, 102, 0.35);
   }
 
   /* Floating badge on the frame */
@@ -603,8 +726,8 @@
   }
   .demo-badge-label { font-size: 10.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
   .demo-badge-value { font-weight: 700; font-size: 13px; color: var(--text); }
-  .demo-badge.b1 { bottom: -16px; left: -18px; animation-delay: 0s; }
-  .demo-badge.b2 { top: 60px;     right: -22px; animation-delay: 1.8s; }
+  .demo-badge.b1 { bottom: 40px; left: -40px; animation-delay: 0s; }
+  .demo-badge.b2 { top: 100px;   right: -50px; animation-delay: 1.8s; }
 
   @keyframes demoFloat {
     0%, 100% { transform: translateY(0); }
@@ -621,7 +744,8 @@
   .anim-demo {
     position: relative;
     background: var(--bg-soft);
-    min-height: 380px;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
   }
   .anim-screen {
@@ -630,12 +754,13 @@
     display: flex;
     flex-direction: column;
     opacity: 0;
+    padding-top: 56px; /* clearance for Dynamic Island */
   }
   .anim-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px 8px;
+    padding: 10px 16px 6px;
     border-bottom: 1px solid var(--border-soft);
     background: #fff;
     flex-shrink: 0;
@@ -1365,11 +1490,14 @@
       gap: 48px;
       padding: 40px 24px 80px;
     }
-    .hero-visual { order: -1; min-height: 360px; }
-    .demo-frame { max-width: 100%; }
-    .demo-badge.b1 { bottom: -10px; left: -8px; }
-    .demo-badge.b2 { top: 48px; right: -8px; }
-    .hero h1 { font-size: 46px; letter-spacing: -1.2px; }
+    .hero-visual { order: -1; min-height: 540px; }
+    .demo-frame {
+      max-width: 270px;
+      transform: none;
+    }
+    .phone-glow { width: 340px; height: 340px; }
+    .demo-badge.b1 { bottom: 30px; left: -10px; }
+    .demo-badge.b2 { top: 80px; right: -10px; }
 
     /* Hero info cards — tablet */
     .hero-info { gap: 12px; }
@@ -1390,25 +1518,31 @@
   }
   @media (max-width: 520px) {
     .hero { padding: 60px 0 0; }
-    .hero h1 { font-size: 34px; letter-spacing: -1px; }
-    .hero h1 em::after { height: 2px; bottom: 1px; }
+
+    /* iPhone smaller on mobile */
+    .demo-frame { max-width: 240px; }
+    .phone-glow { width: 280px; height: 280px; }
+    .demo-badge { font-size: 11.5px; padding: 8px 11px; }
+    .demo-badge.b1 { bottom: 24px; left: -6px; }
+    .demo-badge.b2 { top: 64px; right: -6px; }
+    .demo-dots { margin-top: 20px; }
 
     /* Hero info cards — mobile */
-    .hero-info { gap: 10px; margin-top: 24px; }
+    .hero-info { gap: 12px; margin-top: 24px; }
     .hero-info-block {
-      padding: 16px 16px;
-      border-radius: 12px;
-      border-left-width: 3px;
+      padding: 20px 20px;
+      border-radius: 16px;
+      border-left-width: 4px;
     }
-    .hero-info-block h3 { font-size: 14.5px; gap: 8px; }
-    .hero-info-icon { width: 24px; height: 24px; border-radius: 6px; }
-    .hero-info-icon svg { width: 13px; height: 13px; }
-    .hero-info-block p { font-size: 13.5px; padding-left: 32px; }
-    .hero-info-block ul { padding-left: 32px; gap: 6px; }
+    .hero-info-block h3 { font-size: 15px; gap: 10px; }
+    .hero-info-icon { width: 36px; height: 36px; border-radius: 10px; }
+    .hero-info-icon svg { width: 18px; height: 18px; }
+    .hero-info-num { font-size: 30px; top: 14px; right: 18px; }
+    .hero-info-block p { font-size: 13.5px; padding-left: 46px; }
+    .hero-info-block ul { padding-left: 46px; gap: 6px; }
     .hero-info-block li { font-size: 13.5px; padding-left: 22px; }
     .hero-info-block li::before { width: 12px; height: 12px; top: 4px; }
     .hero-info-block li::after { left: 3px; top: 8px; width: 5px; height: 2.5px; }
-    .hero-info-highlight { padding: 16px 16px !important; }
 
     /* CTA full width on mobile */
     .hero-actions { flex-direction: column; gap: 10px; }
@@ -1455,10 +1589,10 @@
 
   /* Extra small phones */
   @media (max-width: 380px) {
-    .hero h1 { font-size: 30px; }
     .hero-info-block p, .hero-info-block ul { padding-left: 0; }
     .hero-info-block h3 { font-size: 14px; }
     .hero-info-block p, .hero-info-block li { font-size: 13px; }
+    .hero-info-num { font-size: 26px; opacity: 0.10; }
     .hero-eyebrow-text { font-size: 11px; }
     .section-title { font-size: 28px; }
     .final-cta h2 { font-size: 24px; }
@@ -1525,10 +1659,9 @@
         <span class="hero-eyebrow-dot">Rx</span>
         <span class="hero-eyebrow-text">Personal medication intelligence platform</span>
       </div>
-      <h1>The <em>clarity</em> behind<br>your medications.</h1>
-
       <div class="hero-info">
-        <div class="hero-info-block">
+        <div class="hero-info-block hero-info-teal">
+          <span class="hero-info-num">01</span>
           <h3>
             <span class="hero-info-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -1537,7 +1670,8 @@
           </h3>
           <p>GeneoRx is your personal medication intelligence platform connecting medications, symptoms, and nutrient levels to help you understand what's really going on in your body giving you a clearer picture of your health.</p>
         </div>
-        <div class="hero-info-block">
+        <div class="hero-info-block hero-info-blue">
+          <span class="hero-info-num">02</span>
           <h3>
             <span class="hero-info-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -1552,7 +1686,8 @@
           </ul>
           <p>As you check in regularly, it builds a personalized profile, spotting patterns and improving accuracy over time.</p>
         </div>
-        <div class="hero-info-block">
+        <div class="hero-info-block hero-info-violet">
+          <span class="hero-info-num">03</span>
           <h3>
             <span class="hero-info-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -1566,9 +1701,10 @@
             <li><strong>Prepares you for doctor visits</strong> – Provides a quick health summary for your doctor</li>
           </ul>
         </div>
-        <div class="hero-info-block hero-info-highlight">
+        <div class="hero-info-block hero-info-amber">
+          <span class="hero-info-num">04</span>
           <h3>
-            <span class="hero-info-icon" style="background:var(--teal);color:#fff;">
+            <span class="hero-info-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </span>
             In short
@@ -1584,21 +1720,14 @@
     </div>
 
     <div class="hero-visual">
+      <div class="phone-glow"></div>
       <div class="demo-frame">
-        <div class="demo-frame-bar">
-          <div class="demo-frame-dot red"></div>
-          <div class="demo-frame-dot yellow"></div>
-          <div class="demo-frame-dot green"></div>
-          <div class="demo-frame-url">
-            <div class="demo-frame-lock"></div>
-            app.geneorx.com/treatments
-          </div>
-        </div>
+        <div class="demo-frame-screen">
         @if(file_exists(public_path('demo.gif')))
           <img src="{{ asset('demo.gif') }}" alt="GeneoRx app demo" class="demo-frame-gif">
         @else
           {{-- CSS-animated app walkthrough ─ loops every 15 s --}}
-          <div class="anim-demo">
+          <div class="anim-demo" id="animDemo">
 
             {{-- Screen 1: Medications --}}
             <div class="anim-screen anim-s1">
@@ -1685,6 +1814,13 @@
 
           </div>{{-- /.anim-demo --}}
         @endif
+        </div>{{-- /.demo-frame-screen --}}
+      </div>
+
+      <div class="demo-dots" id="demoDots">
+        <button class="demo-dot active" data-slide="1" aria-label="Show check-in screen" type="button"></button>
+        <button class="demo-dot" data-slide="2" aria-label="Show symptoms screen" type="button"></button>
+        <button class="demo-dot" data-slide="3" aria-label="Show insight screen" type="button"></button>
       </div>
 
       <div class="demo-badge b1">
@@ -2095,6 +2231,53 @@
     });
   }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
   reveals.forEach(el => io.observe(el));
+
+  // Demo slideshow dots — sync with the 15s CSS keyframe slideshow (5s per slide)
+  (function () {
+    const dots = document.querySelectorAll('.demo-dot');
+    const animDemo = document.getElementById('animDemo');
+    if (!dots.length || !animDemo) return;
+
+    const SLIDE_DURATION = 5000; // ms per slide
+    const TOTAL_SLIDES = 3;
+    let currentSlide = 0;
+    let interval = null;
+
+    function setActiveDot(idx) {
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    }
+
+    function tick() {
+      currentSlide = (currentSlide + 1) % TOTAL_SLIDES;
+      setActiveDot(currentSlide);
+    }
+
+    function startAutoplay() {
+      if (interval) clearInterval(interval);
+      interval = setInterval(tick, SLIDE_DURATION);
+    }
+
+    function jumpToSlide(idx) {
+      currentSlide = idx;
+      setActiveDot(idx);
+      // Restart the CSS slideshow animation and offset so target slide plays first
+      const screens = animDemo.querySelectorAll('.anim-screen');
+      screens.forEach(s => { s.style.animation = 'none'; });
+      void animDemo.offsetWidth; // force reflow
+      const offset = -(idx * SLIDE_DURATION) / 1000; // negative delay = skip ahead
+      screens.forEach((s, i) => {
+        s.style.animation = '';
+        s.style.animationDelay = (offset) + 's';
+      });
+      startAutoplay();
+    }
+
+    dots.forEach((dot, idx) => {
+      dot.addEventListener('click', () => jumpToSlide(idx));
+    });
+
+    startAutoplay();
+  })();
 </script>
 </body>
 </html>

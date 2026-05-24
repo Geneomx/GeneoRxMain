@@ -10,9 +10,9 @@
       "ios": { "simulator": true },
       "env": {
         "GENEORX_API_URL": "http://localhost:8000/api",
-        "GOOGLE_CLIENT_ID": "",
-        "GOOGLE_IOS_CLIENT_ID": "",
-        "GOOGLE_ANDROID_CLIENT_ID": ""
+        "GOOGLE_CLIENT_ID": "218044016082-62j05pjkn36g1937t9d9cr8s9ldv7nkl.apps.googleusercontent.com",
+        "GOOGLE_ANDROID_CLIENT_ID": "218044016082-rdfvig4ss5hur2idp8f7n7junfa4k4lt.apps.googleusercontent.com",
+        "GOOGLE_IOS_CLIENT_ID": "218044016082-7lqcvgf5g62d2j546aidaabpg2ufr2vm.apps.googleusercontent.com"
       }
     },
     "preview": {
@@ -20,19 +20,19 @@
       "ios": { "simulator": true },
       "android": { "buildType": "apk" },
       "env": {
-        "GENEORX_API_URL": "https://staging.geneorx.com/api",
-        "GOOGLE_CLIENT_ID": "",
-        "GOOGLE_IOS_CLIENT_ID": "",
-        "GOOGLE_ANDROID_CLIENT_ID": ""
+        "GENEORX_API_URL": "https://geneorx.com/api",
+        "GOOGLE_CLIENT_ID": "218044016082-62j05pjkn36g1937t9d9cr8s9ldv7nkl.apps.googleusercontent.com",
+        "GOOGLE_ANDROID_CLIENT_ID": "218044016082-rdfvig4ss5hur2idp8f7n7junfa4k4lt.apps.googleusercontent.com",
+        "GOOGLE_IOS_CLIENT_ID": "218044016082-7lqcvgf5g62d2j546aidaabpg2ufr2vm.apps.googleusercontent.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
         "GENEORX_API_URL": "https://geneorx.com/api",
-        "GOOGLE_CLIENT_ID": "",
-        "GOOGLE_IOS_CLIENT_ID": "",
-        "GOOGLE_ANDROID_CLIENT_ID": ""
+        "GOOGLE_CLIENT_ID": "218044016082-62j05pjkn36g1937t9d9cr8s9ldv7nkl.apps.googleusercontent.com",
+        "GOOGLE_ANDROID_CLIENT_ID": "218044016082-rdfvig4ss5hur2idp8f7n7junfa4k4lt.apps.googleusercontent.com",
+        "GOOGLE_IOS_CLIENT_ID": "218044016082-7lqcvgf5g62d2j546aidaabpg2ufr2vm.apps.googleusercontent.com"
       }
     }
   },

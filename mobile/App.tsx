@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/auth/AuthContext';
 import { ProfileProvider } from '@/store/ProfileContext';
 import { RootNavigator } from '@/navigation/RootNavigator';
+import { OnboardingModal } from '@/components/OnboardingModal';
 
 export default function App() {
   return (
@@ -12,6 +13,8 @@ export default function App() {
         <ProfileProvider>
           <StatusBar style="dark" />
           <RootNavigator />
+          {/* Onboarding popup — shown once on first launch */}
+          <OnboardingModal />
         </ProfileProvider>
       </AuthProvider>
     </SafeAreaProvider>

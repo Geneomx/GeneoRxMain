@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeneoRx Screenshots</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #0E7C66;
+    --teal-light: #3FB39A;
+    --teal-bg: #E8F5F1;
+    --teal-border: #B0DCD0;
+    --dark: #0F1F1B;
+    --text: #1A2E28;
+    --muted: #6B7B77;
+    --bg: #F3FAF7;
+    --card: #FFFFFF;
+    --radius: 16px;
+    --shadow: 0 2px 16px rgba(14,124,102,0.10);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    color: var(--text);
+  }
+
+  /* ─── STATUS BAR ─── */
+  .status-bar {
+    height: 48px;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .status-time { font-size: 15px; font-weight: 700; color: var(--dark); }
+  .status-icons { display: flex; align-items: center; gap: 6px; }
+  .status-icons svg { width: 16px; height: 16px; fill: var(--dark); }
+
+  /* ─── MAIN SCROLL AREA ─── */
+  .screen {
+    height: calc(100vh - 48px - 80px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 20px 20px;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ─── BOTTOM NAV ─── */
+  .bottom-nav {
+    height: 80px;
+    background: var(--card);
+    border-top: 1px solid rgba(14,124,102,0.10);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 8px 12px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    padding: 8px 0;
+    cursor: pointer;
+  }
+  .nav-item .nav-icon {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .nav-item.active .nav-icon { background: var(--teal-bg); }
+  .nav-label { font-size: 11px; font-weight: 600; color: var(--muted); }
+  .nav-item.active .nav-label { color: var(--teal); }
+
+  /* ─── SHARED COMPONENTS ─── */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(14,124,102,0.08);
+    margin-bottom: 14px;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .tag-teal { background: var(--teal-bg); color: var(--teal); border: 1px solid var(--teal-border); }
+  .tag-amber { background: #FFF7E6; color: #B45309; border: 1px solid #FBBF24; }
+  .tag-blue  { background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; }
+  .tag-red   { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    margin: 20px 0 10px;
+  }
+
+  /* ─── HEADER BANNER ─── */
+  .hero-banner {
+    background: linear-gradient(135deg, #0E7C66 0%, #075F4F 100%);
+    border-radius: 20px;
+    padding: 22px 20px;
+    color: #fff;
+    margin-bottom: 16px;
+    margin-top: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-banner::after {
+    content: '';
+    position: absolute;
+    right: -30px; top: -30px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+  }
+  .hero-banner::before {
+    content: '';
+    position: absolute;
+    right: 20px; bottom: -40px;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .hero-greeting { font-size: 14px; font-weight: 500; opacity: 0.85; margin-bottom: 4px; }
+  .hero-name { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 14px; }
+  .hero-stats { display: flex; gap: 16px; }
+  .hero-stat { text-align: center; }
+  .hero-stat-num { font-size: 22px; font-weight: 800; }
+  .hero-stat-label { font-size: 11px; opacity: 0.75; margin-top: 2px; }
+
+  /* ─── MEDICATION ROW ─── */
+  .med-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid #F0F5F3;
+  }
+  .med-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .med-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .med-icon.teal { background: var(--teal-bg); }
+  .med-icon.blue { background: #EEF2FF; }
+  .med-icon.amber { background: #FFF7E6; }
+  .med-icon.rose  { background: #FFF1F2; }
+  .med-info { flex: 1; }
+  .med-name { font-size: 15px; font-weight: 700; color: var(--dark); }
+  .med-dose { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .med-check {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .med-check.done { background: var(--teal-bg); color: var(--teal); }
+  .med-check.pending { background: #F3F4F6; color: #D1D5DB; border: 2px solid #E5E7EB; }
+
+  /* ─── SYMPTOM CHIPS ─── */
+  .chips-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .chip {
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 2px solid #E5E9E8;
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .chip.selected {
+    background: var(--teal-bg);
+    border-color: var(--teal);
+    color: var(--teal);
+  }
+  .chip.mild {
+    background: #FFF7E6;
+    border-color: #FBBF24;
+    color: #B45309;
+  }
+  .chip.none {
+    background: #F9FAFB;
+    border-color: #E5E7EB;
+    color: #9CA3AF;
+  }
+
+  /* ─── INSIGHT CARD ─── */
+  .insight-card {
+    background: linear-gradient(135deg, #0E7C66 0%, #075F4F 100%);
+    border-radius: 20px;
+    padding: 20px;
+    color: #fff;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .insight-card::before {
+    content: '';
+    position: absolute; right: -20px; top: -20px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+  .insight-pill-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .insight-pill {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.18);
+    color: #fff;
+    letter-spacing: 0.3px;
+  }
+  .insight-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.3px; }
+  .insight-body { font-size: 13px; line-height: 1.55; opacity: 0.90; }
+  .insight-action {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #B0DCD0;
+  }
+
+  /* ─── PROGRESS RING ─── */
+  .progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--teal-bg);
+    border-radius: 14px;
+    border: 1px solid var(--teal-border);
+    margin-bottom: 14px;
+  }
+  .progress-ring { position: relative; flex-shrink: 0; }
+  .progress-ring svg { transform: rotate(-90deg); }
+  .progress-label {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--teal);
+  }
+  .progress-info h4 { font-size: 15px; font-weight: 700; color: var(--dark); }
+  .progress-info p { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* ─── BTN ─── */
+  .btn-primary {
+    background: linear-gradient(135deg, #0E7C66, #075F4F);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(14,124,102,0.35);
+    margin-top: 8px;
+  }
+  .btn-outline {
+    background: transparent;
+    color: var(--teal);
+    border: 2px solid var(--teal-border);
+    border-radius: 14px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+
+  /* ─── PROFILE / SETTINGS ─── */
+  .profile-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3FB39A, #0E7C66);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    margin: 0 auto 12px;
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 0;
+    border-bottom: 1px solid #F0F5F3;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-left { display: flex; align-items: center; gap: 12px; }
+  .settings-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  /* ─── TABLET TWO-COL ─── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .two-col .col-left, .two-col .col-right { min-width: 0; }
+
+  /* ─── SCREEN VISIBILITY ─── */
+  .s1, .s2, .s3, .s4 { display: none; }
+
+  /* ─── LARGE SCREEN ADAPTATIONS ─── */
+  @media (min-width: 900px) {
+    .status-bar { height: 56px; padding: 0 36px; }
+    .status-time { font-size: 17px; }
+    .screen { padding: 0 28px 28px; }
+    .hero-name { font-size: 30px; }
+    .card { padding: 22px; }
+    .med-name { font-size: 17px; }
+    .med-dose { font-size: 14px; }
+    .chip { font-size: 15px; padding: 12px 22px; }
+    .insight-title { font-size: 22px; }
+    .insight-body { font-size: 15px; }
+    .bottom-nav { height: 90px; }
+    .nav-label { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span class="status-time">9:41</span>
+  <div class="status-icons">
+    <svg viewBox="0 0 24 24"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" stroke="#0F1F1B" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="11" rx="2" stroke="#0F1F1B" stroke-width="2" fill="none"/><path d="M22 11v3" stroke="#0F1F1B" stroke-width="2" stroke-linecap="round"/></svg>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 1 — HOME / DASHBOARD
+═══════════════════════════════════════ -->
+<div class="screen s1">
+  <div class="hero-banner">
+    <div class="hero-greeting">Good morning,</div>
+    <div class="hero-name">Ayaz 👋</div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-num">3/4</div>
+        <div class="hero-stat-label">Today's doses</div>
+      </div>
+      <div class="hero-stat" style="border-left:1px solid rgba(255,255,255,0.2);padding-left:16px">
+        <div class="hero-stat-num">92%</div>
+        <div class="hero-stat-label">Weekly adherence</div>
+      </div>
+      <div class="hero-stat" style="border-left:1px solid rgba(255,255,255,0.2);padding-left:16px">
+        <div class="hero-stat-num">2</div>
+        <div class="hero-stat-label">New insights</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Today's Medications</div>
+
+  <div class="card">
+    <div class="med-row">
+      <div class="med-icon teal">💊</div>
+      <div class="med-info">
+        <div class="med-name">Metformin</div>
+        <div class="med-dose">500 mg · Morning</div>
+      </div>
+      <div class="med-check done">✓</div>
+    </div>
+    <div class="med-row">
+      <div class="med-icon blue">💙</div>
+      <div class="med-info">
+        <div class="med-name">Lisinopril</div>
+        <div class="med-dose">10 mg · Morning</div>
+      </div>
+      <div class="med-check done">✓</div>
+    </div>
+    <div class="med-row">
+      <div class="med-icon amber">🌿</div>
+      <div class="med-info">
+        <div class="med-name">Vitamin D3</div>
+        <div class="med-dose">2000 IU · Lunch</div>
+      </div>
+      <div class="med-check done">✓</div>
+    </div>
+    <div class="med-row">
+      <div class="med-icon rose">🔴</div>
+      <div class="med-info">
+        <div class="med-name">Atorvastatin</div>
+        <div class="med-dose">20 mg · Evening</div>
+      </div>
+      <div class="med-check pending"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Latest Insight</div>
+
+  <div class="insight-card">
+    <div class="insight-pill-row">
+      <span class="insight-pill">⚡ New Signal</span>
+      <span class="insight-pill">B12</span>
+    </div>
+    <div class="insight-title">Vitamin B12 Depletion Risk</div>
+    <div class="insight-body">Long-term Metformin use is linked to reduced B12 absorption. Your fatigue symptoms align with this pattern.</div>
+    <div class="insight-action">View full insight →</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 2 — SYMPTOM CHECK-IN
+═══════════════════════════════════════ -->
+<div class="screen s2">
+  <div style="margin-top:12px;margin-bottom:4px;">
+    <div style="font-size:22px;font-weight:800;color:var(--dark);letter-spacing:-0.5px">How are you<br>feeling today?</div>
+    <div style="font-size:14px;color:var(--muted);margin-top:8px">Select all that apply</div>
+  </div>
+
+  <div class="section-title">Energy & Focus</div>
+  <div class="chips-grid">
+    <div class="chip selected">Fatigue</div>
+    <div class="chip selected">Brain fog</div>
+    <div class="chip">Low energy</div>
+    <div class="chip">Poor focus</div>
+    <div class="chip none">Insomnia</div>
+  </div>
+
+  <div class="section-title">Physical</div>
+  <div class="chips-grid">
+    <div class="chip mild">Headache</div>
+    <div class="chip">Muscle ache</div>
+    <div class="chip">Nausea</div>
+    <div class="chip none">Dizziness</div>
+    <div class="chip none">Joint pain</div>
+  </div>
+
+  <div class="section-title">Digestion</div>
+  <div class="chips-grid">
+    <div class="chip">Bloating</div>
+    <div class="chip none">Stomach pain</div>
+    <div class="chip none">Constipation</div>
+  </div>
+
+  <div class="section-title">Mood</div>
+  <div class="chips-grid">
+    <div class="chip">Anxious</div>
+    <div class="chip none">Irritable</div>
+    <div class="chip none">Low mood</div>
+  </div>
+
+  <div class="btn-primary">Save Check-in</div>
+  <div class="btn-outline">I feel fine today</div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 3 — INSIGHTS
+═══════════════════════════════════════ -->
+<div class="screen s3">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;margin-bottom:16px">
+    <div style="font-size:22px;font-weight:800;color:var(--dark);letter-spacing:-0.5px">Your Insights</div>
+    <span class="tag tag-teal">2 new</span>
+  </div>
+
+  <div class="insight-card">
+    <div class="insight-pill-row">
+      <span class="insight-pill">⚡ High Priority</span>
+      <span class="insight-pill">Nutrient</span>
+    </div>
+    <div class="insight-title">Vitamin B12 Signal Detected</div>
+    <div class="insight-body">Metformin (500mg, 18 months) commonly depletes B12. You reported fatigue and brain fog — symptoms consistent with B12 deficiency. Consider discussing B12 testing with your doctor.</div>
+    <div class="insight-action">Learn more + Actions →</div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="width:42px;height:42px;border-radius:12px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💊</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="font-size:15px;font-weight:700;color:var(--dark)">Drug Interaction Note</div>
+          <span class="tag tag-amber">Mild</span>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5">Taking Atorvastatin and Lisinopril together is generally safe but monitor for muscle soreness.</div>
+        <div style="font-size:12px;color:var(--teal);font-weight:600;margin-top:8px">View detail →</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Adherence Summary</div>
+  <div class="progress-wrap">
+    <div class="progress-ring">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="26" stroke="#E8F5F1" stroke-width="8" fill="none"/>
+        <circle cx="32" cy="32" r="26" stroke="#0E7C66" stroke-width="8" fill="none"
+          stroke-dasharray="163" stroke-dashoffset="13" stroke-linecap="round"/>
+      </svg>
+      <div class="progress-label">92%</div>
+    </div>
+    <div class="progress-info">
+      <h4>Great adherence this week!</h4>
+      <p>You've taken 25 of 27 scheduled doses</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="width:42px;height:42px;border-radius:12px;background:#E0F2FE;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🌿</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="font-size:15px;font-weight:700;color:var(--dark)">Vitamin D Status</div>
+          <span class="tag tag-blue">Info</span>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5">Your Vitamin D3 dose of 2000 IU/day is within the recommended range for maintenance.</div>
+        <div style="font-size:12px;color:var(--teal);font-weight:600;margin-top:8px">View detail →</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 4 — MEDICATIONS LIST
+═══════════════════════════════════════ -->
+<div class="screen s4">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;margin-bottom:16px">
+    <div style="font-size:22px;font-weight:800;color:var(--dark);letter-spacing:-0.5px">Medications</div>
+    <div style="width:36px;height:36px;border-radius:10px;background:var(--teal-bg);display:flex;align-items:center;justify-content:center;color:var(--teal);font-size:22px;font-weight:300">+</div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-ring">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="26" stroke="#E8F5F1" stroke-width="8" fill="none"/>
+        <circle cx="32" cy="32" r="26" stroke="#0E7C66" stroke-width="8" fill="none"
+          stroke-dasharray="163" stroke-dashoffset="26" stroke-linecap="round"/>
+      </svg>
+      <div class="progress-label">84%</div>
+    </div>
+    <div class="progress-info">
+      <h4>Monthly adherence: 84%</h4>
+      <p>4 active medications tracked</p>
+    </div>
+  </div>
+
+  <div class="section-title">Active Medications</div>
+
+  <div class="card" style="padding:8px 18px">
+    <div class="med-row">
+      <div class="med-icon teal">💊</div>
+      <div class="med-info">
+        <div class="med-name">Metformin</div>
+        <div class="med-dose">500 mg · Twice daily · Since Jan 2023</div>
+      </div>
+      <span class="tag tag-teal" style="font-size:11px">Active</span>
+    </div>
+    <div class="med-row">
+      <div class="med-icon blue">💙</div>
+      <div class="med-info">
+        <div class="med-name">Lisinopril</div>
+        <div class="med-dose">10 mg · Once daily · Since Mar 2023</div>
+      </div>
+      <span class="tag tag-teal" style="font-size:11px">Active</span>
+    </div>
+    <div class="med-row">
+      <div class="med-icon amber">🌿</div>
+      <div class="med-info">
+        <div class="med-name">Vitamin D3</div>
+        <div class="med-dose">2000 IU · Once daily · Since Jun 2024</div>
+      </div>
+      <span class="tag tag-teal" style="font-size:11px">Active</span>
+    </div>
+    <div class="med-row">
+      <div class="med-icon rose">🔴</div>
+      <div class="med-info">
+        <div class="med-name">Atorvastatin</div>
+        <div class="med-dose">20 mg · Evening · Since Aug 2024</div>
+      </div>
+      <span class="tag tag-teal" style="font-size:11px">Active</span>
+    </div>
+  </div>
+
+  <div class="btn-primary">+ Add Medication</div>
+</div>
+
+<!-- ─── BOTTOM NAV ─── -->
+<div class="bottom-nav">
+  <div class="nav-item" id="nav-home">
+    <div class="nav-icon">🏠</div>
+    <span class="nav-label">Home</span>
+  </div>
+  <div class="nav-item" id="nav-meds">
+    <div class="nav-icon">💊</div>
+    <span class="nav-label">Medications</span>
+  </div>
+  <div class="nav-item" id="nav-check">
+    <div class="nav-icon">✅</div>
+    <span class="nav-label">Check-in</span>
+  </div>
+  <div class="nav-item" id="nav-insights">
+    <div class="nav-icon">⚡</div>
+    <span class="nav-label">Insights</span>
+  </div>
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const screen = parseInt(params.get('s') || '1');
+  document.querySelector('.s' + screen).style.display = 'block';
+
+  const navMap = { 1: 'nav-home', 2: 'nav-check', 3: 'nav-insights', 4: 'nav-meds' };
+  const activeNav = document.getElementById(navMap[screen]);
+  if (activeNav) activeNav.classList.add('active');
+</script>
+
+</body>
+</html>

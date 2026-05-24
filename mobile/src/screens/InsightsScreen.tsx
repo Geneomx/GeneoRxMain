@@ -1,0 +1,274 @@
+import React, { useMemo } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useProfile } from '@/store/ProfileContext';
+import { Loader } from '@/components/Loader';
+import { colors, spacing } from '@/theme';
+
+// Static insight templates — would come from a real API in production
+const STATIC_INSIGHTS = [
+  {
+    id: 'b12',
+    priority: 'High Priority',
+    tag: 'Nutrient',
+    title: 'Vitamin B12 Signal Detected',
+    body: 'Long-term Metformin use commonly depletes B12. Fatigue and brain fog are symptoms consistent with B12 deficiency. Consider discussing B12 testing with your doctor.',
+    link: 'Learn more + Actions →',
+    featured: true,
+  },
+  {
+    id: 'interaction',
+    priority: 'Mild',
+    tag: 'Interaction',
+    title: 'Drug Interaction Note',
+    body: 'Taking Atorvastatin and Lisinopril together is generally safe but monitor for muscle soreness.',
+    link: 'View detail →',
+    icon: '💊',
+  },
+  {
+    id: 'vitd',
+    priority: 'Info',
+    tag: 'Nutrition',
+    title: 'Vitamin D Status',
+    body: 'Your Vitamin D3 dose of 2000 IU/day is within the recommended range for maintenance.',
+    link: 'View detail →',
+    icon: '🌿',
+  },
+];
+
+const PRIORITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  'High Priority': { bg: '#FEF2F2', text: '#DC2626', border: '#FCA5A5' },
+  'Mild': { bg: '#FFFBEB', text: '#D97706', border: '#FCD34D' },
+  'Info': { bg: '#EFF6FF', text: '#2563EB', border: '#BFDBFE' },
+};
+
+export const InsightsScreen: React.FC = () => {
+  const { data, loading } = useProfile();
+
+  const checkins = useMemo(() => data?.checkins ?? [], [data]);
+  const meds = useMemo(() => data?.medications ?? [], [data]);
+
+  const avgAdherence = useMemo(() => {
+    if (checkins.length === 0) return null;
+    const sum = checkins.reduce((a, c) => a + (c.adherencePct ?? 0), 0);
+    return Math.round(sum / checkins.length);
+  }, [checkins]);
+
+  const newCount = checkins.length > 0 ? 2 : 0;
+
+  if (loading && !data) return <Loader />;
+
+  // Filter insights relevant to user's medications
+  const relevantInsights = meds.length > 0
+    ? STATIC_INSIGHTS
+    : STATIC_INSIGHTS.filter((i) => i.id === 'vitd');
+
+  const featuredInsight = relevantInsights.find((i) => i.featured);
+  const secondaryInsights = relevantInsights.filter((i) => !i.featured);
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* HEADER */}
+        <View style={styles.header}>
+          <Text style={styles.pageTitle}>Your Insights</Text>
+          {newCount > 0 && (
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>{newCount} new</Text>
+            </View>
+          )}
+        </View>
+
+        {/* FEATURED INSIGHT */}
+        {featuredInsight ? (
+          <TouchableOpacity style={styles.featuredCard} activeOpacity={0.88}>
+            <View style={styles.featuredCircle1} />
+            <View style={styles.featuredCircle2} />
+            <View style={styles.featuredTags}>
+              <View style={styles.featuredTagPriority}>
+                <Text style={styles.featuredTagPriorityText}>⚡ {featuredInsight.priority}</Text>
+              </View>
+              <View style={styles.featuredTagType}>
+                <Text style={styles.featuredTagTypeText}>{featuredInsight.tag}</Text>
+              </View>
+            </View>
+            <Text style={styles.featuredTitle}>{featuredInsight.title}</Text>
+            <Text style={styles.featuredBody}>{featuredInsight.body}</Text>
+            <Text style={styles.featuredLink}>{featuredInsight.link}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.emptyFeatured}>
+            <Text style={styles.emptyFeaturedTitle}>No insights yet</Text>
+            <Text style={styles.emptyFeaturedSub}>
+              Add your medications and complete a check-in to start generating personalized insights.
+            </Text>
+          </View>
+        )}
+
+        {/* SECONDARY INSIGHTS */}
+        {secondaryInsights.map((ins) => {
+          const pCol = PRIORITY_COLORS[ins.priority] ?? PRIORITY_COLORS['Info'];
+          return (
+            <TouchableOpacity key={ins.id} style={styles.secCard} activeOpacity={0.8}>
+              <View style={styles.secRow}>
+                <View style={styles.secIconWrap}>
+                  <Text style={styles.secIcon}>{ins.icon ?? '💡'}</Text>
+                </View>
+                <View style={styles.secMeta}>
+                  <View style={styles.secTitleRow}>
+                    <Text style={styles.secTitle}>{ins.title}</Text>
+                    <View style={[styles.secBadge, { backgroundColor: pCol.bg, borderColor: pCol.border }]}>
+                      <Text style={[styles.secBadgeText, { color: pCol.text }]}>{ins.priority}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.secBody}>{ins.body}</Text>
+                  <Text style={styles.secLink}>{ins.link}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* ADHERENCE SUMMARY */}
+        <Text style={styles.sectionLabel}>ADHERENCE SUMMARY</Text>
+
+        <View style={styles.adherenceCard}>
+          <View style={styles.adherenceCircle}>
+            <Text style={styles.adherencePct}>{avgAdherence ?? 0}%</Text>
+          </View>
+          <View style={styles.adherenceInfo}>
+            <Text style={styles.adherenceTitle}>
+              {(avgAdherence ?? 0) >= 80 ? 'Great adherence this week!' : 'Keep tracking your doses!'}
+            </Text>
+            <Text style={styles.adherenceSub}>
+              {checkins.length > 0
+                ? `Based on ${checkins.length} check-in${checkins.length !== 1 ? 's' : ''}`
+                : 'Log check-ins to see your adherence'}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.legal}>Educational guidance only · not medical advice</Text>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#EDF2F0' },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 40 },
+
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 18,
+  },
+  pageTitle: { fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
+  newBadge: {
+    paddingVertical: 5, paddingHorizontal: 12, borderRadius: 999,
+    borderWidth: 1.2, borderColor: colors.primary, backgroundColor: colors.primary50,
+  },
+  newBadgeText: { fontSize: 12.5, fontWeight: '700', color: colors.primaryDark },
+
+  /* FEATURED */
+  featuredCard: {
+    backgroundColor: '#0A4A38', borderRadius: 18,
+    padding: 22, marginBottom: 14, overflow: 'hidden',
+    shadowColor: '#0A4A38', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22, shadowRadius: 14, elevation: 8,
+  },
+  featuredCircle1: {
+    position: 'absolute', right: -20, top: -20,
+    width: 110, height: 110, borderRadius: 55,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  featuredCircle2: {
+    position: 'absolute', right: 40, bottom: -30,
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  featuredTags: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  featuredTagPriority: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999,
+  },
+  featuredTagPriorityText: { fontSize: 11.5, fontWeight: '700', color: '#FFFFFF' },
+  featuredTagType: {
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999,
+  },
+  featuredTagTypeText: { fontSize: 11.5, fontWeight: '600', color: 'rgba(255,255,255,0.82)' },
+  featuredTitle: {
+    fontSize: 20, fontWeight: '800', color: '#FFFFFF',
+    letterSpacing: -0.3, lineHeight: 25, marginBottom: 10,
+  },
+  featuredBody: {
+    fontSize: 14, color: 'rgba(255,255,255,0.76)', lineHeight: 21, marginBottom: 14,
+  },
+  featuredLink: { fontSize: 13.5, fontWeight: '700', color: 'rgba(255,255,255,0.62)' },
+
+  /* EMPTY FEATURED */
+  emptyFeatured: {
+    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24,
+    alignItems: 'center', marginBottom: 14,
+    borderWidth: 1, borderColor: colors.borderSoft,
+  },
+  emptyFeaturedTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 8 },
+  emptyFeaturedSub: { fontSize: 13.5, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
+
+  /* SECONDARY CARDS */
+  secCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 14,
+    padding: 16, marginBottom: 10,
+    shadowColor: '#0F1F1B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
+  secRow: { flexDirection: 'row', gap: 12 },
+  secIconWrap: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: colors.backgroundAlt,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  secIcon: { fontSize: 22 },
+  secMeta: { flex: 1, gap: 4 },
+  secTitleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  secTitle: { fontSize: 14.5, fontWeight: '700', color: colors.text, flex: 1 },
+  secBadge: {
+    paddingVertical: 3, paddingHorizontal: 9,
+    borderRadius: 999, borderWidth: 1, flexShrink: 0,
+  },
+  secBadgeText: { fontSize: 11.5, fontWeight: '700' },
+  secBody: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
+  secLink: { fontSize: 12.5, fontWeight: '700', color: colors.primaryDark, marginTop: 2 },
+
+  /* ADHERENCE */
+  sectionLabel: {
+    fontSize: 11.5, fontWeight: '700', color: colors.textMuted,
+    letterSpacing: 1, marginBottom: 10, marginTop: 8,
+  },
+  adherenceCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 16,
+    backgroundColor: colors.primary50, borderRadius: 16, padding: 18,
+    borderWidth: 1, borderColor: colors.primary100, marginBottom: 20,
+    shadowColor: '#0F1F1B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
+  adherenceCircle: {
+    width: 68, height: 68, borderRadius: 34,
+    borderWidth: 4.5, borderColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF',
+  },
+  adherencePct: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
+  adherenceInfo: { flex: 1 },
+  adherenceTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  adherenceSub: { fontSize: 13, color: colors.textMuted },
+
+  legal: { fontSize: 11.5, color: colors.textMuted, textAlign: 'center' },
+});

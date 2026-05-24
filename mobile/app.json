@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.geneorx.app",
@@ -30,7 +32,9 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "permissions": ["INTERNET"]
+      "permissions": [
+        "INTERNET"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -41,7 +45,14 @@
       "expo-apple-authentication"
     ],
     "extra": {
-      "apiBaseUrl": "http://172.20.10.3:8000/api"
-    }
+      "apiBaseUrl": "https://geneorx.com/api",
+      "googleIosClientId": {},
+      "googleAndroidClientId": {},
+      "googleWebClientId": {},
+      "eas": {
+        "projectId": "549566bc-e300-46c2-a15e-44c62b508267"
+      }
+    },
+    "owner": "mtayyedd"
   }
 }

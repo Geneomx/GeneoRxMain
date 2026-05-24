@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -11,430 +10,308 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProfile } from '@/store/ProfileContext';
 import { useAuth } from '@/auth/AuthContext';
-import { Button } from '@/components/Button';
 import { Loader } from '@/components/Loader';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing } from '@/theme';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { AppTabsParamList } from '@/navigation/AppTabs';
 
 type Props = BottomTabScreenProps<AppTabsParamList, 'Home'>;
 
-interface StatCardProps {
-  label: string;
-  value: number | string;
-  onPress?: () => void;
-  accent?: boolean;
-}
+const MED_PALETTES = [
+  { bg: '#FFF0EE', dot: '#FF6B5B' },
+  { bg: '#EEF0FF', dot: '#6B7FFF' },
+  { bg: '#F0FFF4', dot: '#4CAF7D' },
+  { bg: '#FFF8EE', dot: '#FF9940' },
+  { bg: '#F5EEFF', dot: '#9B6BFF' },
+];
 
-const StatCard: React.FC<StatCardProps> = ({ label, value, onPress, accent }) => (
-  <TouchableOpacity
-    style={[styles.statCard, accent && styles.statCardAccent]}
-    onPress={onPress}
-    activeOpacity={onPress ? 0.75 : 1}
-  >
-    <Text style={[styles.statValue, accent && styles.statValueAccent]}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </TouchableOpacity>
+const MED_TIMES = ['Morning', 'Morning', 'Lunch', 'Evening'];
+
+const MedIcon: React.FC<{ index: number }> = ({ index }) => {
+  const p = MED_PALETTES[index % MED_PALETTES.length];
+  return (
+    <View style={[styles.medIcon, { backgroundColor: p.bg }]}>
+      <View style={[styles.medIconDot, { backgroundColor: p.dot }]} />
+    </View>
+  );
+};
+
+const CheckCircle: React.FC<{ checked: boolean }> = ({ checked }) => (
+  <View style={[styles.check, checked && styles.checkDone]}>
+    {checked && <Text style={styles.checkMark}>✓</Text>}
+  </View>
 );
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { data, loading, refresh } = useProfile();
-  const { user, isGuest } = useAuth();
+  const { user } = useAuth();
+  const [checkedMeds, setCheckedMeds] = useState<Record<number, boolean>>({});
 
   if (loading && !data) return <Loader />;
 
-  const nameToShow   = data?.user?.name || user?.name || 'there';
-  const initials     = nameToShow.charAt(0).toUpperCase();
-  const medCount     = data?.medications?.length ?? 0;
-  const symptomCount = data?.symptoms?.length ?? 0;
-  const checkinCount = data?.checkins?.length ?? 0;
-  const lastCheckin  = data?.checkins?.[0];
-  const adherence    = lastCheckin?.adherencePct;
+  const nameToShow = data?.user?.name || user?.name || 'there';
+  const meds = data?.medications ?? [];
+  const checkins = data?.checkins ?? [];
+  const lastCheckin = checkins[0];
+  const adherence = lastCheckin?.adherencePct ?? null;
+  const checkedCount = Object.values(checkedMeds).filter(Boolean).length;
 
   const greeting = (() => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (h < 12) return 'Good morning,';
+    if (h < 18) return 'Good afternoon,';
+    return 'Good evening,';
   })();
+
+  const toggleMed = (i: number) =>
+    setCheckedMeds((prev) => ({ ...prev, [i]: !prev[i] }));
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#FFFFFF" />
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* HEADER: BRAND + AVATAR */}
-        <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <Image
-              source={require('../../assets/logo.png')}
-              style={styles.brandLogo}
-              resizeMode="contain"
-            />
-            <Text style={styles.brandName}>GeneoRx</Text>
-          </View>
-          <View style={[styles.planBadge, isGuest && styles.planBadgeGuest]}>
-            <Text style={[styles.planBadgeText, isGuest && styles.planBadgeTextGuest]}>
-              {isGuest ? 'Guest' : 'Free'}
-            </Text>
-          </View>
-        </View>
-
-        {/* HERO GREETING */}
+        {/* ── HERO BANNER ── */}
         <View style={styles.hero}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
-          <Text style={styles.greetingLabel}>{greeting},</Text>
-          <Text style={styles.greetingName}>
-            {nameToShow}.
-          </Text>
-          <Text style={styles.greetingSub}>
-            Here is your <Text style={styles.greetingItalic}>health snapshot</Text> for today.
-          </Text>
-        </View>
-
-        {/* TODAY CARD */}
-        <View style={styles.todayCard}>
-          <View style={styles.todayHead}>
-            <View>
-              <Text style={styles.todayTag}>  Today</Text>
-              <Text style={styles.todayTitle}>
-                {lastCheckin ? 'Latest check-in' : 'No check-ins yet'}
-              </Text>
+          <View style={styles.heroCircle1} />
+          <View style={styles.heroCircle2} />
+          <Text style={styles.heroGreeting}>{greeting}</Text>
+          <Text style={styles.heroName}>{nameToShow} 👋</Text>
+          <View style={styles.heroStats}>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatNum}>{checkedCount}/{meds.length || '—'}</Text>
+              <Text style={styles.heroStatLabel}>Today's doses</Text>
             </View>
-            {adherence !== undefined && adherence !== null && (
-              <View style={styles.adherencePill}>
-                <View style={styles.adherenceDot} />
-                <Text style={styles.adherenceText}>{adherence}% adherence</Text>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatNum}>{adherence !== null ? `${adherence}%` : '—'}</Text>
+              <Text style={styles.heroStatLabel}>Weekly adherence</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatNum}>{checkins.length > 0 ? checkins.length : '0'}</Text>
+              <Text style={styles.heroStatLabel}>Check-ins</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── TODAY'S MEDICATIONS ── */}
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionLabel}>TODAY'S MEDICATIONS</Text>
+        </View>
+
+        <View style={styles.card}>
+          {meds.length === 0 ? (
+            <TouchableOpacity style={styles.emptyState} onPress={() => navigation.navigate('Treatments')} activeOpacity={0.7}>
+              <Text style={styles.emptyTitle}>No medications added yet</Text>
+              <Text style={styles.emptySub}>Tap to add your medications →</Text>
+            </TouchableOpacity>
+          ) : (
+            meds.map((med, i) => (
+              <React.Fragment key={`med-${i}`}>
+                <TouchableOpacity style={styles.medRow} onPress={() => toggleMed(i)} activeOpacity={0.7}>
+                  <MedIcon index={i} />
+                  <View style={styles.medInfo}>
+                    <Text style={styles.medName}>{med.medId}</Text>
+                    <Text style={styles.medMeta}>
+                      {med.dose ? `${med.dose} · ` : ''}{MED_TIMES[i % MED_TIMES.length]}
+                    </Text>
+                  </View>
+                  <CheckCircle checked={!!checkedMeds[i]} />
+                </TouchableOpacity>
+                {i < meds.length - 1 && <View style={styles.divider} />}
+              </React.Fragment>
+            ))
+          )}
+        </View>
+
+        {/* ── LATEST INSIGHT ── */}
+        {checkins.length > 0 && (
+          <>
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionLabel}>LATEST INSIGHT</Text>
+            </View>
+            <TouchableOpacity style={styles.insightCard} activeOpacity={0.88} onPress={() => navigation.navigate('Profile')}>
+              <View style={styles.insightCircle1} />
+              <View style={styles.insightCircle2} />
+              <View style={styles.insightTags}>
+                <View style={styles.tagSignal}><Text style={styles.tagSignalText}>⚡ New Signal</Text></View>
+                {meds[0] && (
+                  <View style={styles.tagMed}><Text style={styles.tagMedText}>{meds[0].medId.slice(0, 8)}</Text></View>
+                )}
               </View>
-            )}
-          </View>
-          <Text style={styles.todayBody}>
-            {lastCheckin
-              ? `Recorded ${new Date(lastCheckin.dateISO).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}. Keep your streak going   log how you have been feeling this week.`
-              : 'Start tracking your medications and symptoms to see meaningful patterns emerge over time.'}
-          </Text>
-          <Button
-            title={lastCheckin ? 'Log another check-in' : 'Start your first check-in'}
-            onPress={() => navigation.navigate('CheckIns')}
-            style={{ marginTop: 6 }}
-          />
-        </View>
+              <Text style={styles.insightTitle}>
+                {lastCheckin?.notes ? lastCheckin.notes : 'Review your health patterns'}
+              </Text>
+              <Text style={styles.insightBody}>
+                {adherence !== null
+                  ? `Your last check-in shows ${adherence}% adherence. Keep tracking to uncover meaningful patterns.`
+                  : 'Log more check-ins to get personalized insights connecting your medications and symptoms.'}
+              </Text>
+              <Text style={styles.insightLink}>View full insight →</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
-        {/* STATS */}
-        <View style={styles.statsRow}>
-          <StatCard
-            label="Medications"
-            value={medCount}
-            accent
-            onPress={() => navigation.navigate('Treatments')}
-          />
-          <StatCard
-            label="Symptoms"
-            value={symptomCount}
-            onPress={() => navigation.navigate('Treatments')}
-          />
-          <StatCard
-            label="Check-ins"
-            value={checkinCount}
-            onPress={() => navigation.navigate('CheckIns')}
-          />
-        </View>
-
-        {/* TREATMENT PLAN */}
-        <View style={styles.linkCard}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.linkCardTitle}>Treatment plan</Text>
-            <Text style={styles.linkCardSub}>Review or update your medications and symptoms</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.linkCardArrow}
-            onPress={() => navigation.navigate('Treatments')}
-          >
-            <Text style={styles.linkCardArrowText}>→</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* FIRST-RUN PROMPT */}
-        {checkinCount === 0 && (
-          <View style={styles.prompt}>
+        {/* ── FIRST RUN ── */}
+        {checkins.length === 0 && meds.length === 0 && (
+          <View style={styles.promptCard}>
             <Text style={styles.promptNum}>01</Text>
             <Text style={styles.promptTitle}>Get started with GeneoRx</Text>
             <Text style={styles.promptBody}>
-              Add your medications and symptoms to get personalized insights connecting what you take to how you feel.
+              Add your medications and log a check-in to start getting personalized insights.
             </Text>
-            <Button
-              title="Set up your profile"
-              variant="secondary"
-              onPress={() => navigation.navigate('Treatments')}
-              style={{ marginTop: 12 }}
-            />
+            <TouchableOpacity style={styles.promptBtn} onPress={() => navigation.navigate('Treatments')} activeOpacity={0.8}>
+              <Text style={styles.promptBtnText}>Set up your profile →</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        <Text style={styles.legal}>
-          Educational guidance only   not medical advice.
-        </Text>
+        <Text style={styles.legal}>Educational guidance only · not medical advice</Text>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xxl,
-    gap: spacing.md,
-  },
+  safe: { flex: 1, backgroundColor: '#EDF2F0' },
+  content: { paddingBottom: 32 },
 
-  /* HEADER */
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  brandLogo: { width: 28, height: 28 },
-  brandName: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text,
-    letterSpacing: -0.2,
-  },
-  planBadge: {
-    paddingVertical: 5,
-    paddingHorizontal: 11,
-    borderRadius: 6,
-    backgroundColor: colors.primary50,
-  },
-  planBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.primaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
-  },
-  planBadgeGuest: { backgroundColor: colors.surfaceAlt },
-  planBadgeTextGuest: { color: colors.textMuted },
-
-  /* HERO GREETING */
+  /* HERO */
   hero: {
-    paddingVertical: 12,
-    marginBottom: 6,
+    backgroundColor: '#0A4A38',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    borderRadius: 20,
+    padding: 22,
+    paddingBottom: 24,
+    overflow: 'hidden',
   },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.primary50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-    borderWidth: 1.5,
-    borderColor: colors.primary100,
+  heroCircle1: {
+    position: 'absolute', right: -30, top: -30,
+    width: 130, height: 130, borderRadius: 65,
+    backgroundColor: 'rgba(255,255,255,0.07)',
   },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.primaryDark,
+  heroCircle2: {
+    position: 'absolute', right: 30, bottom: -40,
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  greetingLabel: {
-    fontSize: 14,
-    color: colors.textMuted,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  greetingName: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: colors.text,
-    letterSpacing: -0.8,
-    lineHeight: 36,
-    marginBottom: 10,
-  },
-  greetingSub: {
-    fontSize: 15,
-    color: colors.textSoft,
-    lineHeight: 22,
-  },
-  greetingItalic: {
-    fontStyle: 'italic',
-    fontWeight: '400',
-    color: colors.primaryDark,
-  },
+  heroGreeting: { fontSize: 14, color: 'rgba(255,255,255,0.72)', fontWeight: '500', marginBottom: 3 },
+  heroName: { fontSize: 28, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.5, marginBottom: 20 },
+  heroStats: { flexDirection: 'row', alignItems: 'center' },
+  heroStat: { flex: 1, alignItems: 'center' },
+  heroStatNum: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.4 },
+  heroStatLabel: { fontSize: 11, color: 'rgba(255,255,255,0.62)', fontWeight: '500', marginTop: 4, textAlign: 'center' },
+  heroStatDivider: { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.18)' },
 
-  /* TODAY CARD */
-  todayCard: {
-    backgroundColor: colors.background,
-    borderRadius: 14,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    gap: 10,
+  /* SECTION */
+  sectionRow: { paddingHorizontal: spacing.lg, marginTop: 22, marginBottom: 10 },
+  sectionLabel: { fontSize: 11.5, fontWeight: '700', color: colors.textMuted, letterSpacing: 1 },
+
+  /* CARD */
+  card: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: spacing.lg,
+    borderRadius: 16,
+    overflow: 'hidden',
     shadowColor: '#0F1F1B',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  todayHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 4,
-  },
-  todayTag: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primaryDark,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  todayTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    letterSpacing: -0.3,
-  },
-  adherencePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: colors.successBg,
-  },
-  adherenceDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.success,
-  },
-  adherenceText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: colors.success,
-  },
-  todayBody: {
-    fontSize: 14,
-    color: colors.textSoft,
-    lineHeight: 21,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
 
-  /* STATS */
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  /* MED ROW */
+  medRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
   },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: 13,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    gap: 4,
+  medIcon: {
+    width: 44, height: 44, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
   },
-  statCardAccent: {
-    backgroundColor: colors.primary50,
-    borderColor: colors.primary100,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.text,
-    letterSpacing: -0.5,
-  },
-  statValueAccent: { color: colors.primaryDark },
-  statLabel: {
-    fontSize: 11.5,
-    color: colors.textMuted,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
+  medIconDot: { width: 20, height: 20, borderRadius: 10 },
+  medInfo: { flex: 1 },
+  medName: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 },
+  medMeta: { fontSize: 13, color: colors.textMuted },
+  divider: { height: 1, backgroundColor: '#F2F5F4', marginLeft: 72 },
 
-  /* LINK CARD */
-  linkCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-    borderRadius: 13,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
+  /* CHECK */
+  check: {
+    width: 28, height: 28, borderRadius: 14,
+    borderWidth: 1.5, borderColor: '#D5DDD9',
+    backgroundColor: '#FAFAFA',
+    alignItems: 'center', justifyContent: 'center',
   },
-  linkCardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 2,
+  checkDone: { backgroundColor: colors.primary50, borderColor: colors.primary },
+  checkMark: { fontSize: 13, fontWeight: '700', color: colors.primary },
+
+  /* EMPTY */
+  emptyState: { padding: 28, alignItems: 'center' },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 5 },
+  emptySub: { fontSize: 13, color: colors.primaryDark, fontWeight: '600' },
+
+  /* INSIGHT CARD */
+  insightCard: {
+    backgroundColor: '#0A4A38',
+    marginHorizontal: spacing.lg,
+    borderRadius: 16,
+    padding: 20,
+    overflow: 'hidden',
+    shadowColor: '#0A4A38',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    elevation: 8,
   },
-  linkCardSub: {
-    fontSize: 13,
-    color: colors.textMuted,
-    lineHeight: 18,
+  insightCircle1: {
+    position: 'absolute', right: -20, top: -20,
+    width: 110, height: 110, borderRadius: 55,
+    backgroundColor: 'rgba(255,255,255,0.07)',
   },
-  linkCardArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary50,
-    alignItems: 'center',
-    justifyContent: 'center',
+  insightCircle2: {
+    position: 'absolute', right: 40, bottom: -30,
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  linkCardArrowText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.primaryDark,
+  insightTags: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  tagSignal: {
+    backgroundColor: 'rgba(255,255,255,0.16)', paddingVertical: 4,
+    paddingHorizontal: 10, borderRadius: 999,
   },
+  tagSignalText: { fontSize: 11.5, fontWeight: '700', color: '#FFFFFF' },
+  tagMed: {
+    backgroundColor: 'rgba(255,255,255,0.10)', paddingVertical: 4,
+    paddingHorizontal: 10, borderRadius: 999,
+  },
+  tagMedText: { fontSize: 11.5, fontWeight: '600', color: 'rgba(255,255,255,0.82)' },
+  insightTitle: {
+    fontSize: 19, fontWeight: '800', color: '#FFFFFF',
+    letterSpacing: -0.3, lineHeight: 24, marginBottom: 8,
+  },
+  insightBody: {
+    fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 21, marginBottom: 14,
+  },
+  insightLink: { fontSize: 13.5, fontWeight: '700', color: 'rgba(255,255,255,0.62)' },
 
   /* PROMPT */
-  prompt: {
-    backgroundColor: colors.text,
-    borderRadius: 16,
-    padding: spacing.lg,
+  promptCard: {
+    backgroundColor: colors.text, marginHorizontal: spacing.lg,
+    borderRadius: 16, padding: spacing.lg, marginTop: 4,
   },
   promptNum: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primaryLight,
-    fontStyle: 'italic',
-    marginBottom: 10,
+    fontSize: 11, fontWeight: '800', color: colors.primaryLight,
+    fontStyle: 'italic', marginBottom: 8, letterSpacing: 1,
   },
-  promptTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    letterSpacing: -0.3,
-  },
-  promptBody: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.75)',
-    lineHeight: 21,
-  },
+  promptTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF', marginBottom: 8, letterSpacing: -0.3 },
+  promptBody: { fontSize: 14, color: 'rgba(255,255,255,0.72)', lineHeight: 21, marginBottom: 16 },
+  promptBtn: { backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  promptBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 
-  legal: {
-    fontSize: 11.5,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 6,
-  },
+  legal: { fontSize: 11.5, color: colors.textMuted, textAlign: 'center', marginTop: 24, paddingHorizontal: spacing.lg },
 });

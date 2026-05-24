@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GeneoRx — Feature Graphic 1024x500</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@1,8..60,400&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #1a1a1a; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* THIS IS THE EXACT EXPORT SIZE — 1024x500 */
+  .feature {
+    width: 1024px;
+    height: 500px;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 85% 30%, rgba(63, 179, 154, 0.35) 0%, transparent 50%),
+      radial-gradient(circle at 15% 85%, rgba(255, 255, 255, 0.08) 0%, transparent 40%),
+      linear-gradient(135deg, #0E7C66 0%, #075F4F 50%, #053D33 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 64px;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  /* Decorative orbits */
+  .feature::before, .feature::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.06);
+    pointer-events: none;
+  }
+  .feature::before {
+    width: 700px; height: 700px;
+    right: -200px; top: -150px;
+  }
+  .feature::after {
+    width: 450px; height: 450px;
+    right: -100px; top: -50px;
+    border-color: rgba(255,255,255,0.10);
+  }
+
+  /* Left content */
+  .content {
+    position: relative;
+    z-index: 2;
+    max-width: 540px;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .brand-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.20);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #fff;
+  }
+  .brand-name {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+  }
+
+  h1 {
+    font-size: 52px;
+    line-height: 1.05;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    margin-bottom: 18px;
+  }
+  h1 em {
+    font-family: 'Source Serif 4', serif;
+    font-style: italic;
+    font-weight: 400;
+    color: #B0DCD0;
+    letter-spacing: -1px;
+  }
+
+  .tagline {
+    font-size: 18px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.5;
+    max-width: 480px;
+  }
+
+  /* Right side - phone mockup */
+  .visual {
+    position: absolute;
+    right: 64px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 280px;
+    height: 380px;
+    z-index: 1;
+  }
+
+  .phone {
+    position: relative;
+    width: 220px;
+    height: 380px;
+    background: linear-gradient(160deg, #1a2622 0%, #0F1F1B 100%);
+    border-radius: 36px;
+    padding: 10px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.10) inset,
+      0 30px 80px rgba(0,0,0,0.40),
+      0 10px 30px rgba(0,0,0,0.25);
+    transform: rotate(-6deg);
+    margin-left: 30px;
+  }
+  /* Dynamic Island */
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 20px;
+    background: #000;
+    border-radius: 12px;
+    z-index: 5;
+  }
+
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #FBF9F5 0%, #fff 100%);
+    border-radius: 26px;
+    overflow: hidden;
+    position: relative;
+    padding: 50px 16px 16px;
+  }
+
+  .screen-card {
+    background: #fff;
+    border: 1px solid rgba(14, 124, 102, 0.20);
+    border-radius: 12px;
+    padding: 14px 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(14, 124, 102, 0.08);
+  }
+  .screen-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .screen-pill {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0E7C66, #075F4F);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    box-shadow: 0 3px 8px rgba(14, 124, 102, 0.30);
+  }
+  .screen-card-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #0F1F1B;
+    line-height: 1.2;
+  }
+  .screen-card-sub {
+    font-size: 9px;
+    color: #6B7B77;
+    margin-top: 2px;
+  }
+  .screen-card-body {
+    font-size: 9px;
+    line-height: 1.5;
+    color: #3C4F4A;
+  }
+
+  .screen-chip-row {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+  .screen-chip {
+    padding: 3px 8px;
+    background: #ECF6F3;
+    border: 1px solid #B0DCD0;
+    border-radius: 999px;
+    font-size: 8px;
+    font-weight: 600;
+    color: #075F4F;
+  }
+  .screen-chip.alt { background: #fff; color: #6B7B77; border-color: #DDE6E3; }
+
+  /* Floating badge */
+  .float-badge {
+    position: absolute;
+    background: #fff;
+    color: #0F1F1B;
+    padding: 8px 14px;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.20);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .float-badge-icon {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #0E7C66, #3FB39A);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+  }
+  .float-badge.top {
+    top: 30px;
+    right: 0;
+    transform: rotate(4deg);
+  }
+  .float-badge.bottom {
+    bottom: 40px;
+    left: -20px;
+    transform: rotate(-3deg);
+  }
+  .float-badge-label {
+    font-size: 9px;
+    color: #6B7B77;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+  }
+
+  /* Export hint - only visible on actual page, not in screenshot */
+  .export-hint {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 999;
+  }
+
+  /* CAPTURE MODE - when ?capture=1 is in URL, strip everything except the banner */
+  body.capture { background: #fff !important; padding: 0 !important; margin: 0 !important; min-height: 500px !important; display: block !important; }
+  body.capture .feature { border-radius: 0 !important; box-shadow: none !important; }
+  body.capture .export-hint { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="feature">
+
+  <!-- Left: branding + headline -->
+  <div class="content">
+    <div class="brand">
+      <div class="brand-logo">Rx</div>
+      <div class="brand-name">GeneoRx</div>
+    </div>
+
+    <h1>The <em>clarity</em><br>behind your medications.</h1>
+
+    <p class="tagline">Connect your medications, symptoms, and nutrient levels — and finally see the full picture of your health.</p>
+  </div>
+
+  <!-- Right: phone mockup -->
+  <div class="visual">
+    <div class="phone">
+      <div class="phone-screen">
+
+        <div class="screen-card">
+          <div class="screen-card-head">
+            <div class="screen-pill">B12</div>
+            <div>
+              <div class="screen-card-title">Vitamin B12 signal</div>
+              <div class="screen-card-sub">Detected from your profile</div>
+            </div>
+          </div>
+          <div class="screen-card-body">
+            Long-term Metformin may reduce B12 absorption. Your fatigue pattern aligns.
+          </div>
+        </div>
+
+        <div class="screen-card" style="border-color:#D7EDE7;">
+          <div class="screen-card-title" style="font-size:10px;">How are you feeling?</div>
+          <div class="screen-chip-row">
+            <span class="screen-chip">Fatigue</span>
+            <span class="screen-chip">Brain fog</span>
+            <span class="screen-chip alt">Headache</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Floating badges -->
+    <div class="float-badge top">
+      <div class="float-badge-icon">★</div>
+      <div>
+        <div class="float-badge-label">Insight</div>
+        <div>Vitamin B12</div>
+      </div>
+    </div>
+    <div class="float-badge bottom">
+      <div class="float-badge-icon">✓</div>
+      <div>
+        <div class="float-badge-label">Adherence</div>
+        <div>92%</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="export-hint">
+  📸 Take a screenshot of the teal banner above at exactly 1024×500 px → save as PNG → upload to Play Console
+</div>
+
+<script>
+  // Auto-apply capture mode if URL has ?capture=1 (used by headless Chrome export)
+  if (new URLSearchParams(location.search).get('capture') === '1') {
+    document.body.classList.add('capture');
+  }
+</script>
+
+</body>
+</html>
