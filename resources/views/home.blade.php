@@ -40,6 +40,11 @@
     --shadow:    0 6px 24px rgba(15, 31, 27, 0.07);
     --shadow-lg: 0 18px 48px rgba(15, 31, 27, 0.12);
     --shadow-xl: 0 30px 80px rgba(7, 95, 79, 0.18);
+
+    --hero-accent: #0E7C66;
+    --hero-accent-dark: #075F4F;
+    --hero-accent-rgb: 14, 124, 102;
+    --hero-accent-light-rgb: 63, 179, 154;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -129,16 +134,18 @@
   }
   .nav-toggle {
     display: none;
-    width: 40px; height: 40px;
+    width: 44px; height: 44px;
     border: 1px solid var(--border);
     background: var(--bg);
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
     padding: 0;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
   }
   .nav-toggle span {
     display: block;
@@ -164,23 +171,26 @@
   .mobile-menu.open { display: block; }
   .mobile-menu ul { list-style: none; display: flex; flex-direction: column; gap: 2px; margin-bottom: 16px; }
   .mobile-menu li a {
-    display: block;
-    padding: 12px 14px;
-    font-size: 15px;
+    display: flex;
+    align-items: center;
+    padding: 14px 14px;
+    min-height: 50px;
+    font-size: 16px;
     font-weight: 500;
     color: var(--text-soft);
-    border-radius: 8px;
+    border-radius: 10px;
     transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
   .mobile-menu li a:hover { background: var(--bg-muted); color: var(--text); }
   .mobile-menu-cta {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 9px;
     padding-top: 16px;
     border-top: 1px solid var(--border-soft);
   }
-  .mobile-menu-cta .btn { width: 100%; height: 46px; }
+  .mobile-menu-cta .btn { width: 100%; height: 50px; font-size: 15px; border-radius: 12px; }
 
   .btn {
     display: inline-flex;
@@ -237,16 +247,46 @@
       radial-gradient(700px 400px at 10% 90%, rgba(14, 124, 102, 0.08), transparent 60%),
       radial-gradient(500px 350px at 50% 60%, rgba(14, 124, 102, 0.04), transparent 70%),
       linear-gradient(180deg, var(--bg) 0%, var(--bg-warm) 100%);
+    transition: background 0.7s ease;
+  }
+  /* Mobile hero gets a cleaner, brighter gradient */
+  @media (max-width: 520px) {
+    .hero {
+      background:
+        radial-gradient(600px 400px at 80% 0%, rgba(14, 124, 102, 0.10), transparent 60%),
+        radial-gradient(500px 300px at 10% 100%, rgba(14, 124, 102, 0.06), transparent 60%),
+        linear-gradient(180deg, #FAFCFB 0%, #F0F7F5 100%);
+    }
   }
   .hero::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent 0%, var(--teal-200) 50%, transparent 100%);
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 24% 28%, rgba(63, 179, 154, 0.12), transparent 24%),
+      radial-gradient(circle at 72% 42%, rgba(14, 124, 102, 0.10), transparent 28%),
+      linear-gradient(90deg, transparent 0%, var(--teal-200) 50%, transparent 100%);
+    background-size: 120% 120%, 130% 130%, 100% 1px;
+    background-position: 0% 40%, 100% 50%, 0 100%;
+    background-repeat: no-repeat;
     opacity: 0.5;
+    animation: heroAmbientDrift 18s ease-in-out infinite alternate;
+  }
+
+  .hero-logo-float {
+    position: absolute;
+    width: min(360px, 42vw);
+    height: min(360px, 42vw);
+    right: 8%;
+    top: 22%;
+    pointer-events: none;
+    opacity: 0.055;
+    background: center / contain no-repeat url('{{ asset('logo.svg') }}');
+    filter: saturate(1.25);
+    mix-blend-mode: multiply;
+    animation: heroLogoFloat 14s ease-in-out infinite alternate;
+    z-index: 0;
   }
 
   .hero-orbits {
@@ -266,16 +306,32 @@
   .hero-orbits::before {
     width: 800px; height: 800px;
     right: -240px; top: -200px;
+    animation-duration: 18s;
   }
   .hero-orbits::after {
     width: 540px; height: 540px;
     right: -110px; top: -60px;
     border-color: rgba(14, 124, 102, 0.08);
     animation-delay: 3s;
+    animation-duration: 15s;
+  }
+  @keyframes heroAmbientDrift {
+    0% { background-position: 0% 40%, 100% 50%, 0 100%; opacity: 0.42; }
+    50% { background-position: 38% 24%, 62% 68%, 0 100%; opacity: 0.62; }
+    100% { background-position: 72% 52%, 28% 36%, 0 100%; opacity: 0.48; }
+  }
+  @keyframes heroLogoFloat {
+    0% { transform: translate3d(-18px, 20px, 0) rotate(-8deg) scale(0.92); opacity: 0.04; }
+    50% { transform: translate3d(12px, -12px, 0) rotate(6deg) scale(1.05); opacity: 0.075; }
+    100% { transform: translate3d(34px, 18px, 0) rotate(-3deg) scale(0.98); opacity: 0.052; }
   }
   @keyframes orbitPulse {
     0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.04); opacity: 0.6; }
+    50% { transform: scale(1.05) rotate(4deg); opacity: 0.58; }
+  }
+  @keyframes heroBlockIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
   /* Decorative dots in hero */
@@ -291,27 +347,32 @@
     border-radius: 50%;
     background: var(--teal);
     opacity: 0.10;
+    animation: heroDotFloat 9s ease-in-out infinite;
   }
-  .hero-dots span:nth-child(1) { top: 15%; left: 8%; width: 8px; height: 8px; opacity: 0.08; }
-  .hero-dots span:nth-child(2) { top: 35%; left: 3%; width: 5px; height: 5px; opacity: 0.12; }
-  .hero-dots span:nth-child(3) { bottom: 20%; left: 12%; opacity: 0.07; }
-  .hero-dots span:nth-child(4) { top: 10%; right: 15%; width: 4px; height: 4px; opacity: 0.10; }
-  .hero-dots span:nth-child(5) { bottom: 30%; right: 5%; width: 7px; height: 7px; opacity: 0.06; }
+  .hero-dots span:nth-child(1) { top: 15%; left: 8%; width: 8px; height: 8px; opacity: 0.08; animation-delay: 0s; }
+  .hero-dots span:nth-child(2) { top: 35%; left: 3%; width: 5px; height: 5px; opacity: 0.12; animation-delay: 1.6s; }
+  .hero-dots span:nth-child(3) { bottom: 20%; left: 12%; opacity: 0.07; animation-delay: 3.1s; }
+  .hero-dots span:nth-child(4) { top: 10%; right: 15%; width: 4px; height: 4px; opacity: 0.10; animation-delay: 2.3s; }
+  .hero-dots span:nth-child(5) { bottom: 30%; right: 5%; width: 7px; height: 7px; opacity: 0.06; animation-delay: 4s; }
+  @keyframes heroDotFloat {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(14px, -18px, 0) scale(1.45); }
+  }
 
   .hero-inner {
     position: relative;
-    max-width: 1180px;
+    max-width: 760px;
     margin: 0 auto;
-    padding: 56px 28px 100px;
-    display: grid;
-    grid-template-columns: 1.05fr 1fr;
-    gap: 64px;
-    align-items: center;
+    padding: 42px 28px 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .hero-eyebrow {
     display: inline-flex;
     align-items: center;
+    align-self: flex-start;
     gap: 9px;
     padding: 6px 16px 6px 8px;
     border-radius: 999px;
@@ -325,7 +386,7 @@
     transform: translateY(16px);
   }
   .hero-eyebrow-dot {
-    width: 24px; height: 24px;
+    width: 28px; height: 28px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--teal), var(--teal-dark));
     color: #fff;
@@ -335,12 +396,89 @@
     font-size: 11px;
     font-weight: 800;
     box-shadow: 0 2px 8px rgba(14, 124, 102, 0.30);
+    flex-shrink: 0;
+    overflow: hidden;
+    padding: 6px;
   }
+  .hero-eyebrow-dot img { filter: brightness(0) invert(1); }
   .hero-eyebrow-text {
     font-size: 12.5px;
     font-weight: 600;
     color: var(--text-soft);
     letter-spacing: 0.15px;
+  }
+
+  .hero-title {
+    max-width: 680px;
+    font-size: clamp(42px, 7vw, 76px);
+    line-height: 0.96;
+    letter-spacing: -3.2px;
+    color: var(--text);
+    font-weight: 900;
+    margin: 0 0 18px;
+    animation: heroBlockIn 0.55s ease 0.08s forwards;
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  .hero-title em {
+    position: relative;
+    display: inline-block;
+    font-family: 'Source Serif 4', serif;
+    font-weight: 400;
+    color: var(--teal-dark);
+  }
+  .hero-title em::after {
+    content: '';
+    position: absolute;
+    left: 2%;
+    right: 2%;
+    bottom: 7px;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(63, 179, 154, 0.28), rgba(14, 124, 102, 0.12));
+    z-index: -1;
+  }
+  .hero-subtitle {
+    max-width: 620px;
+    font-size: 18px;
+    line-height: 1.72;
+    color: var(--text-soft);
+    margin-bottom: 24px;
+    animation: heroBlockIn 0.55s ease 0.16s forwards;
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  .hero-trust-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    animation: heroBlockIn 0.55s ease 0.24s forwards;
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  .hero-trust-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 13px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.84);
+    border: 1px solid rgba(176, 220, 208, 0.82);
+    box-shadow: 0 8px 22px rgba(15, 31, 27, 0.06);
+    color: var(--text-soft);
+    font-size: 13px;
+    font-weight: 700;
+    backdrop-filter: blur(10px);
+  }
+  .hero-trust-pill::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal-light), var(--teal-dark));
+    box-shadow: 0 0 0 4px rgba(63, 179, 154, 0.12);
   }
 
   .hero-actions {
@@ -364,518 +502,281 @@
     box-shadow: 0 6px 20px rgba(14, 124, 102, 0.12);
   }
 
-  /* HERO INFO — popup-style colorful cards */
-  .hero-info {
-    margin-top: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .hero-info-block {
-    position: relative;
-    overflow: hidden;
-    padding: 26px 28px;
-    border-radius: 20px;
-    background: #fff;
-    border: 1px solid;
-    border-left-width: 5px;
-    box-shadow: 0 14px 36px rgba(15, 31, 27, 0.07), 0 4px 10px rgba(15, 31, 27, 0.04);
-    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease;
+  /* HERO INFO — attractive carousel */
+  .hero-info-slider {
+    margin-top: 0;
+    width: 100%;
+    --slide-accent: var(--hero-accent);
+    --slide-accent-dark: var(--hero-accent-dark);
+    --slide-accent-rgb: var(--hero-accent-rgb);
+    --slide-accent-light-rgb: var(--hero-accent-light-rgb);
+    animation: heroBlockIn 0.6s ease 0.32s forwards;
     opacity: 0;
     transform: translateY(16px);
-    animation: heroBlockIn 0.6s ease forwards;
+    transition: color 0.35s ease;
   }
-  .hero-info-block::before {
-    content: '';
+
+  .hero-info-stage {
+    position: relative;
+  }
+
+  .hero-info-glow {
     position: absolute;
-    inset: 0;
+    inset: -8% -6% 8%;
+    background:
+      radial-gradient(circle at 12% 20%, rgba(var(--slide-accent-light-rgb), 0.34), transparent 48%),
+      radial-gradient(circle at 82% 72%, rgba(var(--slide-accent-rgb), 0.20), transparent 50%),
+      radial-gradient(circle at 52% 0%, rgba(255, 255, 255, 0.95), transparent 36%);
+    filter: blur(30px);
     pointer-events: none;
     z-index: 0;
+    animation: heroSlideGlow 10s ease-in-out infinite alternate;
+    transition: background 0.55s ease;
   }
-  /* Shine sweep effect on hover */
-  .hero-info-block::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 60%;
+
+  @keyframes heroSlideGlow {
+    0% { transform: translate3d(-12px, 8px, 0) scale(0.98); opacity: 0.72; }
+    100% { transform: translate3d(18px, -12px, 0) scale(1.04); opacity: 1; }
+  }
+
+  .hero-info-card-wrap {
+    position: relative;
+    z-index: 1;
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
+    border: none;
+    outline: none;
+    backdrop-filter: none;
+  }
+  .hero-info-card-wrap::before {
+    content: none;
+  }
+  .hero-info-card-wrap::after {
+    content: none;
+  }
+
+  .hero-info-progress {
+    position: relative;
+    z-index: 2;
+    height: 4px;
+    background: rgba(var(--slide-accent-rgb), 0.09);
+    border-radius: 999px;
+    max-width: 72%;
+    margin: 0 auto 10px;
+    overflow: hidden;
+  }
+  .hero-info-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
-    transform: skewX(-20deg);
-    transition: left 0.7s ease;
-    pointer-events: none;
+    width: 50%;
+    background: linear-gradient(90deg, var(--slide-accent-dark), var(--slide-accent));
+    border-radius: 0 2px 2px 0;
+    transition: width 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hero-info-viewport {
+    position: relative;
+    min-height: 368px;
     z-index: 2;
   }
-  .hero-info-block:hover::after { left: 130%; }
-  .hero-info-block > * { position: relative; z-index: 1; }
-  .hero-info-block:nth-child(1) { animation-delay: 0.10s; }
-  .hero-info-block:nth-child(2) { animation-delay: 0.22s; }
-  .hero-info-block:nth-child(3) { animation-delay: 0.34s; }
-  .hero-info-block:nth-child(4) { animation-delay: 0.46s; }
-  @keyframes heroBlockIn {
-    to { opacity: 1; transform: translateY(0); }
+
+  .hero-info-block {
+    position: absolute;
+    inset: 0;
+    padding: 38px 92px;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(28px) scale(0.975);
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                visibility 0.5s;
+    pointer-events: none;
+    overflow: hidden;
   }
-  .hero-info-block:hover {
-    transform: translateY(-6px) scale(1.015);
+  .hero-info-block::before {
+    content: none;
   }
-  .hero-info-block:hover .hero-info-icon {
-    transform: scale(1.08) rotate(-3deg);
+  .hero-info-block.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0) scale(1);
+    pointer-events: auto;
+  }
+  .hero-info-block.active h3 { animation: infoItemIn 0.45s ease 0.05s forwards; opacity: 0; }
+  .hero-info-block.active p  { animation: infoItemIn 0.45s ease 0.12s forwards; opacity: 0; }
+  .hero-info-block.active ul  { animation: infoItemIn 0.45s ease 0.18s forwards; opacity: 0; }
+  @keyframes infoItemIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* Numbered badge in corner */
   .hero-info-num {
     position: absolute;
-    top: 18px;
-    right: 22px;
-    font-family: 'Source Serif 4', serif;
-    font-style: italic;
-    font-weight: 400;
-    font-size: 36px;
-    line-height: 1;
-    z-index: 1;
-    opacity: 0.15;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    top: 24px;
+    right: 26px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--teal-dark);
+    letter-spacing: 0.5px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(var(--slide-accent-rgb), 0.09);
+    border: none;
+    box-shadow: 0 8px 22px rgba(14, 124, 102, 0.07);
   }
-  .hero-info-block:hover .hero-info-num { opacity: 0.28; transform: scale(1.08); }
 
   .hero-info-block h3 {
-    font-size: 17px;
-    font-weight: 700;
-    margin-bottom: 10px;
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 12px;
     color: var(--text);
+    letter-spacing: -0.2px;
+    padding-right: 64px;
   }
   .hero-info-icon {
-    width: 42px; height: 42px;
-    border-radius: 12px;
+    width: 52px; height: 52px;
+    border-radius: 16px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     color: #fff;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    box-shadow: 0 12px 28px rgba(14, 124, 102, 0.22);
   }
-  .hero-info-icon svg { width: 20px; height: 20px; }
+  .hero-info-icon svg { width: 23px; height: 23px; }
   .hero-info-block p {
-    font-size: 14.5px;
+    font-size: 15.5px;
     color: var(--text-soft);
     line-height: 1.65;
     margin: 0;
-    padding-left: 54px;
+    padding-left: 64px;
   }
-  .hero-info-block p + p { margin-top: 8px; }
+  .hero-info-block p + p { margin-top: 10px; }
   .hero-info-block ul {
     list-style: none;
     padding: 0;
-    margin: 8px 0;
-    padding-left: 54px;
+    margin: 12px 0 0;
+    padding-left: 64px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 9px;
   }
   .hero-info-block li {
     position: relative;
-    padding-left: 24px;
-    font-size: 14px;
+    padding-left: 18px;
+    font-size: 15px;
     color: var(--text-soft);
     line-height: 1.55;
   }
   .hero-info-block li::before {
     content: '';
     position: absolute;
-    left: 0; top: 5px;
-    width: 14px; height: 14px;
+    left: 0; top: 9px;
+    width: 7px; height: 7px;
     border-radius: 50%;
-    background: var(--teal);
-    opacity: 0.12;
-  }
-  .hero-info-block li::after {
-    content: '';
-    position: absolute;
-    left: 4px; top: 9px;
-    width: 6px; height: 3px;
-    border-left: 1.5px solid var(--teal);
-    border-bottom: 1.5px solid var(--teal);
-    transform: rotate(-45deg);
-    opacity: 0.85;
+    background: var(--slide-accent);
+    opacity: 0.55;
   }
   .hero-info-block li strong { color: var(--text); font-weight: 600; }
 
-  /* TEAL — What is GeneoRx? */
-  .hero-info-teal {
-    border-color: rgba(14, 124, 102, 0.18);
-    border-left-color: #0E7C66;
-  }
-  .hero-info-teal::before {
-    background: linear-gradient(135deg, rgba(14, 124, 102, 0.10), rgba(63, 179, 154, 0.04));
-  }
-  .hero-info-teal:hover {
-    box-shadow: 0 24px 56px rgba(14, 124, 102, 0.28), 0 8px 18px rgba(14, 124, 102, 0.14);
-  }
-  .hero-info-teal .hero-info-icon {
-    background: linear-gradient(135deg, #0E7C66, #075F4F);
-    box-shadow: 0 6px 16px rgba(14, 124, 102, 0.40);
-  }
-  .hero-info-teal h3 { color: #075F4F; }
-  .hero-info-teal .hero-info-num { color: #0E7C66; }
+  .hero-info-teal .hero-info-icon   { background: linear-gradient(135deg, var(--teal), var(--teal-dark)); }
+  .hero-info-blue .hero-info-icon   { background: linear-gradient(135deg, #2B7A9B, #1E5A73); }
+  .hero-info-violet .hero-info-icon { background: linear-gradient(135deg, #6B5B95, #4E4170); }
+  .hero-info-amber .hero-info-icon  { background: linear-gradient(135deg, #C17D3A, #9A5E22); }
 
-  /* BLUE — How does it work? */
-  .hero-info-blue {
-    border-color: rgba(79, 107, 237, 0.18);
-    border-left-color: #4F6BED;
-  }
-  .hero-info-blue::before {
-    background: linear-gradient(135deg, rgba(79, 107, 237, 0.10), rgba(99, 127, 255, 0.04));
-  }
-  .hero-info-blue:hover {
-    box-shadow: 0 24px 56px rgba(79, 107, 237, 0.30), 0 8px 18px rgba(79, 107, 237, 0.14);
-  }
-  .hero-info-blue .hero-info-icon {
-    background: linear-gradient(135deg, #4F6BED, #3D52C9);
-    box-shadow: 0 6px 16px rgba(79, 107, 237, 0.42);
-  }
-  .hero-info-blue h3 { color: #3D52C9; }
-  .hero-info-blue .hero-info-num { color: #4F6BED; }
-  .hero-info-blue li::before { background: #4F6BED; opacity: 0.15; }
-  .hero-info-blue li::after { border-color: #4F6BED; }
-
-  /* VIOLET — How does it help you? */
-  .hero-info-violet {
-    border-color: rgba(139, 92, 246, 0.18);
-    border-left-color: #8B5CF6;
-  }
-  .hero-info-violet::before {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.10), rgba(167, 139, 250, 0.04));
-  }
-  .hero-info-violet:hover {
-    box-shadow: 0 24px 56px rgba(139, 92, 246, 0.30), 0 8px 18px rgba(139, 92, 246, 0.14);
-  }
-  .hero-info-violet .hero-info-icon {
-    background: linear-gradient(135deg, #8B5CF6, #6D28D9);
-    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.42);
-  }
-  .hero-info-violet h3 { color: #6D28D9; }
-  .hero-info-violet .hero-info-num { color: #8B5CF6; }
-  .hero-info-violet li::before { background: #8B5CF6; opacity: 0.15; }
-  .hero-info-violet li::after { border-color: #8B5CF6; }
-
-  /* AMBER — In short */
-  .hero-info-amber {
-    border-color: rgba(245, 158, 11, 0.22);
-    border-left-color: #F59E0B;
-  }
-  .hero-info-amber::before {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(252, 176, 64, 0.05));
-  }
-  .hero-info-amber:hover {
-    box-shadow: 0 24px 56px rgba(245, 158, 11, 0.32), 0 8px 18px rgba(245, 158, 11, 0.14);
-  }
-  .hero-info-amber .hero-info-icon {
-    background: linear-gradient(135deg, #F59E0B, #D97706);
-    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.45);
-  }
-  .hero-info-amber h3 { color: #B45309; }
-  .hero-info-amber .hero-info-num { color: #F59E0B; }
-
-  /* HERO VISUAL  GIF/Demo player */
-  .hero-visual {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 620px;
-  }
-
-  /* Pulsing teal halo behind phone */
-  .phone-glow {
+  .hero-info-arrow {
     position: absolute;
     top: 50%;
-    left: 50%;
-    width: 420px;
-    height: 420px;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(circle, rgba(14, 124, 102, 0.35) 0%, rgba(63, 179, 154, 0.18) 35%, transparent 70%);
-    filter: blur(8px);
-    z-index: 0;
-    pointer-events: none;
-    animation: haloPulse 4s ease-in-out infinite;
-  }
-  @keyframes haloPulse {
-    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.65; }
-    50%      { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
-  }
-
-  /* iPhone mockup frame */
-  .demo-frame {
-    position: relative;
+    transform: translateY(-50%);
     z-index: 2;
-    width: 100%;
-    max-width: 320px;
-    aspect-ratio: 9 / 19.5;
-    border-radius: 42px;
-    padding: 12px;
-    background: linear-gradient(160deg, #1a2622 0%, #0F1F1B 50%, #050B09 100%);
-    box-shadow:
-      0 0 0 1.5px rgba(255, 255, 255, 0.08) inset,
-      0 0 0 2px #050B09,
-      0 30px 80px rgba(7, 95, 79, 0.30),
-      0 10px 28px rgba(0, 0, 0, 0.20);
-    animation: demoFloat 7s ease-in-out infinite;
-    transform: perspective(1200px) rotateY(-4deg) rotateX(2deg);
-    transform-style: preserve-3d;
-  }
-  /* Dynamic Island */
-  .demo-frame::before {
-    content: '';
-    position: absolute;
-    top: 18px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 110px;
-    height: 28px;
-    background: #000;
-    border-radius: 16px;
-    z-index: 5;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.4) inset;
-  }
-  /* Side button (subtle detail on right edge) */
-  .demo-frame::after {
-    content: '';
-    position: absolute;
-    top: 110px;
-    right: -1px;
-    width: 3px;
-    height: 60px;
-    background: linear-gradient(180deg, #2a3631, #1a2622);
-    border-radius: 0 2px 2px 0;
-  }
-
-  /* Inner screen */
-  .demo-frame-screen {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    border-radius: 30px;
-    overflow: hidden;
-    background: var(--bg-soft);
-  }
-
-  /* The GIF itself (if user drops in public/demo.gif) */
-  .demo-frame-gif {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    background: var(--bg-soft);
-    position: relative;
-  }
-
-  /* Slide navigation dots below phone */
-  .demo-dots {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    margin-top: 28px;
-  }
-  .demo-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 4px;
-    background: var(--border);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
     border: none;
-    padding: 0;
+    background: rgba(255, 255, 255, 0.98);
+    color: var(--text-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    transition: all 0.4s ease;
+    box-shadow: 0 12px 30px rgba(15, 31, 27, 0.12);
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
   }
-  .demo-dot:hover { background: var(--teal-200); }
-  .demo-dot.active {
-    width: 30px;
-    background: var(--teal);
-    box-shadow: 0 2px 8px rgba(14, 124, 102, 0.35);
+  .hero-info-arrow:hover {
+    color: var(--slide-accent-dark);
+    box-shadow: 0 8px 24px rgba(var(--slide-accent-rgb), 0.18);
+    transform: translateY(-50%) scale(1.05);
   }
+  .hero-info-arrow:disabled {
+    opacity: 0.35;
+    cursor: default;
+    transform: translateY(-50%);
+    box-shadow: none;
+  }
+  .hero-info-arrow--prev { left: -24px; }
+  .hero-info-arrow--next { right: -24px; }
 
-  /* Floating badge on the frame */
-  .demo-badge {
-    position: absolute;
-    z-index: 4;
-    background: var(--bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 12px;
-    padding: 10px 14px;
-    box-shadow: 0 8px 24px rgba(14,124,102,0.14);
-    font-size: 12.5px;
+  /* ── Step selector ── */
+  .hero-info-dots {
     display: flex;
     align-items: center;
-    gap: 9px;
-    white-space: nowrap;
-    animation: chipFloat 5s ease-in-out infinite;
+    justify-content: center;
+    gap: 0;
+    margin-top: 22px;
+    padding: 6px;
+    border-radius: 18px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
   }
-  .demo-badge-icon {
-    width: 26px; height: 26px;
-    border-radius: 7px;
-    background: var(--teal-50);
-    color: var(--teal-dark);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .demo-badge-label { font-size: 10.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
-  .demo-badge-value { font-weight: 700; font-size: 13px; color: var(--text); }
-  .demo-badge.b1 { bottom: 40px; left: -40px; animation-delay: 0s; }
-  .demo-badge.b2 { top: 100px;   right: -50px; animation-delay: 1.8s; }
-
-  @keyframes demoFloat {
-    0%, 100% { transform: translateY(0); }
-    50%       { transform: translateY(-10px); }
-  }
-  @keyframes chipFloat {
-    0%, 100% { transform: translateY(0); }
-    50%       { transform: translateY(-7px); }
-  }
-
-  /* =============================================
-     ANIMATED APP DEMO (hero placeholder)
-  ============================================= */
-  .anim-demo {
-    position: relative;
-    background: var(--bg-soft);
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-  }
-  .anim-screen {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    opacity: 0;
-    padding-top: 56px; /* clearance for Dynamic Island */
-  }
-  .anim-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px 6px;
-    border-bottom: 1px solid var(--border-soft);
-    background: #fff;
-    flex-shrink: 0;
-  }
-  .anim-back { font-size: 13px; color: var(--teal); min-width: 20px; }
-  .anim-screen-title { font-size: 13.5px; font-weight: 700; color: var(--text); }
-  .anim-step-lbl { font-size: 11px; color: var(--text-muted); min-width: 30px; text-align: right; }
-  .anim-prog { height: 3px; background: var(--border-soft); flex-shrink: 0; }
-  .anim-prog-fill { height: 100%; background: var(--teal); border-radius: 0 2px 2px 0; transition: width .4s; }
-  .anim-body {
+  .hero-info-dot {
     flex: 1;
-    padding: 14px 16px;
-    display: flex;
+    min-height: 50px;
+    border-radius: 13px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px 10px;
+    display: inline-flex;
     flex-direction: column;
-    gap: 8px;
-    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    -webkit-tap-highlight-color: transparent;
   }
-  .anim-q { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
-  /* med rows */
-  .anim-med-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 12px;
-    border: 1px solid var(--border-soft);
-    border-radius: 8px;
-    background: #fff;
+  .hero-info-dot:hover {
+    color: var(--slide-accent-dark);
+    background: rgba(var(--slide-accent-rgb), 0.09);
   }
-  .anim-med-row.on { border-color: var(--teal); background: var(--teal-50); }
-  .anim-chk {
-    width: 20px; height: 20px; border-radius: 50%;
-    background: var(--teal); color: #fff;
-    font-size: 9px; font-weight: 800;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+  .hero-info-dot.active {
+    background: linear-gradient(135deg, var(--slide-accent), var(--slide-accent-dark));
+    color: #fff;
+    box-shadow: 0 12px 28px rgba(var(--slide-accent-rgb), 0.18);
   }
-  .anim-chk-e {
-    width: 20px; height: 20px; border-radius: 50%;
-    border: 1.5px solid var(--border);
-    flex-shrink: 0;
+  .hero-info-tab-num {
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    opacity: 0.72;
   }
-  .anim-med-nm { font-size: 13px; font-weight: 500; color: var(--text); }
-  .anim-med-mg { font-size: 11.5px; color: var(--text-muted); margin-left: 4px; font-weight: 400; }
-  /* chips */
-  .anim-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 2px; }
-  .anim-chip {
-    padding: 5px 11px;
-    border: 1.5px solid var(--border);
-    border-radius: 999px;
-    font-size: 12px; font-weight: 500;
-    color: var(--text-muted); background: #fff;
-  }
-  .anim-chip.on {
-    border-color: var(--teal); background: var(--teal-50);
-    color: var(--teal-dark); font-weight: 600;
-  }
-  /* insight */
-  .anim-ins-hd {
-    display: flex; align-items: center; gap: 11px;
-    padding: 11px 12px;
-    background: #fff;
-    border: 1px solid var(--teal-100); border-radius: 10px;
-  }
-  .anim-ins-icon {
-    width: 40px; height: 40px; border-radius: 10px;
-    background: var(--teal); color: #fff;
-    font-size: 11px; font-weight: 800;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .anim-ins-title { font-size: 13px; font-weight: 700; color: var(--text); }
-  .anim-ins-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-  .anim-ins-txt {
-    font-size: 12.5px; line-height: 1.6; color: var(--text-soft);
-    padding: 10px 12px;
-    background: #fff; border: 1px solid var(--border-soft); border-radius: 8px;
-  }
-  .anim-ask {
-    padding: 10px 12px;
-    background: var(--teal-50); border: 1px solid var(--teal-100); border-radius: 8px;
-  }
-  .anim-ask-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--teal-dark); margin-bottom: 3px; }
-  .anim-ask-q { font-size: 12.5px; font-weight: 600; font-style: italic; color: var(--text); }
-  /* footer btn */
-  .anim-btn-row { padding: 10px 16px 14px; flex-shrink: 0; }
-  .anim-cta-btn {
-    display: block; width: 100%; padding: 11px;
-    background: var(--teal); color: #fff;
-    border-radius: 9px; font-size: 13px; font-weight: 700;
-    text-align: center; letter-spacing: .1px;
-  }
-  .anim-cta-btn.dark { background: var(--teal-dark); }
-  /* slide animations — 15 s loop */
-  .anim-s1 { animation: animS1 15s ease-in-out infinite; }
-  .anim-s2 { animation: animS2 15s ease-in-out infinite; }
-  .anim-s3 { animation: animS3 15s ease-in-out infinite; }
-
-  @keyframes animS1 {
-    0%   { opacity:1; transform:translateX(0); }
-    28%  { opacity:1; transform:translateX(0); }
-    33%  { opacity:0; transform:translateX(-22px); }
-    100% { opacity:0; transform:translateX(-22px); }
-  }
-  @keyframes animS2 {
-    0%   { opacity:0; transform:translateX(22px); }
-    33%  { opacity:0; transform:translateX(22px); }
-    38%  { opacity:1; transform:translateX(0); }
-    61%  { opacity:1; transform:translateX(0); }
-    66%  { opacity:0; transform:translateX(-22px); }
-    100% { opacity:0; transform:translateX(-22px); }
-  }
-  @keyframes animS3 {
-    0%   { opacity:0; transform:translateX(22px); }
-    66%  { opacity:0; transform:translateX(22px); }
-    71%  { opacity:1; transform:translateX(0); }
-    96%  { opacity:1; transform:translateX(0); }
-    100% { opacity:0; transform:translateX(22px); }
+  .hero-info-tab-label {
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 800;
   }
 
   /* =============================================
@@ -966,18 +867,33 @@
     position: relative;
   }
   .step-card {
-    background: var(--bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 16px;
-    padding: 32px 28px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,252,251,0.94));
+    border: 1px solid rgba(221, 230, 227, 0.88);
+    border-radius: 22px;
+    padding: 34px 30px;
     position: relative;
     transition: all 0.28s ease;
+    box-shadow: 0 10px 30px rgba(15, 31, 27, 0.045);
+    overflow: hidden;
+  }
+  .step-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 85% 12%, rgba(63, 179, 154, 0.14), transparent 34%),
+      linear-gradient(90deg, rgba(14, 124, 102, 0.10), transparent 34%);
+    opacity: 0;
+    transition: opacity 0.28s ease;
+    pointer-events: none;
   }
   .step-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 16px 48px rgba(14, 124, 102, 0.12);
+    transform: translateY(-8px);
+    box-shadow: 0 24px 58px rgba(14, 124, 102, 0.14);
     border-color: var(--teal-100);
   }
+  .step-card:hover::before { opacity: 1; }
   .step-num {
     display: inline-flex;
     align-items: center;
@@ -1000,6 +916,7 @@
     box-shadow: 0 6px 18px rgba(14, 124, 102, 0.25);
   }
   .step-card h3 {
+    position: relative;
     font-size: 19px;
     font-weight: 700;
     color: var(--text);
@@ -1007,6 +924,7 @@
     margin-bottom: 10px;
   }
   .step-card p {
+    position: relative;
     font-size: 14.5px;
     color: var(--text-soft);
     line-height: 1.65;
@@ -1029,16 +947,33 @@
   .demo-head .section-desc { margin: 0 auto; }
 
   .demo-card {
-    background: var(--bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(221, 230, 227, 0.9);
+    border-radius: 24px;
     overflow: hidden;
-    box-shadow: var(--shadow);
+    box-shadow:
+      0 30px 70px rgba(7, 95, 79, 0.10),
+      0 8px 22px rgba(15, 31, 27, 0.06);
+    position: relative;
+  }
+  .demo-card::before {
+    content: '';
+    position: absolute;
+    top: -130px;
+    right: -120px;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(63, 179, 154, 0.18), transparent 66%);
+    pointer-events: none;
   }
   .demo-card-hd {
+    position: relative;
     padding: 28px 32px;
     border-bottom: 1px solid var(--border-soft);
-    background: linear-gradient(180deg, var(--bg-soft), var(--bg));
+    background:
+      radial-gradient(circle at 95% 10%, rgba(63, 179, 154, 0.16), transparent 32%),
+      linear-gradient(180deg, var(--bg-soft), var(--bg));
   }
   .demo-card-hd h3 {
     font-size: 19px;
@@ -1048,7 +983,7 @@
     letter-spacing: -0.3px;
   }
   .demo-card-hd p { font-size: 14px; color: var(--text-muted); }
-  .demo-card-bd { padding: 32px; }
+  .demo-card-bd { position: relative; padding: 32px; }
 
   .field { margin-bottom: 20px; }
   .field label {
@@ -1063,7 +998,7 @@
     height: 50px;
     padding: 0 16px;
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 13px;
     background: var(--bg);
     color: var(--text);
     font-size: 15px;
@@ -1075,11 +1010,13 @@
     background-repeat: no-repeat;
     background-position: right 16px center;
     padding-right: 40px;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 14px rgba(15, 31, 27, 0.035);
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
   }
   .field select:focus {
     border-color: var(--teal);
     box-shadow: 0 0 0 4px rgba(14, 124, 102, 0.10);
+    transform: translateY(-1px);
   }
 
   .demo-submit {
@@ -1202,12 +1139,24 @@
     gap: 20px;
   }
   .quote {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.045));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 22px;
     padding: 32px;
     backdrop-filter: blur(8px);
     transition: all 0.28s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .quote::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 85% 0%, rgba(63, 179, 154, 0.16), transparent 34%);
+    opacity: 0;
+    transition: opacity 0.28s ease;
+    pointer-events: none;
   }
   .quote:hover {
     background: rgba(255, 255, 255, 0.08);
@@ -1215,6 +1164,7 @@
     transform: translateY(-4px);
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.20);
   }
+  .quote:hover::before { opacity: 1; }
   .quote-mark {
     font-family: 'Source Serif 4', serif;
     font-size: 56px;
@@ -1224,12 +1174,14 @@
     margin-bottom: 14px;
   }
   .quote-text {
+    position: relative;
     font-size: 16px;
     line-height: 1.65;
     color: rgba(255, 255, 255, 0.88);
     margin-bottom: 22px;
   }
   .quote-author {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1266,15 +1218,18 @@
 
   .faq-list { display: flex; flex-direction: column; gap: 10px; }
   details.faq {
-    background: var(--bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(221, 230, 227, 0.92);
+    border-radius: 16px;
     padding: 0;
     overflow: hidden;
     transition: all 0.22s ease;
+    box-shadow: 0 4px 16px rgba(15, 31, 27, 0.035);
   }
   details.faq:hover {
     border-color: var(--teal-200);
+    box-shadow: 0 14px 34px rgba(14, 124, 102, 0.08);
+    transform: translateY(-2px);
   }
   details.faq[open] {
     border-color: var(--teal-100);
@@ -1343,6 +1298,9 @@
     position: relative;
     overflow: hidden;
     text-align: center;
+    box-shadow:
+      0 34px 90px rgba(5, 61, 51, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
   }
   .final-cta-card::before {
     content: '';
@@ -1482,120 +1440,210 @@
   }
 
   /* =============================================
+     MOBILE HERO BRAND  (logo + name, shown only on mobile)
+  ============================================= */
+  .mob-hero-brand {
+    display: none;
+  }
+
+  /* =============================================
      RESPONSIVE
   ============================================= */
+
   @media (max-width: 980px) {
+
     .hero-inner {
-      grid-template-columns: 1fr;
-      gap: 48px;
-      padding: 40px 24px 80px;
+      padding: 40px 24px 64px;
+      max-width: 100%;
     }
-    .hero-visual { order: -1; min-height: 540px; }
-    .demo-frame {
-      max-width: 270px;
-      transform: none;
+    .hero-orbits { display: none !important; }
+
+    .mob-hero-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 26px;
     }
-    .phone-glow { width: 340px; height: 340px; }
-    .demo-badge.b1 { bottom: 30px; left: -10px; }
-    .demo-badge.b2 { top: 80px; right: -10px; }
-
-    /* Hero info cards — tablet */
-    .hero-info { gap: 12px; }
-    .hero-info-block { padding: 20px 22px; }
-
-    /* Hide decorative dots on tablet and below */
-    .hero-dots { display: none; }
-
-    .testimonials-grid { grid-template-columns: 1fr; }
-    .steps-flow { grid-template-columns: 1fr; }
-    .section-title { font-size: 32px; }
-    .final-cta h2 { font-size: 34px; }
-    .final-cta-card { padding: 56px 32px; }
-    .footer-top { grid-template-columns: 1fr 1fr; gap: 32px; }
-    .nav-links { display: none; }
-    .nav-cta .nav-cta-extra { display: none; }
-    .nav-toggle { display: inline-flex; }
-  }
-  @media (max-width: 520px) {
-    .hero { padding: 60px 0 0; }
-
-    /* iPhone smaller on mobile */
-    .demo-frame { max-width: 240px; }
-    .phone-glow { width: 280px; height: 280px; }
-    .demo-badge { font-size: 11.5px; padding: 8px 11px; }
-    .demo-badge.b1 { bottom: 24px; left: -6px; }
-    .demo-badge.b2 { top: 64px; right: -6px; }
-    .demo-dots { margin-top: 20px; }
-
-    /* Hero info cards — mobile */
-    .hero-info { gap: 12px; margin-top: 24px; }
-    .hero-info-block {
-      padding: 20px 20px;
-      border-radius: 16px;
-      border-left-width: 4px;
+    .mob-hero-logo { width: 52px; height: 52px; }
+    .mob-hero-name {
+      font-size: 30px; font-weight: 800;
+      letter-spacing: -0.7px; color: var(--text); line-height: 1;
     }
-    .hero-info-block h3 { font-size: 15px; gap: 10px; }
-    .hero-info-icon { width: 36px; height: 36px; border-radius: 10px; }
+    .mob-hero-tagline {
+      font-size: 13px; font-weight: 500;
+      color: var(--text-muted); letter-spacing: 0.1px; margin-top: 3px;
+    }
+
+    .hero-eyebrow {
+      margin-bottom: 22px;
+      opacity: 1 !important;
+      transform: none !important;
+      animation: none !important;
+    }
+    .hero-title,
+    .hero-subtitle,
+    .hero-trust-row,
+    .hero-info-slider {
+      opacity: 1 !important;
+      transform: none !important;
+      animation: none !important;
+    }
+    .hero-title {
+      font-size: clamp(34px, 10vw, 52px);
+      letter-spacing: -1.8px;
+      line-height: 1;
+    }
+    .hero-subtitle {
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    .hero-trust-row { margin-bottom: 24px; }
+    .hero-trust-pill {
+      min-height: 34px;
+      padding: 7px 11px;
+      font-size: 12px;
+    }
+    .hero-eyebrow-dot { padding: 6px; }
+    .hero-eyebrow-dot img { width: 14px; height: 14px; }
+
+    .hero-info-viewport { min-height: 330px; }
+    .hero-info-block { padding: 28px 56px; }
+    .hero-info-arrow--prev { left: -8px; }
+    .hero-info-arrow--next { right: -8px; }
+    .hero-info-block h3 { font-size: 16px; padding-right: 48px; }
+    .hero-info-icon { width: 38px; height: 38px; }
     .hero-info-icon svg { width: 18px; height: 18px; }
-    .hero-info-num { font-size: 30px; top: 14px; right: 18px; }
-    .hero-info-block p { font-size: 13.5px; padding-left: 46px; }
-    .hero-info-block ul { padding-left: 46px; gap: 6px; }
-    .hero-info-block li { font-size: 13.5px; padding-left: 22px; }
-    .hero-info-block li::before { width: 12px; height: 12px; top: 4px; }
-    .hero-info-block li::after { left: 3px; top: 8px; width: 5px; height: 2.5px; }
+    .hero-info-block p { font-size: 14px; padding-left: 50px; }
+    .hero-info-block ul { padding-left: 50px; }
+    .hero-info-block li { font-size: 13.5px; }
+    .hero-info-tab-label { font-size: 10.5px; }
 
-    /* CTA full width on mobile */
+    .hero-actions { margin-top: 28px; gap: 12px; }
+
+    /* Section / layout */
+    .testimonials-grid { grid-template-columns: 1fr; }
+    .steps-flow        { grid-template-columns: 1fr; }
+    .section-title     { font-size: 32px; }
+    .final-cta h2      { font-size: 34px; }
+    .final-cta-card    { padding: 56px 32px; }
+    .footer-top        { grid-template-columns: 1fr 1fr; gap: 32px; }
+    .nav-links         { display: none; }
+    .nav-cta .nav-cta-extra { display: none; }
+    .nav-toggle        { display: inline-flex; }
+  }
+
+  /* ── Phone  ≤ 620 px ──────────────────────────────────────────────────── */
+  @media (max-width: 620px) {
+    .hero-info-viewport { min-height: 286px; }
+    .hero-info-block { padding: 22px 22px; }
+    .hero-info-arrow { width: 36px; height: 36px; }
+    .hero-info-arrow--prev { left: -4px; }
+    .hero-info-arrow--next { right: -4px; }
+    .hero-info-dots { border-radius: 16px; padding: 5px; }
+    .hero-info-dot { min-height: 44px; padding: 7px 4px; }
+    .hero-info-tab-num { font-size: 9px; }
+    .hero-info-tab-label { font-size: 9.5px; }
+
+    /* CTA full-width on small screens */
     .hero-actions { flex-direction: column; gap: 10px; }
-    .hero-actions .btn { width: 100%; }
+    .hero-actions .btn { width: 100%; justify-content: center; }
+  }
 
-    /* Eyebrow smaller */
-    .hero-eyebrow { padding: 5px 12px 5px 6px; gap: 7px; }
-    .hero-eyebrow-dot { width: 20px; height: 20px; font-size: 10px; }
+  /* ── Phone  ≤ 520 px ──────────────────────────────────────────────────── */
+  @media (max-width: 520px) {
+    .hero { padding: 48px 0 0; }
+    .hero-inner { padding: 24px 16px 48px; }
+
+    /* Brand header tighter */
+    .mob-hero-logo { width: 44px; height: 44px; }
+    .mob-hero-name { font-size: 26px; }
+    .mob-hero-brand { margin-bottom: 20px; }
+
+    /* Eyebrow tighter */
+    .hero-eyebrow { padding: 5px 12px 5px 7px; gap: 7px; margin-bottom: 18px; }
+    .hero-eyebrow-dot { width: 24px; height: 24px; padding: 5px; }
+    .hero-eyebrow-dot img { width: 13px; height: 13px; }
     .hero-eyebrow-text { font-size: 11.5px; }
+    .hero-title {
+      font-size: 34px;
+      letter-spacing: -1.1px;
+      margin-bottom: 12px;
+    }
+    .hero-title em::after {
+      bottom: 3px;
+      height: 7px;
+    }
+    .hero-subtitle {
+      font-size: 14.5px;
+      line-height: 1.62;
+      margin-bottom: 16px;
+    }
+    .hero-trust-row { gap: 7px; margin-bottom: 18px; }
+    .hero-trust-pill {
+      width: 100%;
+      justify-content: flex-start;
+      font-size: 11.5px;
+    }
 
-    /* Section titles — smaller underline */
+    /* Info carousel — tighter on small phones */
+    .hero-info-viewport { min-height: 260px; }
+    .hero-info-block { padding: 18px 16px; }
+    .hero-info-block h3 { font-size: 14.5px; margin-bottom: 6px; }
+    .hero-info-icon { width: 34px; height: 34px; border-radius: 9px; }
+    .hero-info-icon svg { width: 17px; height: 17px; }
+    .hero-info-num { font-size: 12px; top: 12px; right: 14px; }
+    .hero-info-block p { font-size: 13px; padding-left: 44px; }
+    .hero-info-block ul { padding-left: 44px; gap: 5px; }
+    .hero-info-block li { font-size: 13px; padding-left: 20px; }
+    .hero-info-dots { margin-top: 16px; }
+
+    /* Section titles */
     .section-title em::after { height: 2px; }
 
     /* Steps section */
-    .steps-section { padding: 80px 0; }
+    .steps-section { padding: 72px 0; }
     .step-num { width: 42px; height: 42px; font-size: 17px; border-radius: 11px; }
 
     /* Demo card */
-    .demo-section { padding: 80px 0; }
-    .demo-card-hd, .demo-card-bd { padding: 22px; }
+    .demo-section { padding: 72px 0; }
+    .demo-card-hd, .demo-card-bd { padding: 20px; }
 
     /* Testimonials */
-    .testimonials { padding: 80px 0; }
-    .step-card, .quote { padding: 26px; }
+    .testimonials { padding: 72px 0; }
+    .step-card, .quote { padding: 24px; }
 
     /* FAQ */
-    .faq-section { padding: 80px 0; }
+    .faq-section { padding: 72px 0; }
     details.faq summary { padding: 18px 20px; font-size: 15px; }
     .faq-body { padding: 0 20px 20px; font-size: 14px; }
 
     /* Final CTA */
-    .final-cta { padding: 80px 0; }
-    .final-cta h2 { font-size: 28px; }
-    .final-cta-card { padding: 44px 24px; border-radius: 18px; }
+    .final-cta { padding: 72px 0; }
+    .final-cta h2 { font-size: 26px; letter-spacing: -0.5px; }
+    .final-cta-card { padding: 40px 20px; border-radius: 18px; }
     .final-cta p { font-size: 15px; }
     .final-cta-actions { flex-direction: column; }
     .final-cta-actions .btn { width: 100%; }
 
     /* Footer */
-    .footer { padding: 40px 20px 28px; }
-    .footer-top { grid-template-columns: 1fr; gap: 28px; }
+    .footer { padding: 40px 16px 28px; }
+    .footer-top { grid-template-columns: 1fr; gap: 24px; }
     .footer-bottom { flex-direction: column; text-align: center; gap: 8px; }
   }
 
-  /* Extra small phones */
+  /* ── Extra-small phones  ≤ 380 px ────────────────────────────────────── */
   @media (max-width: 380px) {
+    .hero-inner { padding: 20px 14px 40px; }
+    .mob-hero-name { font-size: 24px; }
+    .mob-hero-logo { width: 40px; height: 40px; }
     .hero-info-block p, .hero-info-block ul { padding-left: 0; }
     .hero-info-block h3 { font-size: 14px; }
-    .hero-info-block p, .hero-info-block li { font-size: 13px; }
-    .hero-info-num { font-size: 26px; opacity: 0.10; }
-    .hero-eyebrow-text { font-size: 11px; }
-    .section-title { font-size: 28px; }
-    .final-cta h2 { font-size: 24px; }
+    .hero-info-block p, .hero-info-block li { font-size: 12.5px; }
+    .hero-info-num { font-size: 11px; }
+    .hero-eyebrow-text { font-size: 10.5px; }
+    .section-title { font-size: 26px; }
+    .final-cta h2 { font-size: 22px; }
+    .final-cta-card { padding: 32px 16px; }
   }
 </style>
 </head>
@@ -1650,200 +1698,117 @@
 </nav>
 
 <!-- HERO -->
-<header class="hero">
+<header class="hero" id="heroSection">
   <div class="hero-orbits"></div>
+  <div class="hero-logo-float" aria-hidden="true"></div>
   <div class="hero-dots"><span></span><span></span><span></span><span></span><span></span></div>
   <div class="hero-inner">
     <div class="hero-content">
+
+      {{-- Mobile-only brand header: actual logo + name ─ hidden on desktop --}}
+      <div class="mob-hero-brand">
+        <img src="{{ asset('logo.svg') }}" alt="GeneoRx" class="mob-hero-logo">
+        <div>
+          <div class="mob-hero-name">GeneoRx</div>
+          <div class="mob-hero-tagline">Personal medication intelligence</div>
+        </div>
+      </div>
+
       <div class="hero-eyebrow">
-        <span class="hero-eyebrow-dot">Rx</span>
+        <span class="hero-eyebrow-dot">
+          <img src="{{ asset('logo.svg') }}" alt="" style="width:14px;height:14px;display:block;">
+        </span>
         <span class="hero-eyebrow-text">Personal medication intelligence platform</span>
       </div>
-      <div class="hero-info">
-        <div class="hero-info-block hero-info-teal">
-          <span class="hero-info-num">01</span>
-          <h3>
-            <span class="hero-info-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </span>
-            What is GeneoRx?
-          </h3>
-          <p>GeneoRx is your personal medication intelligence platform connecting medications, symptoms, and nutrient levels to help you understand what's really going on in your body giving you a clearer picture of your health.</p>
-        </div>
-        <div class="hero-info-block hero-info-blue">
-          <span class="hero-info-num">02</span>
-          <h3>
-            <span class="hero-info-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-            </span>
-            How does it work?
-          </h3>
-          <p>GeneoRx analyzes:</p>
-          <ul>
-            <li>Your medications</li>
-            <li>Your symptoms over time</li>
-            <li>Known drug–nutrient interactions</li>
-          </ul>
-          <p>As you check in regularly, it builds a personalized profile, spotting patterns and improving accuracy over time.</p>
-        </div>
-        <div class="hero-info-block hero-info-violet">
-          <span class="hero-info-num">03</span>
-          <h3>
-            <span class="hero-info-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            </span>
-            How does it help you?
-          </h3>
-          <ul>
-            <li><strong>Explains symptoms</strong> – Understand possible links to medications or nutrient imbalances</li>
-            <li><strong>Finds root causes</strong> – Highlights what may be driving issues like fatigue or brain fog</li>
-            <li><strong>Tracks progress</strong> – Monitors changes over time</li>
-            <li><strong>Prepares you for doctor visits</strong> – Provides a quick health summary for your doctor</li>
-          </ul>
-        </div>
-        <div class="hero-info-block hero-info-amber">
-          <span class="hero-info-num">04</span>
-          <h3>
-            <span class="hero-info-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            </span>
-            In short
-          </h3>
-          <p>GeneoRx helps you connect the dots between your medications, symptoms, and nutrition so you can make smarter health decisions.</p>
-        </div>
-      </div>
+      <div class="hero-info-slider">
+        <div class="hero-info-stage">
+          <div class="hero-info-glow" aria-hidden="true"></div>
 
-      <div class="hero-actions">
-        <a href="{{ route('register') }}" class="btn btn-dark btn-lg">Create your free account</a>
-        <a href="{{ route('guest') }}" class="btn btn-outline btn-lg">Try as guest</a>
-      </div>
-    </div>
+          <button type="button" class="hero-info-arrow hero-info-arrow--prev" id="heroInfoPrev" aria-label="Previous slide">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
 
-    <div class="hero-visual">
-      <div class="phone-glow"></div>
-      <div class="demo-frame">
-        <div class="demo-frame-screen">
-        @if(file_exists(public_path('demo.gif')))
-          <img src="{{ asset('demo.gif') }}" alt="GeneoRx app demo" class="demo-frame-gif">
-        @else
-          {{-- CSS-animated app walkthrough ─ loops every 15 s --}}
-          <div class="anim-demo" id="animDemo">
-
-            {{-- Screen 1: Medications --}}
-            <div class="anim-screen anim-s1">
-              <div class="anim-topbar">
-                <span class="anim-back">←</span>
-                <span class="anim-screen-title">Check-in</span>
-                <span class="anim-step-lbl">1 / 3</span>
+          <div class="hero-info-card-wrap">
+            <div class="hero-info-progress" aria-hidden="true">
+              <div class="hero-info-progress-fill" id="heroInfoProgress"></div>
+            </div>
+            <div class="hero-info-viewport" id="heroInfoTrack">
+              <div class="hero-info-block hero-info-teal active">
+                <span class="hero-info-num">01</span>
+                <h3>
+                  <span class="hero-info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  </span>
+                  What is GeneoRx?
+                </h3>
+                <p>GeneoRx is your personal medication intelligence platform connecting medications, symptoms, and nutrient levels to help you understand what's really going on in your body giving you a clearer picture of your health.</p>
               </div>
-              <div class="anim-prog"><div class="anim-prog-fill" style="width:33%"></div></div>
-              <div class="anim-body">
-                <div class="anim-q">Which medications are you taking?</div>
-                <div class="anim-med-row on">
-                  <div class="anim-chk">✓</div>
-                  <div class="anim-med-nm">Metformin <span class="anim-med-mg">500 mg</span></div>
-                </div>
-                <div class="anim-med-row">
-                  <div class="anim-chk-e"></div>
-                  <div class="anim-med-nm">Omeprazole <span class="anim-med-mg">20 mg</span></div>
-                </div>
-                <div class="anim-med-row">
-                  <div class="anim-chk-e"></div>
-                  <div class="anim-med-nm">Atorvastatin <span class="anim-med-mg">10 mg</span></div>
-                </div>
+              <div class="hero-info-block hero-info-blue">
+                <span class="hero-info-num">02</span>
+                <h3>
+                  <span class="hero-info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                  </span>
+                  How does it work?
+                </h3>
+                <p>GeneoRx analyzes:</p>
+                <ul>
+                  <li>Your medications</li>
+                  <li>Your symptoms over time</li>
+                  <li>Known drug–nutrient interactions</li>
+                </ul>
+                <p>As you check in regularly, it builds a personalized profile, spotting patterns and improving accuracy over time.</p>
               </div>
-              <div class="anim-btn-row">
-                <div class="anim-cta-btn">Next →</div>
+              <div class="hero-info-block hero-info-violet">
+                <span class="hero-info-num">03</span>
+                <h3>
+                  <span class="hero-info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  </span>
+                  How does it help you?
+                </h3>
+                <ul>
+                  <li><strong>Explains symptoms</strong> – Understand possible links to medications or nutrient imbalances</li>
+                  <li><strong>Finds root causes</strong> – Highlights what may be driving issues like fatigue or brain fog</li>
+                  <li><strong>Tracks progress</strong> – Monitors changes over time</li>
+                  <li><strong>Prepares you for doctor visits</strong> – Provides a quick health summary for your doctor</li>
+                </ul>
+              </div>
+              <div class="hero-info-block hero-info-amber">
+                <span class="hero-info-num">04</span>
+                <h3>
+                  <span class="hero-info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  </span>
+                  In short
+                </h3>
+                <p>GeneoRx helps you connect the dots between your medications, symptoms, and nutrition so you can make smarter health decisions.</p>
               </div>
             </div>
+          </div>
 
-            {{-- Screen 2: Symptoms --}}
-            <div class="anim-screen anim-s2">
-              <div class="anim-topbar">
-                <span class="anim-back">←</span>
-                <span class="anim-screen-title">Symptoms</span>
-                <span class="anim-step-lbl">2 / 3</span>
-              </div>
-              <div class="anim-prog"><div class="anim-prog-fill" style="width:66%"></div></div>
-              <div class="anim-body">
-                <div class="anim-q">How have you been feeling this week?</div>
-                <div class="anim-chips">
-                  <div class="anim-chip on">Fatigue</div>
-                  <div class="anim-chip on">Brain fog</div>
-                  <div class="anim-chip">Muscle aches</div>
-                  <div class="anim-chip on">Low energy</div>
-                  <div class="anim-chip">Headache</div>
-                  <div class="anim-chip">Nausea</div>
-                  <div class="anim-chip">Dizziness</div>
-                  <div class="anim-chip">Tingling hands</div>
-                </div>
-              </div>
-              <div class="anim-btn-row">
-                <div class="anim-cta-btn">See my insight →</div>
-              </div>
-            </div>
-
-            {{-- Screen 3: Insight --}}
-            <div class="anim-screen anim-s3">
-              <div class="anim-topbar">
-                <span class="anim-back"></span>
-                <span class="anim-screen-title">Your Insight</span>
-                <span class="anim-step-lbl"></span>
-              </div>
-              <div class="anim-prog"><div class="anim-prog-fill" style="width:100%"></div></div>
-              <div class="anim-body">
-                <div class="anim-ins-hd">
-                  <div class="anim-ins-icon">B12</div>
-                  <div>
-                    <div class="anim-ins-title">Vitamin B12 signal</div>
-                    <div class="anim-ins-sub">Detected from Metformin + fatigue pattern</div>
-                  </div>
-                </div>
-                <div class="anim-ins-txt">
-                  Long-term Metformin use may reduce B12 absorption. Your fatigue and brain fog symptoms align with this pattern.
-                </div>
-                <div class="anim-ask">
-                  <div class="anim-ask-lbl">Ask your doctor</div>
-                  <div class="anim-ask-q">"Should I check my B12 levels?"</div>
-                </div>
-              </div>
-              <div class="anim-btn-row">
-                <div class="anim-cta-btn dark">Save &amp; view full report →</div>
-              </div>
-            </div>
-
-          </div>{{-- /.anim-demo --}}
-        @endif
-        </div>{{-- /.demo-frame-screen --}}
-      </div>
-
-      <div class="demo-dots" id="demoDots">
-        <button class="demo-dot active" data-slide="1" aria-label="Show check-in screen" type="button"></button>
-        <button class="demo-dot" data-slide="2" aria-label="Show symptoms screen" type="button"></button>
-        <button class="demo-dot" data-slide="3" aria-label="Show insight screen" type="button"></button>
-      </div>
-
-      <div class="demo-badge b1">
-        <div class="demo-badge-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
-          </svg>
+          <button type="button" class="hero-info-arrow hero-info-arrow--next" id="heroInfoNext" aria-label="Next slide">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
         </div>
-        <div>
-          <div class="demo-badge-label">Top Signal</div>
-          <div class="demo-badge-value">Vitamin B12</div>
-        </div>
-      </div>
 
-      <div class="demo-badge b2">
-        <div class="demo-badge-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        </div>
-        <div>
-          <div class="demo-badge-label">Adherence</div>
-          <div class="demo-badge-value">92%</div>
+        <div class="hero-info-dots" id="heroInfoTabs" aria-label="Slide navigation">
+          <button type="button" class="hero-info-dot" data-slide="0" aria-label="What is GeneoRx?">
+            <span class="hero-info-tab-num">01</span>
+            <span class="hero-info-tab-label">What</span>
+          </button>
+          <button type="button" class="hero-info-dot active" data-slide="1" aria-label="How does it work?">
+            <span class="hero-info-tab-num">02</span>
+            <span class="hero-info-tab-label">How</span>
+          </button>
+          <button type="button" class="hero-info-dot" data-slide="2" aria-label="How does it help you?">
+            <span class="hero-info-tab-num">03</span>
+            <span class="hero-info-tab-label">Help</span>
+          </button>
+          <button type="button" class="hero-info-dot" data-slide="3" aria-label="In short">
+            <span class="hero-info-tab-num">04</span>
+            <span class="hero-info-tab-label">Summary</span>
+          </button>
         </div>
       </div>
     </div>
@@ -2232,50 +2197,97 @@
   }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
   reveals.forEach(el => io.observe(el));
 
-  // Demo slideshow dots — sync with the 15s CSS keyframe slideshow (5s per slide)
+  // Hero info carousel — starts on "How does it work?"
   (function () {
-    const dots = document.querySelectorAll('.demo-dot');
-    const animDemo = document.getElementById('animDemo');
-    if (!dots.length || !animDemo) return;
+    const viewport = document.getElementById('heroInfoTrack');
+    const hero = document.getElementById('heroSection');
+    const slider = document.querySelector('.hero-info-slider');
+    const dots = document.querySelectorAll('.hero-info-dot');
+    const prevBtn = document.getElementById('heroInfoPrev');
+    const nextBtn = document.getElementById('heroInfoNext');
+    const progress = document.getElementById('heroInfoProgress');
+    if (!viewport) return;
 
-    const SLIDE_DURATION = 5000; // ms per slide
-    const TOTAL_SLIDES = 3;
-    let currentSlide = 0;
-    let interval = null;
+    const slides = Array.from(viewport.querySelectorAll('.hero-info-block'));
+    if (!slides.length) return;
 
-    function setActiveDot(idx) {
-      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    const SLIDE_DURATION = 6000;
+    let current = 1;
+    let timer = null;
+    let touchStartX = 0;
+    const slideThemes = [
+      { accent: '#0E7C66', dark: '#075F4F', rgb: '14, 124, 102', lightRgb: '63, 179, 154' },
+      { accent: '#2B7A9B', dark: '#1E5A73', rgb: '43, 122, 155', lightRgb: '92, 173, 205' },
+      { accent: '#6B5B95', dark: '#4E4170', rgb: '107, 91, 149', lightRgb: '164, 145, 206' },
+      { accent: '#C17D3A', dark: '#9A5E22', rgb: '193, 125, 58', lightRgb: '229, 174, 112' },
+    ];
+
+    function applySlideTheme(theme) {
+      if (!theme) return;
+      [hero, slider].forEach((element) => {
+        if (!element) return;
+        element.style.setProperty('--hero-accent', theme.accent);
+        element.style.setProperty('--hero-accent-dark', theme.dark);
+        element.style.setProperty('--hero-accent-rgb', theme.rgb);
+        element.style.setProperty('--hero-accent-light-rgb', theme.lightRgb);
+        element.style.setProperty('--slide-accent', theme.accent);
+        element.style.setProperty('--slide-accent-dark', theme.dark);
+        element.style.setProperty('--slide-accent-rgb', theme.rgb);
+        element.style.setProperty('--slide-accent-light-rgb', theme.lightRgb);
+      });
     }
 
-    function tick() {
-      currentSlide = (currentSlide + 1) % TOTAL_SLIDES;
-      setActiveDot(currentSlide);
+    function goToSlide(idx) {
+      current = ((idx % slides.length) + slides.length) % slides.length;
+      applySlideTheme(slideThemes[current]);
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === current));
+      dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
+      if (progress) progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+      if (prevBtn) prevBtn.disabled = false;
+      if (nextBtn) nextBtn.disabled = false;
     }
 
     function startAutoplay() {
-      if (interval) clearInterval(interval);
-      interval = setInterval(tick, SLIDE_DURATION);
-    }
-
-    function jumpToSlide(idx) {
-      currentSlide = idx;
-      setActiveDot(idx);
-      // Restart the CSS slideshow animation and offset so target slide plays first
-      const screens = animDemo.querySelectorAll('.anim-screen');
-      screens.forEach(s => { s.style.animation = 'none'; });
-      void animDemo.offsetWidth; // force reflow
-      const offset = -(idx * SLIDE_DURATION) / 1000; // negative delay = skip ahead
-      screens.forEach((s, i) => {
-        s.style.animation = '';
-        s.style.animationDelay = (offset) + 's';
-      });
-      startAutoplay();
+      if (timer) clearInterval(timer);
+      timer = setInterval(() => {
+        goToSlide(current >= slides.length - 1 ? 0 : current + 1);
+      }, SLIDE_DURATION);
     }
 
     dots.forEach((dot, idx) => {
-      dot.addEventListener('click', () => jumpToSlide(idx));
+      dot.addEventListener('click', () => {
+        goToSlide(idx);
+        startAutoplay();
+      });
     });
 
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        goToSlide(current - 1);
+        startAutoplay();
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        goToSlide(current + 1);
+        startAutoplay();
+      });
+    }
+
+    viewport.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+      if (timer) clearInterval(timer);
+    }, { passive: true });
+
+    viewport.addEventListener('touchend', (e) => {
+      const delta = e.changedTouches[0].screenX - touchStartX;
+      if (Math.abs(delta) > 50) {
+        goToSlide(delta < 0 ? current + 1 : current - 1);
+      }
+      startAutoplay();
+    }, { passive: true });
+
+    goToSlide(1);
     startAutoplay();
   })();
 </script>

@@ -4,7 +4,7 @@
 <style>
   .social-divider {
     display: flex; align-items: center; gap: 12px;
-    margin: 8px 0;
+    margin: 10px 0;
   }
   .social-divider::before,
   .social-divider::after {
@@ -21,25 +21,32 @@
   .social-btn {
     display: flex; align-items: center; justify-content: center;
     gap: 10px;
-    height: 44px; padding: 0 16px;
-    border-radius: 8px;
+    height: 48px; padding: 0 16px;
+    border-radius: 10px;
     font-size: 14.5px; font-weight: 600;
     font-family: var(--sans);
     cursor: pointer; text-decoration: none;
     border: 1px solid var(--border);
-    transition: background 0.15s, border-color 0.15s;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
   .social-btn.google {
     background: #fff; color: #3c4043;
     border-color: #dadce0;
   }
-  .social-btn.google:hover { background: #f8f9fa; border-color: #c8cacf; }
+  .social-btn.google:hover { background: #f8f9fa; border-color: #c8cacf; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   .social-btn.apple {
     background: #000; color: #fff;
     border-color: #000;
   }
-  .social-btn.apple:hover { background: #1a1a1a; }
+  .social-btn.apple:hover { background: #1c1c1e; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
   .social-btn svg { flex-shrink: 0; }
+
+  /* Show auth card FIRST on small screens */
+  @media (max-width: 860px) {
+    .auth-intro { display: none; } /* hide marketing intro on mobile login */
+    .auth-shell  { padding: 16px 0; }
+  }
 </style>
 @endpush
 

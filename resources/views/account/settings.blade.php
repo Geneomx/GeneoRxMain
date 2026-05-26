@@ -5,17 +5,28 @@
 @section('content')
 <style>
   .settings-wrap {
-    max-width: 680px; margin: 40px auto; padding: 0 24px 80px;
+    max-width: 680px; margin: 24px auto; padding: 0 24px 80px;
   }
   .settings-head {
     display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 16px; flex-wrap: wrap; margin-bottom: 34px;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 28px;
   }
   .settings-page-title {
     font-size: 26px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 6px;
   }
   .settings-page-sub {
     font-size: 14.5px; color: var(--text-muted);
+  }
+
+  /* Mobile responsive */
+  @media (max-width: 640px) {
+    .settings-wrap { margin: 0; padding: 0 0 80px; }
+    .settings-head { margin-bottom: 20px; }
+    .settings-page-title { font-size: 22px; }
+    .settings-card-header { padding: 14px 16px; }
+    .settings-card-body { padding: 16px; }
+    .danger-zone { padding: 18px 16px; }
+    .settings-head .btn { width: 100%; justify-content: center; }
   }
 
   .settings-card {

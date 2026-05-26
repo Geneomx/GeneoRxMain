@@ -133,11 +133,11 @@
     /* dropdown */
     .nav-dropdown {
       position: absolute; top: calc(100% + 10px); right: 0;
-      min-width: 210px;
+      min-width: 220px;
       background: var(--bg);
       border: 1px solid var(--border-soft);
-      border-radius: 12px;
-      box-shadow: 0 8px 28px rgba(15,31,27,0.10), 0 2px 6px rgba(15,31,27,0.05);
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(15,31,27,0.12), 0 2px 8px rgba(15,31,27,0.06);
       padding: 6px;
       z-index: 200;
       display: none;
@@ -159,13 +159,14 @@
 
     .nav-drop-item {
       display: flex; align-items: center; gap: 9px;
-      padding: 9px 12px;
-      border-radius: 8px;
+      padding: 11px 12px;
+      border-radius: 9px;
       font-size: 13.5px; font-weight: 500; color: var(--text-soft);
       cursor: pointer; width: 100%;
       background: none; border: none; font-family: var(--sans);
       text-align: left; transition: background 0.12s, color 0.12s;
       text-decoration: none;
+      min-height: 44px;
     }
     .nav-drop-item:hover { background: var(--bg-muted); color: var(--text); }
     .nav-drop-item svg { flex-shrink: 0; color: var(--text-muted); }
@@ -254,27 +255,33 @@
       overflow: hidden;
     }
     .card > .hd {
-      padding: 18px 22px 14px;
+      padding: 20px 24px 16px;
       border-bottom: 1px solid var(--border-soft);
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
-      background: linear-gradient(180deg, #FFFFFF 0%, #FBFDFD 100%);
+      background: var(--bg);
     }
     .card > .hd h2 {
-      font-size: 17px;
-      font-weight: 750;
-      letter-spacing: -0.2px;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
       color: var(--text);
     }
     .card > .hd .desc {
       margin-top: 4px;
       font-size: 13.5px;
       color: var(--text-muted);
+      max-width: 52ch;
+      line-height: 1.5;
     }
     .card > .bd { padding: 22px; }
+    #main {
+      padding: 24px;
+      background: var(--bg-soft);
+    }
     #summaryPanel {
       position: sticky;
       top: 78px;
@@ -373,19 +380,28 @@
     input::placeholder, textarea::placeholder { color: var(--text-muted); }
     input:focus, select:focus, textarea:focus {
       border-color: var(--teal);
-      box-shadow: 0 0 0 3px rgba(14, 124, 102, 0.10);
+      box-shadow: 0 0 0 3px rgba(14, 124, 102, 0.12);
     }
 
     /* =========================================
        SECTION / ROW / COL
     ========================================= */
     .section {
-      padding: 20px;
+      padding: 24px;
       border: 1px solid var(--border-soft);
-      border-radius: var(--r-lg);
-      background: #FBFDFD;
+      border-radius: 12px;
+      background: var(--bg);
+      box-shadow: none;
     }
-    .section + .section { margin-top: 14px; }
+    .section + .section { margin-top: 16px; }
+    .section label {
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .section .fineprint {
+      margin-top: -4px;
+      margin-bottom: 10px;
+    }
     .row { display: flex; gap: 12px; flex-wrap: wrap; }
     .col { flex: 1; min-width: 220px; }
 
@@ -403,10 +419,8 @@
       padding: 12px;
       border: 1px solid var(--border-soft);
       border-radius: var(--r-lg);
-      background: rgba(255, 255, 255, 0.94);
-      box-shadow: var(--shadow-lg);
-      backdrop-filter: saturate(180%) blur(12px);
-      -webkit-backdrop-filter: saturate(180%) blur(12px);
+      background: var(--bg);
+      box-shadow: 0 4px 16px rgba(15, 31, 27, 0.06);
     }
     .stickyNav .navStepMeta {
       flex: 1;
@@ -454,15 +468,15 @@
     }
     .step {
       flex: 0 0 auto;
-      padding: 7px 12px; border-radius: 999px;
+      padding: 8px 14px; border-radius: 999px;
       border: 1px solid var(--border); background: var(--bg);
-      color: var(--text-soft); font-size: 13px;
+      color: var(--text-soft); font-size: 13px; font-weight: 500;
       cursor: pointer; user-select: none;
       font-family: var(--sans);
       transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
-    .step:hover { border-color: var(--text-muted); }
-    .step.on { background: var(--teal); color: #fff; border-color: var(--teal); font-weight: 600; }
+    .step:hover { border-color: var(--teal); color: var(--teal-dark); }
+    .step.on { background: var(--teal); color: #fff; border-color: var(--teal); font-weight: 600; box-shadow: none; }
     .stepMoreSelect {
       flex: 0 0 auto;
       width: auto;
@@ -477,7 +491,7 @@
     .stepMoreSelect.on {
       color: var(--teal-dark);
       border-color: var(--teal);
-      background-color: var(--teal-50);
+      background-color: var(--bg);
       font-weight: 700;
     }
 
@@ -488,16 +502,17 @@
 
     .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
     .chip {
-      padding: 7px 12px; border-radius: 999px;
-      border: 1px solid var(--border); background: var(--bg);
-      color: var(--text-soft); font-size: 13px;
+      padding: 8px 14px; border-radius: 999px;
+      border: 1.5px solid var(--border); background: var(--bg);
+      color: var(--text-soft); font-size: 13.5px;
       cursor: pointer; user-select: none;
-      transition: all 0.15s;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
     }
-    .chip:hover { border-color: var(--text-muted); }
+    .chip:hover { border-color: var(--teal); }
     .chip[aria-pressed="true"] {
-      background: var(--teal-50); border-color: var(--teal); color: var(--teal-dark);
+      background: var(--bg); border-color: var(--teal); color: var(--teal-dark);
       font-weight: 600;
+      box-shadow: inset 0 0 0 1px var(--teal);
     }
 
     /* =========================================
@@ -534,9 +549,15 @@
        BANNERS / FLASH
     ========================================= */
     .tagline {
-      padding: 14px 16px; border-radius: var(--r);
-      background: var(--teal-50); border: 1px solid var(--teal-100);
-      color: var(--teal-dark); font-size: 14px; line-height: 1.5;
+      padding: 14px 16px; border-radius: 10px;
+      background: var(--bg); border: 1px solid var(--border-soft);
+      border-left: 4px solid var(--teal);
+      color: var(--text-soft); font-size: 14px; line-height: 1.6;
+    }
+    .tagline strong {
+      color: var(--text);
+      display: block;
+      margin-bottom: 4px;
     }
     .banner {
       padding: 12px 14px; border-radius: var(--r);
@@ -621,14 +642,15 @@
        COACH BOX
     ========================================= */
     .coachBox {
-      border: 1px solid var(--teal-100);
-      border-radius: var(--r-lg);
-      background: var(--teal-50);
-      padding: 16px;
+      border: 1px solid var(--border-soft);
+      border-left: 4px solid var(--teal);
+      border-radius: 12px;
+      background: var(--bg);
+      padding: 18px 20px;
     }
     .coachTitle { display: flex; align-items: center; gap: 10px; }
     .spark {
-      width: 26px; height: 26px; border-radius: 6px;
+      width: 26px; height: 26px; border-radius: 8px;
       background: var(--teal); color: #fff;
       display: flex; align-items: center; justify-content: center;
       font-weight: 700; font-size: 13px;
@@ -908,40 +930,210 @@
     .site-footer a { color: var(--text-soft); }
     .site-footer a:hover { color: var(--text); }
 
+    /* Footer links row */
+    .site-footer-links { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+
+    /* =========================================
+       GUEST BANNER  (persistent strip at top of all pages)
+    ========================================= */
+    .guest-bar {
+      background: #FFFBEB;
+      border-bottom: 1px solid #FDE68A;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 13.5px;
+      color: #92400E;
+      position: sticky;
+      top: 57px;   /* sits just below the sticky nav */
+      z-index: 49;
+    }
+    .guest-bar strong { color: #78350F; }
+    .guest-bar-btns  { display: flex; gap: 8px; flex-shrink: 0; }
+    @media (max-width: 640px) {
+      .guest-bar { flex-direction: column; align-items: flex-start; gap: 8px; top: 54px; padding: 10px 16px; }
+      .guest-bar-btns { width: 100%; }
+      .guest-bar-btns form,
+      .guest-bar-btns a { flex: 1; }
+      .guest-bar-btns .btn { width: 100%; justify-content: center; }
+    }
+
+    /* =========================================
+       MOBILE BOTTOM NAV  (auth only)
+    ========================================= */
+    .mob-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(255, 255, 255, 0.97);
+      backdrop-filter: saturate(180%) blur(16px);
+      -webkit-backdrop-filter: saturate(180%) blur(16px);
+      border-top: 1px solid var(--border-soft);
+      box-shadow: 0 -2px 20px rgba(15, 31, 27, 0.06);
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .mob-nav-inner {
+      display: flex;
+      align-items: stretch;
+      height: 60px;
+    }
+    .mob-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 6px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.15px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-family: var(--sans);
+      transition: color 0.15s;
+      position: relative;
+      -webkit-tap-highlight-color: transparent;
+      min-height: 60px;
+    }
+    .mob-nav-item svg {
+      width: 22px; height: 22px;
+      stroke-width: 1.75;
+      flex-shrink: 0;
+    }
+    .mob-nav-item.active { color: var(--teal); }
+    .mob-nav-item.active::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 36px; height: 3px;
+      background: var(--teal);
+      border-radius: 0 0 4px 4px;
+    }
+    .mob-nav-avatar-sm {
+      width: 24px; height: 24px;
+      background: var(--teal);
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 800;
+      flex-shrink: 0;
+      transition: box-shadow 0.15s;
+    }
+    .mob-nav-item.active .mob-nav-avatar-sm {
+      box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--teal);
+    }
+
     /* =========================================
        RESPONSIVE
     ========================================= */
     @media (max-width: 860px) {
+      /* Nav */
       .nav-links, .nav-uname { display: none; }
-      .wrap { padding: 20px 16px 104px; }
+
+      /* Main content area — bottom cleared for bottom nav + sticky form nav */
+      .wrap { padding: 20px 16px calc(60px + env(safe-area-inset-bottom, 0px) + 24px); }
+
+      /* Show mobile bottom nav */
+      .mob-nav { display: block; }
+
+      /* Sticky form nav — float above the mobile bottom nav */
+      .stickyNav {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 10px);
+        margin: 0;
+      }
+      .stickyNav .primary,
+      .stickyNav .ghost { min-width: 96px; }
+
+      /* Layout */
       .top { align-items: flex-start; }
       .grid { grid-template-columns: 1fr; }
       #summaryPanel { position: static; }
       #summaryPanel #summaryBody { display: none; }
       #summaryPanel.summary-open #summaryBody { display: block; }
       .summary-toggle { display: inline-flex; }
-      .stickyNav {
-        position: fixed;
-        left: 12px;
-        right: 12px;
-        bottom: 12px;
-        margin: 0;
-      }
-      .stickyNav .primary,
-      .stickyNav .ghost {
-        min-width: 96px;
-      }
-      .auth-shell { grid-template-columns: 1fr; min-height: auto; gap: 24px; }
-      .auth-intro h1 { font-size: 30px; letter-spacing: -0.5px; }
       .col { min-width: 100%; }
       .metricGrid { grid-template-columns: 1fr; }
+
+      /* Auth: show form card FIRST on mobile (before marketing intro) */
+      .auth-shell { grid-template-columns: 1fr; min-height: auto; gap: 20px; display: flex; flex-direction: column; width: 100%; }
+      .auth-shell-single { align-items: stretch; }
+      .auth-card  { order: -1; width: 100%; }
+      .auth-intro { order: 1; padding-bottom: 8px; }
+      .auth-intro h1 { font-size: 26px; letter-spacing: -0.4px; }
+      .auth-intro .sub { font-size: 14px; }
+      .trust-row { margin-top: 14px; }
+
+      /* Page header stacks nicely */
+      .page-head { gap: 12px; margin-bottom: 14px; }
+      .page-head h1 { font-size: 24px; margin-top: 4px; }
+      .page-head .actions { gap: 8px; }
+
+      /* Larger nav avatar tap target */
+      .nav-avatar-btn { padding: 6px 8px 6px 6px; }
+      .nav-avatar { width: 34px; height: 34px; }
+
+      /* Dropdown anchors to right, safe width */
+      .nav-dropdown { right: -8px; min-width: 200px; }
     }
+
+    @media (max-width: 640px) {
+      /* Badge row wraps better */
+      .status { gap: 6px; }
+      .badge { min-height: 32px; font-size: 12px; padding: 4px 10px; }
+
+      /* Cards tighter */
+      .card > .hd, .card-hd { padding: 14px 16px; }
+      .card > .bd, .card-bd { padding: 16px; }
+      .section { padding: 16px; }
+
+      /* Items tighter */
+      .item { padding: 12px; }
+    }
+
     @media (max-width: 520px) {
-      .page-head h1 { font-size: 22px; }
-      .btn { width: 100%; }
+      /* Typography */
+      .page-head h1 { font-size: 20px; }
+
+      /* Buttons — full width for primary CTAs, keep small buttons auto */
+      .btn-block-mobile { width: 100%; }
+      .auth-form .primary { width: 100%; }
       .btn-sm { width: auto; }
-      .auth-card .hd, .auth-card .bd { padding: 18px; }
-      input, select, textarea { font-size: 16px; }
+
+      /* Auth card inner padding */
+      .auth-card .hd, .auth-card .bd { padding: 16px; }
+
+      /* Inputs — prevent iOS zoom (16px+ triggers no zoom) */
+      input, select, textarea { font-size: 16px; height: 48px; }
+      textarea { height: auto; }
+
+      /* Nav user dropdown full width feel */
+      .nav-dropdown { right: -4px; left: -140px; }
+
+      /* Email verify banner stacks */
+      .alert-info { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .alert-info .btn { width: 100%; }
+
+      /* Footer compact */
+      .site-footer { padding: 18px 16px; }
+      .site-footer-inner { flex-direction: column; gap: 8px; text-align: center; }
+    }
+
+    @media (max-width: 380px) {
+      .wrap { padding-left: 12px; padding-right: 12px; }
+      .page-head h1 { font-size: 18px; }
+      .auth-card .hd, .auth-card .bd { padding: 14px; }
     }
   </style>
 </head>
@@ -1061,10 +1253,31 @@
     </div>
   </div>
 
+  {{-- ── Persistent guest bar (shows on ALL pages in guest mode) ── --}}
+  @if(session('is_web_guest'))
+  <div class="guest-bar" role="alert">
+    <span>👤 <strong>Guest mode</strong> — explore all features. Your progress is saved on this device. Create a free account to keep it permanently.</span>
+    <div class="guest-bar-btns">
+      {{-- Sign out of guest then land on register --}}
+      <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+        @csrf
+        <input type="hidden" name="redirect_to" value="register">
+        <button type="submit" class="btn btn-primary btn-sm">Create free account</button>
+      </form>
+      {{-- Sign out of guest then land on login --}}
+      <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+        @csrf
+        <input type="hidden" name="redirect_to" value="login">
+        <button type="submit" class="btn btn-outline btn-sm">Sign in</button>
+      </form>
+    </div>
+  </div>
+  @endif
+
   <!-- MAIN CONTENT -->
   <div class="wrap">
     @auth
-      @if(! auth()->user()->email_verified_at)
+      @if(! auth()->user()->email_verified_at && !session('is_web_guest'))
         <div class="alert-info">
           <span><strong>Verify your email</strong> to keep your account secure and your GeneoRx progress synced across devices.</span>
           <a href="{{ route('email.otp.show') }}" class="btn btn-primary btn-sm">Verify email</a>
@@ -1074,6 +1287,104 @@
 
     @yield('content')
   </div>
+
+  <!-- MOBILE BOTTOM NAV (authenticated users) -->
+  @auth
+  @php $mobInitials = strtoupper(substr(auth()->user()->name, 0, 1)); @endphp
+
+  @if(session('is_web_guest'))
+  {{-- ── Guest bottom nav: sign-in + register ── --}}
+  <nav class="mob-nav" aria-label="Mobile navigation">
+    <div class="mob-nav-inner">
+      <a href="{{ route('treatments') }}"
+         class="mob-nav-item {{ request()->routeIs('treatments') ? 'active' : '' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/>
+          <rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
+        </svg>
+        Dashboard
+      </a>
+
+      {{-- Create account — log out guest then go to register --}}
+      <form method="POST" action="{{ route('logout') }}" style="flex:1;margin:0;">
+        @csrf
+        <input type="hidden" name="redirect_to" value="register">
+        <button type="submit" class="mob-nav-item" style="width:100%;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+          </svg>
+          Register
+        </button>
+      </form>
+
+      {{-- Sign in — log out guest then go to login --}}
+      <form method="POST" action="{{ route('logout') }}" style="flex:1;margin:0;">
+        @csrf
+        <input type="hidden" name="redirect_to" value="login">
+        <button type="submit" class="mob-nav-item" style="width:100%;color:var(--teal);font-weight:700;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
+          </svg>
+          Sign in
+        </button>
+      </form>
+    </div>
+  </nav>
+
+  @else
+  {{-- ── Authenticated user bottom nav ── --}}
+  <nav class="mob-nav" aria-label="Mobile navigation">
+    <div class="mob-nav-inner">
+
+      {{-- Dashboard --}}
+      <a href="{{ route('treatments') }}"
+         class="mob-nav-item {{ request()->routeIs('treatments') ? 'active' : '' }}"
+         aria-label="Dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/>
+          <rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
+        </svg>
+        Dashboard
+      </a>
+
+      {{-- Settings --}}
+      <a href="{{ route('account.settings') }}"
+         class="mob-nav-item {{ request()->routeIs('account.*') ? 'active' : '' }}"
+         aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        Settings
+      </a>
+
+      @if(auth()->user()->is_admin ?? false)
+      {{-- Admin --}}
+      <a href="{{ route('admin.dashboard') }}"
+         class="mob-nav-item {{ request()->routeIs('admin.*') ? 'active' : '' }}"
+         aria-label="Admin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        Admin
+      </a>
+      @endif
+
+      {{-- Account (opens top dropdown) --}}
+      <button class="mob-nav-item" type="button" id="mobNavAccountBtn" aria-label="Account menu">
+        <div class="mob-nav-avatar-sm">{{ $mobInitials }}</div>
+        Account
+      </button>
+
+    </div>
+  </nav>
+  @endif
+
+  @endauth
 
   <!-- FOOTER -->
   <footer class="site-footer">
@@ -1089,7 +1400,7 @@
   @yield('scripts')
 
   <script>
-    // User avatar dropdown
+    // ── User avatar dropdown (top nav) ────────────────────────────────────────
     (function () {
       const navUser  = document.getElementById('navUser');
       const btn      = document.getElementById('navAvatarBtn');
@@ -1102,15 +1413,25 @@
 
       btn.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
 
-      // Close when clicking outside
       document.addEventListener('click', (e) => {
         if (!navUser.contains(e.target)) close();
       });
 
-      // Close on Escape
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') close();
       });
+
+      // ── Mobile bottom nav "Account" button ──────────────────────────────────
+      const mobAccountBtn = document.getElementById('mobNavAccountBtn');
+      if (mobAccountBtn) {
+        mobAccountBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          // Scroll to top smoothly so the dropdown is visible
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          // Slight delay lets the scroll start before the menu opens
+          setTimeout(() => toggle(), 120);
+        });
+      }
     })();
   </script>
 </body>

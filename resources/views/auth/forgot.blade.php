@@ -1,5 +1,14 @@
 @extends('layouts.app')
 
+@push('styles')
+<style>
+  @media (max-width: 860px) {
+    .auth-intro { display: none; }
+    .auth-shell  { padding: 16px 0; }
+  }
+</style>
+@endpush
+
 @section('content')
 <div class="auth-shell">
   <div class="auth-intro">

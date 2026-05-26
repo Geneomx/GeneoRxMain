@@ -88,6 +88,8 @@ class AuthController extends Controller
 
     /**
      * Handle logout
+     * Supports optional ?to=register|login|home to redirect after sign-out.
+     * Used by the guest banner so "Create account" lands on register.
      */
     public function logout(Request $request)
     {
@@ -95,6 +97,10 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('success', 'Logged out successfully.');
+        $allowed = ['login', 'register', 'home'];
+        $to      = $request->input('redirect_to', 'login');
+        $route   = in_array($to, $allowed) ? $to : 'login';
+
+        return redirect()->route($route)->with('status', 'Logged out successfully.');
     }
 }

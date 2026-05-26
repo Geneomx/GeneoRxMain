@@ -121,9 +121,9 @@ class HomeController extends Controller
     {
         $user = auth()->user();
 
-        // Guest demo sessions are read-only  silently succeed without writing anything
+        // Guest demo sessions stay on this device until the user registers
         if (session('is_web_guest')) {
-            return response()->json(['success' => true, 'message' => 'Guest mode  data not saved.']);
+            return response()->json(['success' => true, 'message' => 'Guest mode — saved on this device only.']);
         }
 
         $validated = $request->validate([

@@ -281,7 +281,32 @@ function load(){
   catch(e){ return defaultState(); }
 }
 
+function localHasMeaningfulData(s){
+  if(!s) return false;
+  return !!(
+    (s.meds && s.meds.length) ||
+    (s.symptoms && s.symptoms.selected && s.symptoms.selected.length) ||
+    (s.checkins && s.checkins.length) ||
+    (s.profile && (s.profile.age || s.profile.gender)) ||
+    (s.plan && s.plan.started) ||
+    s.account?.consent
+  );
+}
+
+function backendResponseHasData(data){
+  return !!(
+    (data.medications && data.medications.length) ||
+    (data.symptoms && data.symptoms.length) ||
+    (data.checkins && data.checkins.length) ||
+    (data.profile && (data.profile.age || data.profile.gender))
+  );
+}
+
 async function loadFromBackend() {
+  if (IS_GUEST) return;
+
+  const localSnapshot = JSON.parse(JSON.stringify(state));
+
   try {
     const response = await fetch('/api/profile');
     if(!response.ok) return;
@@ -289,24 +314,28 @@ async function loadFromBackend() {
     const data = await response.json();
     if(data.profile) {
       state.profile = { 
-        age: data.profile.age || "", 
-        gender: data.profile.gender || "",
-        pregnant: data.profile.pregnant || false,
-        kidneyDisease: data.profile.kidneyDisease || false,
-        anticoagulants: data.profile.anticoagulants || false
+        age: data.profile.age || state.profile.age || "", 
+        gender: data.profile.gender || state.profile.gender || "",
+        pregnant: data.profile.pregnant ?? state.profile.pregnant ?? false,
+        kidneyDisease: data.profile.kidneyDisease ?? state.profile.kidneyDisease ?? false,
+        anticoagulants: data.profile.anticoagulants ?? state.profile.anticoagulants ?? false
       };
     }
-    if(data.account) {
-      state.account.email = data.account.email || "";
-      state.account.consent = data.account.consent || false;
+    if(data.user?.email && !String(data.user.email).includes('guest@')) {
+      state.account.email = data.user.email;
+    } else if(data.account?.email && !String(data.account.email).includes('guest@')) {
+      state.account.email = data.account.email;
     }
-    if(data.medications && Array.isArray(data.medications)) {
+    if(typeof data.account?.consent === 'boolean') {
+      state.account.consent = data.account.consent;
+    }
+    if(data.medications?.length) {
       state.meds = data.medications;
     }
-    if(data.symptoms && Array.isArray(data.symptoms)) {
+    if(data.symptoms?.length) {
       state.symptoms.selected = data.symptoms.map(s => s.name);
     }
-    if(data.checkins && Array.isArray(data.checkins)) {
+    if(data.checkins?.length) {
       const sorted = data.checkins.slice().sort((a,b)=> new Date(a.dateISO||0)-new Date(b.dateISO||0));
       state.checkins = sorted;
     }
@@ -333,13 +362,40 @@ async function loadFromBackend() {
     } else if(data.plan) {
       state.plan = { ...defaultState().plan, ...data.plan, routine: { ...defaultState().plan.routine, ...((data.plan && data.plan.routine) || {}) } };
     }
-    renderAll();
+
+    if(!backendResponseHasData(data) && localHasMeaningfulData(localSnapshot)) {
+      state.profile = { ...state.profile, ...localSnapshot.profile };
+      state.meds = localSnapshot.meds || [];
+      state.symptoms = { ...state.symptoms, ...localSnapshot.symptoms };
+      state.checkins = localSnapshot.checkins || [];
+      state.plan = { ...defaultState().plan, ...localSnapshot.plan, routine: { ...defaultState().plan.routine, ...((localSnapshot.plan && localSnapshot.plan.routine) || {}) } };
+      state.wellbeingBaseline = { ...defaultState().wellbeingBaseline, ...localSnapshot.wellbeingBaseline };
+      state.symptomOnlyMode = localSnapshot.symptomOnlyMode ?? state.symptomOnlyMode;
+      state.feedback = localSnapshot.feedback || state.feedback;
+      state.reminderPreferences = { ...defaultState().reminderPreferences, ...(localSnapshot.reminderPreferences || {}) };
+      if(typeof localSnapshot.account?.consent === 'boolean') {
+        state.account.consent = localSnapshot.account.consent;
+      }
+      if(data.user?.email) {
+        state.account.email = data.user.email;
+      } else if(localSnapshot.account?.email && !String(localSnapshot.account.email).includes('guest@')) {
+        state.account.email = localSnapshot.account.email;
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      await saveToBackend();
+      showToast('Your progress has been saved to your account ✓');
+    }
   } catch(e) {
     console.log('Backend profile load (optional):', e.message);
   }
 }
 
 async function saveToBackend() {
+  if (IS_GUEST) {
+    setSaveStatus("saved", "Saved on device");
+    return;
+  }
+
   try {
     const response = await fetch('/api/profile', {
       method: 'POST',
@@ -1446,13 +1502,6 @@ function scrollDashboardToTop(){
 
 function setStep(n, options = {}){
   const { scroll = true } = options;
-
-  // Guest: once they click "Continue" from the Account/Profile step, send them to login
-  if (IS_GUEST && state.step === 0 && n > 0) {
-    showToast("Create a free account to save your profile and continue.");
-    setTimeout(() => { window.location.href = LOGIN_URL; }, 1200);
-    return;
-  }
 
   state.step = clamp(n, 0, STEP_LABELS.length-1);
   save();
@@ -2980,5 +3029,9 @@ function renderAll(){
 }
 
 // Load user profile from backend first, then render
-loadFromBackend().then(() => renderAll()).catch(() => renderAll());
+if (IS_GUEST) {
+  renderAll();
+} else {
+  loadFromBackend().then(() => renderAll()).catch(() => renderAll());
+}
 </script>
