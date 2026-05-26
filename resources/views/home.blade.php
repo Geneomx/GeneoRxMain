@@ -361,9 +361,9 @@
 
   .hero-inner {
     position: relative;
-    max-width: 760px;
+    max-width: 960px;
     margin: 0 auto;
-    padding: 42px 28px 80px;
+    padding: 54px 28px 80px;
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -577,14 +577,14 @@
 
   .hero-info-viewport {
     position: relative;
-    min-height: 368px;
+    min-height: 330px;
     z-index: 2;
   }
 
   .hero-info-block {
     position: absolute;
     inset: 0;
-    padding: 38px 92px;
+    padding: 34px 72px;
     border-radius: 0;
     background: transparent;
     border: none;
@@ -698,19 +698,25 @@
     top: 50%;
     transform: translateY(-50%);
     z-index: 2;
-    width: 48px;
-    height: 48px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    border: none;
-    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(176, 220, 208, 0.6);
+    background: rgba(255, 255, 255, 0.78);
     color: var(--text-soft);
+    opacity: 0.36;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 12px 30px rgba(15, 31, 27, 0.12);
+    box-shadow: 0 10px 24px rgba(15, 31, 27, 0.08);
+    backdrop-filter: blur(10px);
     transition: all 0.2s ease;
     -webkit-tap-highlight-color: transparent;
+  }
+  .hero-info-stage:hover .hero-info-arrow,
+  .hero-info-arrow:focus-visible {
+    opacity: 1;
   }
   .hero-info-arrow:hover {
     color: var(--slide-accent-dark);
@@ -723,8 +729,8 @@
     transform: translateY(-50%);
     box-shadow: none;
   }
-  .hero-info-arrow--prev { left: -24px; }
-  .hero-info-arrow--next { right: -24px; }
+  .hero-info-arrow--prev { left: 0; }
+  .hero-info-arrow--next { right: 0; }
 
   /* ── Step selector ── */
   .hero-info-dots {
@@ -1508,8 +1514,8 @@
 
     .hero-info-viewport { min-height: 330px; }
     .hero-info-block { padding: 28px 56px; }
-    .hero-info-arrow--prev { left: -8px; }
-    .hero-info-arrow--next { right: -8px; }
+    .hero-info-arrow--prev { left: 0; }
+    .hero-info-arrow--next { right: 0; }
     .hero-info-block h3 { font-size: 16px; padding-right: 48px; }
     .hero-info-icon { width: 38px; height: 38px; }
     .hero-info-icon svg { width: 18px; height: 18px; }
@@ -1536,9 +1542,9 @@
   @media (max-width: 620px) {
     .hero-info-viewport { min-height: 286px; }
     .hero-info-block { padding: 22px 22px; }
-    .hero-info-arrow { width: 36px; height: 36px; }
-    .hero-info-arrow--prev { left: -4px; }
-    .hero-info-arrow--next { right: -4px; }
+    .hero-info-arrow { display: none; }
+    .hero-info-arrow--prev { left: 0; }
+    .hero-info-arrow--next { right: 0; }
     .hero-info-dots { border-radius: 16px; padding: 5px; }
     .hero-info-dot { min-height: 44px; padding: 7px 4px; }
     .hero-info-tab-num { font-size: 9px; }
@@ -1714,12 +1720,6 @@
         </div>
       </div>
 
-      <div class="hero-eyebrow">
-        <span class="hero-eyebrow-dot">
-          <img src="{{ asset('logo.svg') }}" alt="" style="width:14px;height:14px;display:block;">
-        </span>
-        <span class="hero-eyebrow-text">Personal medication intelligence platform</span>
-      </div>
       <div class="hero-info-slider">
         <div class="hero-info-stage">
           <div class="hero-info-glow" aria-hidden="true"></div>
