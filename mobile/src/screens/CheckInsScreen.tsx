@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProfile } from '@/store/ProfileContext';
 import { Loader } from '@/components/Loader';
+import { useToast } from '@/components/Toast';
 import { colors, spacing } from '@/theme';
 import type { CheckIn } from '@/types/api';
 
@@ -31,6 +32,15 @@ const SYMPTOM_CATEGORIES: { label: string; symptoms: string[] }[] = [
     label: 'MOOD',
     symptoms: ['Anxious', 'Irritable', 'Low mood'],
   },
+];
+
+// Self-reported dose adherence buckets → percentage stored on the check-in.
+const ADHERENCE_OPTIONS: { label: string; value: number }[] = [
+  { label: 'All', value: 100 },
+  { label: 'Most', value: 75 },
+  { label: 'Half', value: 50 },
+  { label: 'Few', value: 25 },
+  { label: 'None', value: 0 },
 ];
 
 // Colors for selected chips by category
@@ -69,7 +79,9 @@ const SymptomChip: React.FC<SymptomChipProps> = ({ label, selected, onPress, cat
 
 export const CheckInsScreen: React.FC = () => {
   const { data, loading, save } = useProfile();
+  const toast = useToast();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [adherence, setAdherence] = useState(100);
   const [saving, setSaving] = useState(false);
 
   const checkins = useMemo<CheckIn[]>(() => data?.checkins ?? [], [data]);
@@ -90,16 +102,17 @@ export const CheckInsScreen: React.FC = () => {
     }
     const next: CheckIn = {
       dateISO: new Date().toISOString(),
-      adherencePct: 100,
+      adherencePct: adherence,
       notes: Array.from(selected).join(', '),
     };
     setSaving(true);
     try {
       await save({ checkins: [next, ...checkins] });
       setSelected(new Set());
-      Alert.alert('Check-in saved! ✓', 'Your symptoms have been logged.');
+      setAdherence(100);
+      toast.show('Check-in saved');
     } catch (err) {
-      Alert.alert('Could not save', err instanceof Error ? err.message : 'Please try again.');
+      toast.show(err instanceof Error ? err.message : 'Could not save', 'error');
     } finally {
       setSaving(false);
     }
@@ -108,16 +121,17 @@ export const CheckInsScreen: React.FC = () => {
   const handleFineToday = async () => {
     const next: CheckIn = {
       dateISO: new Date().toISOString(),
-      adherencePct: 100,
+      adherencePct: adherence,
       notes: 'Feeling fine',
     };
     setSaving(true);
     try {
       await save({ checkins: [next, ...checkins] });
       setSelected(new Set());
-      Alert.alert('Logged ✓', 'Great — glad you are feeling well today!');
+      setAdherence(100);
+      toast.show('Logged — glad you feel well');
     } catch (err) {
-      Alert.alert('Could not save', err instanceof Error ? err.message : 'Please try again.');
+      toast.show(err instanceof Error ? err.message : 'Could not save', 'error');
     } finally {
       setSaving(false);
     }
@@ -155,6 +169,28 @@ export const CheckInsScreen: React.FC = () => {
             </View>
           </View>
         ))}
+
+        {/* DOSE ADHERENCE */}
+        <View style={styles.adherenceBlock}>
+          <Text style={styles.catLabel}>DOSES TAKEN THIS WEEK</Text>
+          <View style={styles.adherenceRow}>
+            {ADHERENCE_OPTIONS.map((opt) => {
+              const active = adherence === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.adherenceChip, active && styles.adherenceChipActive]}
+                  onPress={() => setAdherence(opt.value)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.adherenceChipText, active && styles.adherenceChipTextActive]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
 
         {/* SELECTED COUNT */}
         {selected.size > 0 && (
@@ -248,6 +284,18 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 14, fontWeight: '600', color: colors.text },
   chipTextUnsel: { color: colors.textMuted, fontWeight: '500' },
+
+  /* ADHERENCE */
+  adherenceBlock: { marginBottom: 18 },
+  adherenceRow: { flexDirection: 'row', gap: 8 },
+  adherenceChip: {
+    flex: 1, paddingVertical: 10, borderRadius: 12,
+    borderWidth: 1.5, borderColor: colors.borderSoft, backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+  },
+  adherenceChipActive: { borderColor: colors.primary, backgroundColor: colors.primary50 },
+  adherenceChipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  adherenceChipTextActive: { color: colors.primaryDark, fontWeight: '700' },
 
   /* SELECTED COUNT */
   selectedCount: {

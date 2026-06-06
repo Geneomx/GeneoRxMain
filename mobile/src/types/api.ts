@@ -29,6 +29,8 @@ export interface Medication {
   medId: string;
   dose: string;
   durationMonths: number;
+  /** How often the medication is taken, e.g. "Once daily". Optional for older records. */
+  frequency?: string;
 }
 
 export interface Symptom {

@@ -10,11 +10,14 @@ import {
   Text,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useProfile } from '@/store/ProfileContext';
 import { useAuth } from '@/auth/AuthContext';
+import { clearToken } from '@/auth/tokenStorage';
+import { useWizard } from '@/store/WizardContext';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Loader } from '@/components/Loader';
@@ -25,6 +28,7 @@ export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const { data, loading, refresh, save } = useProfile();
   const { signOut, user, isGuest } = useAuth();
+  const { reset: resetWizard } = useWizard();
 
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
@@ -59,6 +63,30 @@ export const ProfileScreen: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  }
+
+  function confirmResetApp() {
+    Alert.alert(
+      'Reset everything?',
+      'This permanently clears all local data on this device — your profile, Guided wizard entries, medications, check-ins, and sign-in — then returns you to the Welcome screen. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset everything',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              resetWizard();
+              await AsyncStorage.clear();
+              await clearToken();
+            } catch {
+              // best-effort — still sign out below
+            }
+            await signOut();
+          },
+        },
+      ],
+    );
   }
 
   if (loading && !data) return <Loader />;
@@ -175,7 +203,14 @@ export const ProfileScreen: React.FC = () => {
         {/* ACTIONS */}
         <View style={styles.actions}>
           <Button title="Save profile" onPress={onSave} loading={saving} />
-          <Button title="Sign out" variant="danger" onPress={signOut} />
+          <Button title="Sign out" variant="secondary" onPress={signOut} />
+          <Pressable
+            onPress={confirmResetApp}
+            style={({ pressed }) => [styles.resetLink, pressed && { opacity: 0.6 }]}
+            hitSlop={8}
+          >
+            <Text style={styles.resetLinkText}>Reset app &amp; clear all local data</Text>
+          </Pressable>
         </View>
 
         <Text style={styles.legal}>
@@ -305,6 +340,8 @@ const styles = StyleSheet.create({
 
   /* ACTIONS */
   actions: { gap: 10, marginTop: 4 },
+  resetLink: { alignItems: 'center', paddingVertical: 8, marginTop: 2 },
+  resetLinkText: { fontSize: 13, fontWeight: '600', color: colors.danger },
 
   legal: {
     fontSize: 11.5,

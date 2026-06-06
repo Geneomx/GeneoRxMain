@@ -13,8 +13,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProfile } from '@/store/ProfileContext';
 import { Loader } from '@/components/Loader';
+import { useToast } from '@/components/Toast';
+import { MED_DB } from '@/content/wizardData';
 import { colors, spacing } from '@/theme';
 import type { Medication, Symptom } from '@/types/api';
+
+const medName = (id: string): string => {
+  const m = MED_DB.find((x) => x.id === id);
+  return m ? m.name : id.replace(/^custom:/, '').replace(/-/g, ' ');
+};
 
 const MED_PALETTES = [
   { bg: '#FFF0EE', dot: '#FF6B5B' },
@@ -37,8 +44,10 @@ const MedIcon: React.FC<{ index: number }> = ({ index }) => {
 
 export const TreatmentsScreen: React.FC = () => {
   const { data, loading, refresh, save } = useProfile();
+  const toast = useToast();
   const [showModal, setShowModal] = useState(false);
-  const [medName, setMedName] = useState('');
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [medNameInput, setMedNameInput] = useState('');
   const [medDose, setMedDose] = useState('');
   const [medFreq, setMedFreq] = useState('Once daily');
   const [medMonths, setMedMonths] = useState('');
@@ -48,33 +57,62 @@ export const TreatmentsScreen: React.FC = () => {
   const symptoms = useMemo<Symptom[]>(() => data?.symptoms ?? [], [data]);
   const checkins = useMemo(() => data?.checkins ?? [], [data]);
 
+  // Recent adherence from logged check-ins (last 7). Null when nothing logged yet.
   const avgAdherence = useMemo(() => {
-    if (checkins.length === 0) return 0;
-    const sum = checkins.reduce((a, c) => a + (c.adherencePct ?? 0), 0);
-    return Math.round(sum / checkins.length);
+    if (checkins.length === 0) return null;
+    const recent = checkins.slice(0, 7);
+    const sum = recent.reduce((a, c) => a + (c.adherencePct ?? 0), 0);
+    return Math.round(sum / recent.length);
   }, [checkins]);
 
   async function persist(nextMeds: Medication[], nextSymptoms: Symptom[]) {
     setSaving(true);
     try {
       await save({ medications: nextMeds, symptoms: nextSymptoms });
+      toast.show('Saved');
     } catch (err) {
-      Alert.alert('Could not save', err instanceof Error ? err.message : 'Please try again.');
+      toast.show(err instanceof Error ? err.message : 'Could not save', 'error');
     } finally {
       setSaving(false);
     }
   }
 
-  function addMedication() {
-    if (!medName.trim()) return;
+  function openAdd() {
+    setEditingIndex(null);
+    setMedNameInput(''); setMedDose(''); setMedMonths(''); setMedFreq('Once daily');
+    setShowModal(true);
+  }
+
+  function openEdit(idx: number) {
+    const m = meds[idx];
+    setEditingIndex(idx);
+    setMedNameInput(medName(m.medId));
+    setMedDose(m.dose ?? '');
+    setMedMonths(m.durationMonths ? String(m.durationMonths) : '');
+    setMedFreq(m.frequency || 'Once daily');
+    setShowModal(true);
+  }
+
+  function submitMedication() {
+    if (!medNameInput.trim()) return;
+    const existing = editingIndex !== null ? meds[editingIndex] : null;
     const next: Medication = {
-      medId: medName.trim(),
+      // Preserve a known medId when editing (so engine lookups keep working);
+      // fall back to the typed name for new/custom entries.
+      medId: existing && medName(existing.medId) === medNameInput.trim()
+        ? existing.medId
+        : medNameInput.trim(),
       dose: medDose.trim(),
       durationMonths: Number.parseInt(medMonths, 10) || 0,
+      frequency: medFreq,
+      ...(existing?.id ? { id: existing.id } : {}),
     };
-    setMedName(''); setMedDose(''); setMedMonths(''); setMedFreq('Once daily');
     setShowModal(false);
-    persist([...meds, next], symptoms);
+    const nextMeds = editingIndex !== null
+      ? meds.map((m, i) => (i === editingIndex ? next : m))
+      : [...meds, next];
+    setEditingIndex(null);
+    persist(nextMeds, symptoms);
   }
 
   function removeMedication(idx: number) {
@@ -96,7 +134,7 @@ export const TreatmentsScreen: React.FC = () => {
         {/* HEADER */}
         <View style={styles.header}>
           <Text style={styles.pageTitle}>Medications</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
             <Text style={styles.addBtnText}>+</Text>
           </TouchableOpacity>
         </View>
@@ -104,11 +142,17 @@ export const TreatmentsScreen: React.FC = () => {
         {/* ADHERENCE CARD */}
         <View style={styles.adherenceCard}>
           <View style={styles.adherenceCircle}>
-            <Text style={styles.adherencePct}>{avgAdherence || 84}%</Text>
+            <Text style={styles.adherencePct}>{avgAdherence !== null ? `${avgAdherence}%` : '—'}</Text>
           </View>
           <View style={styles.adherenceInfo}>
-            <Text style={styles.adherenceTitle}>Monthly adherence: {avgAdherence || 84}%</Text>
-            <Text style={styles.adherenceSub}>{meds.length} active medication{meds.length !== 1 ? 's' : ''} tracked</Text>
+            <Text style={styles.adherenceTitle}>
+              {avgAdherence !== null ? `Recent adherence: ${avgAdherence}%` : 'Adherence not tracked yet'}
+            </Text>
+            <Text style={styles.adherenceSub}>
+              {avgAdherence !== null
+                ? `From your last ${Math.min(checkins.length, 7)} check-in${Math.min(checkins.length, 7) !== 1 ? 's' : ''}`
+                : 'Log a check-in to start tracking adherence'}
+            </Text>
           </View>
         </View>
 
@@ -126,15 +170,16 @@ export const TreatmentsScreen: React.FC = () => {
               <React.Fragment key={`${med.medId}-${i}`}>
                 <TouchableOpacity
                   style={styles.medRow}
+                  onPress={() => openEdit(i)}
                   onLongPress={() => removeMedication(i)}
                   activeOpacity={0.7}
                 >
                   <MedIcon index={i} />
                   <View style={styles.medInfo}>
-                    <Text style={styles.medName}>{med.medId}</Text>
+                    <Text style={styles.medName}>{medName(med.medId)}</Text>
                     <Text style={styles.medMeta}>
                       {med.dose ? `${med.dose} · ` : ''}
-                      {FREQUENCIES[i % FREQUENCIES.length]}
+                      {med.frequency || FREQUENCIES[0]}
                       {med.durationMonths
                         ? ` · Since ${getStartDate(med.durationMonths)}`
                         : ''}
@@ -151,12 +196,12 @@ export const TreatmentsScreen: React.FC = () => {
         </View>
 
         {/* BIG ADD BUTTON */}
-        <TouchableOpacity style={styles.bigAddBtn} onPress={() => setShowModal(true)} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.bigAddBtn} onPress={openAdd} activeOpacity={0.85}>
           <Text style={styles.bigAddBtnText}>+ Add Medication</Text>
         </TouchableOpacity>
 
         {meds.length > 0 && (
-          <Text style={styles.hint}>Long-press a medication to remove it</Text>
+          <Text style={styles.hint}>Tap a medication to edit · long-press to remove</Text>
         )}
         <Text style={styles.legal}>Educational guidance only · not medical advice</Text>
       </ScrollView>
@@ -167,13 +212,13 @@ export const TreatmentsScreen: React.FC = () => {
           <TouchableOpacity style={styles.overlayBg} onPress={() => setShowModal(false)} activeOpacity={1} />
           <View style={styles.sheet}>
             <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Add Medication</Text>
+            <Text style={styles.sheetTitle}>{editingIndex !== null ? 'Edit Medication' : 'Add Medication'}</Text>
 
             <Text style={styles.fieldLabel}>Medication name *</Text>
             <TextInput
               style={styles.input}
-              value={medName}
-              onChangeText={setMedName}
+              value={medNameInput}
+              onChangeText={setMedNameInput}
               placeholder="e.g. Metformin"
               placeholderTextColor={colors.textDim}
               autoFocus
@@ -216,11 +261,13 @@ export const TreatmentsScreen: React.FC = () => {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveBtn, (!medName.trim() || saving) && styles.saveBtnDisabled]}
-                onPress={addMedication}
-                disabled={!medName.trim() || saving}
+                style={[styles.saveBtn, (!medNameInput.trim() || saving) && styles.saveBtnDisabled]}
+                onPress={submitMedication}
+                disabled={!medNameInput.trim() || saving}
               >
-                <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Add'}</Text>
+                <Text style={styles.saveBtnText}>
+                  {saving ? 'Saving…' : editingIndex !== null ? 'Save' : 'Add'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

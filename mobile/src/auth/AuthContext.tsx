@@ -37,7 +37,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (async () => {
       const stored = await getToken();
       if (!cancelled) {
-        if (stored) {
+        if (stored === GUEST_TOKEN) {
+          // Restore a persisted guest session so on-device data survives reload.
+          setTokenState(GUEST_TOKEN);
+          setUser(GUEST_USER);
+          setIsGuest(true);
+          setEmailVerified(true);
+        } else if (stored) {
           setTokenState(stored);
           // For existing sessions (restored from storage) we treat email as
           // already verified   they passed verification before this session.
@@ -92,8 +98,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {
         // ignore   local sign-out should always succeed
       }
-      await clearToken();
     }
+    // Always clear the stored token   the guest token is now persisted too.
+    // Guest profile data is intentionally kept so a returning guest resumes
+    // where they left off ("Reset app" in Profile is the explicit wipe).
+    await clearToken();
     setTokenState(null);
     setUser(null);
     setIsGuest(false);
@@ -101,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isGuest]);
 
   const continueAsGuest = useCallback(async () => {
+    await setToken(GUEST_TOKEN);
     setTokenState(GUEST_TOKEN);
     setUser(GUEST_USER);
     setIsGuest(true);
