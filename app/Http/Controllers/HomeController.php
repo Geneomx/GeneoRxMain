@@ -7,6 +7,7 @@ use App\Models\Medication;
 use App\Models\Symptom;
 use App\Models\UserProfile;
 use App\Services\AnalyticsService;
+use App\Support\IntroSlides;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -24,7 +25,7 @@ class HomeController extends Controller
     public function index()
     {
         return view('home', [
-            'introSlides' => config('intro_slides', []),
+            'introSlides' => IntroSlides::all(),
         ]);
     }
 
