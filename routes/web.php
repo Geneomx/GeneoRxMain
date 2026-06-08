@@ -36,6 +36,7 @@ Route::get('/reset-password/{token}', [PasswordController::class, 'showReset'])-
 Route::post('/reset-password', [PasswordController::class, 'resetPassword'])->name('password.update');
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/treatments', [HomeController::class, 'treatment'])->name('treatments');
 
 // Legal pages
 Route::get('/legal/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
@@ -47,9 +48,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/email/verify-code', [EmailOtpController::class, 'verify'])->name('email.otp.verify');
     Route::post('/email/verify-code/resend', [EmailOtpController::class, 'resend'])->name('email.otp.resend');
 
-    Route::get('/treatments', [HomeController::class, 'treatment'])->name('treatments');
-
-    // API routes for profile
     Route::get('/api/profile', [HomeController::class, 'getProfile'])->name('api.profile.get');
     Route::post('/api/profile', [HomeController::class, 'saveProfile'])->name('api.profile.save');
 

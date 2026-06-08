@@ -1,12 +1,11 @@
-@extends('layouts.app')
+@extends('layouts.auth')
+
+@section('title', 'Reset password — GeneoRx')
 
 @section('content')
 <div class="auth-shell">
   <div class="auth-intro">
-    <div class="auth-logo">
-      <img src="{{ asset('logo.svg') }}" alt="GeneoRx">
-      <span>GeneoRx</span>
-    </div>
+    @include('partials.geneorx-brand', ['size' => 40])
     <span class="eyebrow">Account recovery</span>
     <h1>Choose a new password.</h1>
     <p class="sub">Pick something secure you have not used before. Your email address will remain the same.</p>
@@ -48,8 +47,7 @@
             name="password"
             required
             autofocus
-            placeholder="At least 8 characters"
-            minlength="8"
+            placeholder="••••••••"
           >
         </div>
 
@@ -60,21 +58,16 @@
             id="password_confirmation"
             name="password_confirmation"
             required
-            placeholder="Repeat your new password"
-            minlength="8"
+            placeholder="••••••••"
           >
         </div>
 
-        <button type="submit" class="primary">
-          Set new password
-        </button>
+        <button type="submit" class="primary">Reset password</button>
       </form>
 
       <div class="auth-actions">
         <a href="{{ route('login') }}">Back to sign in</a>
-        <a href="{{ route('password.request') }}">Request a new link</a>
       </div>
-      <p class="fineprint">GeneoRx is educational support only and does not replace medical advice.</p>
     </div>
   </div>
 </div>

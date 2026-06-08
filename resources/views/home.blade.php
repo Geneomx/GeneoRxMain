@@ -10,41 +10,47 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@1,8..60,400&display=swap" rel="stylesheet">
 <style>
   :root {
-    --teal:        #0E7C66;
-    --teal-dark:   #075F4F;
-    --teal-deeper: #053D33;
-    --teal-light:  #3FB39A;
-    --teal-50:     #ECF6F3;
-    --teal-100:    #D7EDE7;
-    --teal-200:    #B0DCD0;
+    --bg0:         #070A12;
+    --bg1:         #0B1022;
+    --card:        rgba(15, 23, 54, 0.72);
+    --card2:       rgba(16, 27, 64, 0.58);
+    --stroke:      #24325E;
 
-    --cream:       #FBF8F4;
-    --cream-soft:  #F5F0E8;
+    --teal:        #28E1FF;
+    --teal-dark:   #1E9BB8;
+    --teal-deeper: #0B1022;
+    --teal-light:  #5EEBFF;
+    --teal-50:     rgba(40, 225, 255, 0.08);
+    --teal-100:    rgba(40, 225, 255, 0.14);
+    --teal-200:    rgba(40, 225, 255, 0.22);
 
-    --bg:          #FFFFFF;
-    --bg-soft:     #F7FAF9;
-    --bg-muted:    #F1F5F4;
-    --bg-warm:     #FBF9F5;
+    --cream:       #0B1022;
+    --cream-soft:  #101B40;
 
-    --text:        #0F1F1B;
-    --text-soft:   #3C4F4A;
-    --text-muted:  #6B7B77;
-    --text-dim:    #9CA8A4;
+    --bg:          #070A12;
+    --bg-soft:     #0B1022;
+    --bg-muted:    rgba(15, 23, 54, 0.72);
+    --bg-warm:     #0B1022;
 
-    --border:      #DDE6E3;
-    --border-soft: #E8EDEC;
-    --border-warm: #ECE5D8;
+    --text:        #EAF0FF;
+    --text-soft:   #A9B4D6;
+    --text-muted:  #7E8AB8;
+    --text-dim:    #5A6490;
 
-    --shadow-xs: 0 1px 2px rgba(15, 31, 27, 0.04);
-    --shadow-sm: 0 2px 6px rgba(15, 31, 27, 0.05);
-    --shadow:    0 6px 24px rgba(15, 31, 27, 0.07);
-    --shadow-lg: 0 18px 48px rgba(15, 31, 27, 0.12);
-    --shadow-xl: 0 30px 80px rgba(7, 95, 79, 0.18);
+    --border:      rgba(255, 255, 255, 0.12);
+    --border-soft: rgba(255, 255, 255, 0.08);
+    --border-warm: rgba(255, 255, 255, 0.10);
 
-    --hero-accent: #0E7C66;
-    --hero-accent-dark: #075F4F;
-    --hero-accent-rgb: 14, 124, 102;
-    --hero-accent-light-rgb: 63, 179, 154;
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.28);
+    --shadow:    0 6px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.42);
+    --shadow-xl: 0 30px 80px rgba(0, 0, 0, 0.50);
+
+    --hero-accent: #28E1FF;
+    --hero-accent-dark: #1E9BB8;
+    --hero-accent-rgb: 40, 225, 255;
+    --hero-accent-light-rgb: 94, 235, 255;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -53,16 +59,21 @@
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: var(--text);
-    background: var(--bg);
+    background:
+      radial-gradient(1200px 700px at 20% -10%, rgba(40, 225, 255, 0.12), transparent 60%),
+      radial-gradient(900px 600px at 80% 10%, rgba(167, 139, 250, 0.12), transparent 55%),
+      radial-gradient(900px 700px at 30% 110%, rgba(255, 79, 216, 0.10), transparent 55%),
+      linear-gradient(180deg, var(--bg0), var(--bg1));
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    min-height: 100vh;
   }
 
-  a { color: inherit; text-decoration: none; }
+  ::selection { background: rgba(40, 225, 255, 0.25); color: #fff; }
 
-  ::selection { background: var(--teal-100); color: var(--teal-deeper); }
+  a { color: inherit; text-decoration: none; }
 
   /* =============================================
      NAV
@@ -71,10 +82,10 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(7, 10, 18, 0.88);
     backdrop-filter: saturate(180%) blur(16px);
     -webkit-backdrop-filter: saturate(180%) blur(16px);
-    border-bottom: 1px solid rgba(221, 230, 227, 0.55);
+    border-bottom: 1px solid var(--border);
   }
   .nav-inner {
     max-width: 1180px;
@@ -84,18 +95,28 @@
     align-items: center;
     gap: 14px;
   }
-  .nav-brand {
-    display: flex;
+  .nav-brand { margin-right: auto; }
+  .geneorx-brand {
+    display: inline-flex;
     align-items: center;
     gap: 10px;
-    margin-right: auto;
+    color: var(--text);
   }
-  .nav-logo { width: 34px; height: 34px; }
-  .nav-name {
+  .geneorx-brandmark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(15, 23, 54, 0.50);
+    box-shadow: 0 14px 34px rgba(40, 225, 255, 0.12);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .geneorx-brandmark img { display: block; object-fit: contain; }
+  .geneorx-brand-name {
     font-size: 16.5px;
     font-weight: 800;
     letter-spacing: -0.3px;
-    color: var(--text);
   }
   .nav-links {
     display: flex;
@@ -111,7 +132,7 @@
     position: relative;
     padding-bottom: 2px;
   }
-  .nav-link:hover { color: var(--teal-dark); }
+  .nav-link:hover { color: var(--teal-light); }
   .nav-link::after {
     content: '';
     position: absolute;
@@ -162,33 +183,17 @@
     display: none;
     position: fixed;
     top: 64px; left: 0; right: 0;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border-soft);
+    background: rgba(11, 16, 34, 0.98);
+    border-bottom: 1px solid var(--border);
     padding: 16px 28px 24px;
     z-index: 99;
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-lg);
   }
   .mobile-menu.open { display: block; }
-  .mobile-menu ul { list-style: none; display: flex; flex-direction: column; gap: 2px; margin-bottom: 16px; }
-  .mobile-menu li a {
-    display: flex;
-    align-items: center;
-    padding: 14px 14px;
-    min-height: 50px;
-    font-size: 16px;
-    font-weight: 500;
-    color: var(--text-soft);
-    border-radius: 10px;
-    transition: background 0.15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .mobile-menu li a:hover { background: var(--bg-muted); color: var(--text); }
   .mobile-menu-cta {
     display: flex;
     flex-direction: column;
     gap: 9px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-soft);
   }
   .mobile-menu-cta .btn { width: 100%; height: 50px; font-size: 15px; border-radius: 12px; }
 
@@ -209,13 +214,13 @@
   }
   .btn-primary  {
     background: var(--teal);
-    color: #fff;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 6px 18px rgba(14, 124, 102, 0.25);
+    color: #070A12;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.15), 0 6px 18px rgba(40, 225, 255, 0.22);
   }
   .btn-primary:hover  {
-    background: var(--teal-dark);
+    background: var(--teal-light);
     transform: translateY(-1px);
-    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 10px 24px rgba(14, 124, 102, 0.35);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.15), 0 10px 24px rgba(40, 225, 255, 0.30);
   }
   .btn-outline {
     background: transparent;
@@ -224,7 +229,7 @@
   }
   .btn-outline:hover {
     border-color: var(--teal);
-    color: var(--teal-dark);
+    color: var(--teal-light);
   }
   .btn-ghost   { background: transparent; color: var(--text-soft); }
   .btn-ghost:hover   { background: var(--bg-muted); color: var(--text); }
@@ -242,21 +247,11 @@
     position: relative;
     overflow: hidden;
     padding: 80px 0 0;
-    background:
-      radial-gradient(900px 500px at 85% 18%, rgba(63, 179, 154, 0.14), transparent 60%),
-      radial-gradient(700px 400px at 10% 90%, rgba(14, 124, 102, 0.08), transparent 60%),
-      radial-gradient(500px 350px at 50% 60%, rgba(14, 124, 102, 0.04), transparent 70%),
-      linear-gradient(180deg, var(--bg) 0%, var(--bg-warm) 100%);
+    background: transparent;
     transition: background 0.7s ease;
   }
-  /* Mobile hero gets a cleaner, brighter gradient */
   @media (max-width: 520px) {
-    .hero {
-      background:
-        radial-gradient(600px 400px at 80% 0%, rgba(14, 124, 102, 0.10), transparent 60%),
-        radial-gradient(500px 300px at 10% 100%, rgba(14, 124, 102, 0.06), transparent 60%),
-        linear-gradient(180deg, #FAFCFB 0%, #F0F7F5 100%);
-    }
+    .hero { background: transparent; }
   }
   .hero::after {
     content: '';
@@ -264,13 +259,9 @@
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(circle at 24% 28%, rgba(63, 179, 154, 0.12), transparent 24%),
-      radial-gradient(circle at 72% 42%, rgba(14, 124, 102, 0.10), transparent 28%),
-      linear-gradient(90deg, transparent 0%, var(--teal-200) 50%, transparent 100%);
-    background-size: 120% 120%, 130% 130%, 100% 1px;
-    background-position: 0% 40%, 100% 50%, 0 100%;
-    background-repeat: no-repeat;
-    opacity: 0.5;
+      radial-gradient(circle at 24% 28%, rgba(40, 225, 255, 0.08), transparent 24%),
+      radial-gradient(circle at 72% 42%, rgba(167, 139, 250, 0.08), transparent 28%);
+    opacity: 0.7;
     animation: heroAmbientDrift 18s ease-in-out infinite alternate;
   }
 
@@ -284,7 +275,7 @@
     opacity: 0.055;
     background: center / contain no-repeat url('{{ asset('logo.svg') }}');
     filter: saturate(1.25);
-    mix-blend-mode: multiply;
+    mix-blend-mode: screen;
     animation: heroLogoFloat 14s ease-in-out infinite alternate;
     z-index: 0;
   }
@@ -299,7 +290,7 @@
   .hero-orbits::after {
     content: '';
     position: absolute;
-    border: 1px solid rgba(14, 124, 102, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 50%;
     animation: orbitPulse 12s ease-in-out infinite;
   }
@@ -311,7 +302,7 @@
   .hero-orbits::after {
     width: 540px; height: 540px;
     right: -110px; top: -60px;
-    border-color: rgba(14, 124, 102, 0.08);
+    border-color: rgba(40, 225, 255, 0.12);
     animation-delay: 3s;
     animation-duration: 15s;
   }
@@ -502,7 +493,7 @@
     box-shadow: 0 6px 20px rgba(14, 124, 102, 0.12);
   }
 
-  /* HERO INFO — attractive carousel */
+  /* HERO INFO — professional track slider */
   .hero-info-slider {
     margin-top: 0;
     width: 100%;
@@ -518,271 +509,255 @@
 
   .hero-info-stage {
     position: relative;
+    padding: 0 56px;
+    max-width: 820px;
+    margin: 0 auto;
   }
 
   .hero-info-glow {
     position: absolute;
-    inset: -8% -6% 8%;
+    inset: 10% 8% 5%;
     background:
-      radial-gradient(circle at 12% 20%, rgba(var(--slide-accent-light-rgb), 0.34), transparent 48%),
-      radial-gradient(circle at 82% 72%, rgba(var(--slide-accent-rgb), 0.20), transparent 50%),
-      radial-gradient(circle at 52% 0%, rgba(255, 255, 255, 0.95), transparent 36%);
-    filter: blur(30px);
+      radial-gradient(ellipse at 30% 40%, rgba(var(--slide-accent-rgb), 0.12), transparent 62%);
+    filter: blur(48px);
     pointer-events: none;
     z-index: 0;
-    animation: heroSlideGlow 10s ease-in-out infinite alternate;
     transition: background 0.55s ease;
   }
 
-  @keyframes heroSlideGlow {
-    0% { transform: translate3d(-12px, 8px, 0) scale(0.98); opacity: 0.72; }
-    100% { transform: translate3d(18px, -12px, 0) scale(1.04); opacity: 1; }
-  }
-
-  .hero-info-card-wrap {
-    position: relative;
-    z-index: 1;
-    background: transparent;
-    border-radius: 0;
-    overflow: visible;
-    box-shadow: none;
-    border: none;
-    outline: none;
-    backdrop-filter: none;
-  }
-  .hero-info-card-wrap::before {
-    content: none;
-  }
-  .hero-info-card-wrap::after {
-    content: none;
-  }
-
   .hero-info-progress {
-    position: relative;
-    z-index: 2;
-    height: 4px;
-    background: rgba(var(--slide-accent-rgb), 0.09);
+    display: none;
+  }
+  .hero-info-progress-seg {
+    flex: 1;
+    height: 2px;
     border-radius: 999px;
-    max-width: 72%;
-    margin: 0 auto 10px;
+    background: rgba(255, 255, 255, 0.08);
     overflow: hidden;
+    position: relative;
   }
-  .hero-info-progress-fill {
-    height: 100%;
-    width: 50%;
+  .hero-info-progress-seg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: scaleX(0);
+    transform-origin: left center;
     background: linear-gradient(90deg, var(--slide-accent-dark), var(--slide-accent));
-    border-radius: 0 2px 2px 0;
-    transition: width 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: inherit;
+    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
   }
+  .hero-info-progress-seg.active::after { transform: scaleX(1); }
+  .hero-info-progress-seg.done::after { transform: scaleX(1); opacity: 0.4; }
 
   .hero-info-viewport {
+    overflow: hidden;
     position: relative;
-    min-height: 330px;
-    z-index: 2;
+    z-index: 1;
+  }
+
+  .hero-info-track {
+    display: flex;
+    width: 100%;
+    align-items: flex-start;
+    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
   }
 
   .hero-info-block {
-    position: absolute;
-    inset: 0;
-    padding: 34px 72px;
-    border-radius: 0;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateX(28px) scale(0.975);
-    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-                transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-                visibility 0.5s;
-    pointer-events: none;
-    overflow: hidden;
-  }
-  .hero-info-block::before {
-    content: none;
-  }
-  .hero-info-block.active {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(0) scale(1);
-    pointer-events: auto;
-  }
-  .hero-info-block.active h3 { animation: infoItemIn 0.45s ease 0.05s forwards; opacity: 0; }
-  .hero-info-block.active p  { animation: infoItemIn 0.45s ease 0.12s forwards; opacity: 0; }
-  .hero-info-block.active ul  { animation: infoItemIn 0.45s ease 0.18s forwards; opacity: 0; }
-  @keyframes infoItemIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
+    flex: 0 0 100%;
+    min-width: 100%;
+    padding: 4px 4px 8px;
+    box-sizing: border-box;
   }
 
-  .hero-info-num {
-    position: absolute;
-    top: 24px;
-    right: 26px;
-    font-size: 13px;
-    font-weight: 800;
-    color: var(--teal-dark);
-    letter-spacing: 0.5px;
-    padding: 5px 12px;
-    border-radius: 999px;
-    background: rgba(var(--slide-accent-rgb), 0.09);
-    border: none;
-    box-shadow: 0 8px 22px rgba(14, 124, 102, 0.07);
-  }
-
-  .hero-info-block h3 {
-    font-size: 22px;
-    font-weight: 800;
-    margin-bottom: 16px;
+  .hero-slide-meta {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
+    margin-bottom: 18px;
+  }
+  .hero-slide-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--slide-accent);
+    background: transparent;
+    border: none;
+  }
+  .hero-slide-counter {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-slide-counter-sep { opacity: 0.45; margin: 0 2px; }
+
+  .hero-slide-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .hero-info-block h3 {
+    font-size: clamp(22px, 3vw, 28px);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
     color: var(--text);
-    letter-spacing: -0.2px;
-    padding-right: 64px;
+    margin: 0;
+    padding: 4px 0 0;
   }
   .hero-info-icon {
-    width: 52px; height: 52px;
-    border-radius: 16px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: #fff;
-    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
-    box-shadow: 0 12px 28px rgba(14, 124, 102, 0.22);
+    color: #070A12;
+    background: linear-gradient(135deg, var(--slide-accent), var(--slide-accent-dark));
+    box-shadow: 0 8px 24px rgba(var(--slide-accent-rgb), 0.22);
   }
-  .hero-info-icon svg { width: 23px; height: 23px; }
-  .hero-info-block p {
-    font-size: 15.5px;
+  .hero-info-icon svg { width: 24px; height: 24px; stroke: currentColor; }
+
+  .hero-slide-body p {
+    font-size: 16px;
     color: var(--text-soft);
-    line-height: 1.65;
-    margin: 0;
-    padding-left: 64px;
+    line-height: 1.7;
+    margin: 0 0 12px;
   }
-  .hero-info-block p + p { margin-top: 10px; }
-  .hero-info-block ul {
+  .hero-slide-body ul {
     list-style: none;
     padding: 0;
-    margin: 12px 0 0;
-    padding-left: 64px;
+    margin: 0 0 14px;
     display: flex;
     flex-direction: column;
-    gap: 9px;
+    gap: 10px;
   }
-  .hero-info-block li {
+  .hero-slide-body li {
     position: relative;
-    padding-left: 18px;
+    padding-left: 20px;
     font-size: 15px;
     color: var(--text-soft);
-    line-height: 1.55;
+    line-height: 1.6;
   }
-  .hero-info-block li::before {
+  .hero-slide-body li::before {
     content: '';
     position: absolute;
-    left: 0; top: 9px;
-    width: 7px; height: 7px;
+    left: 0;
+    top: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: var(--slide-accent);
-    opacity: 0.55;
+    box-shadow: 0 0 12px rgba(var(--slide-accent-rgb), 0.45);
   }
-  .hero-info-block li strong { color: var(--text); font-weight: 600; }
+  .hero-slide-body li strong { color: var(--text); font-weight: 600; }
 
-  .hero-info-teal .hero-info-icon   { background: linear-gradient(135deg, var(--teal), var(--teal-dark)); }
-  .hero-info-blue .hero-info-icon   { background: linear-gradient(135deg, #2B7A9B, #1E5A73); }
-  .hero-info-violet .hero-info-icon { background: linear-gradient(135deg, #6B5B95, #4E4170); }
-  .hero-info-amber .hero-info-icon  { background: linear-gradient(135deg, #C17D3A, #9A5E22); }
+  .hero-info-teal .hero-info-icon   { background: linear-gradient(135deg, #28E1FF, #1E9BB8); }
+  .hero-info-blue .hero-info-icon   { background: linear-gradient(135deg, #5EEBFF, #2B7A9B); color: #070A12; }
+  .hero-info-violet .hero-info-icon { background: linear-gradient(135deg, #A78BFA, #6B5B95); color: #fff; }
+  .hero-info-amber .hero-info-icon  { background: linear-gradient(135deg, #FBBF24, #C17D3A); color: #070A12; }
 
   .hero-info-arrow {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 2;
-    width: 42px;
-    height: 42px;
+    z-index: 4;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    border: 1px solid rgba(176, 220, 208, 0.6);
-    background: rgba(255, 255, 255, 0.78);
-    color: var(--text-soft);
-    opacity: 0.36;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(11, 16, 34, 0.92);
+    color: var(--text);
+    opacity: 0.85;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 10px 24px rgba(15, 31, 27, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(10px);
-    transition: all 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
     -webkit-tap-highlight-color: transparent;
   }
   .hero-info-stage:hover .hero-info-arrow,
-  .hero-info-arrow:focus-visible {
-    opacity: 1;
-  }
+  .hero-info-arrow:focus-visible { opacity: 1; }
   .hero-info-arrow:hover {
-    color: var(--slide-accent-dark);
-    box-shadow: 0 8px 24px rgba(var(--slide-accent-rgb), 0.18);
-    transform: translateY(-50%) scale(1.05);
+    border-color: rgba(var(--slide-accent-rgb), 0.45);
+    box-shadow: 0 8px 28px rgba(var(--slide-accent-rgb), 0.22);
+    transform: translateY(-50%) scale(1.04);
   }
-  .hero-info-arrow:disabled {
-    opacity: 0.35;
-    cursor: default;
-    transform: translateY(-50%);
-    box-shadow: none;
-  }
+  .hero-info-arrow:disabled { opacity: 0.35; cursor: default; transform: translateY(-50%); }
   .hero-info-arrow--prev { left: 0; }
   .hero-info-arrow--next { right: 0; }
 
-  /* ── Step selector ── */
   .hero-info-dots {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    max-width: 820px;
+    margin: 24px auto 0;
+    padding: 0 56px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: none;
     gap: 0;
-    margin-top: 22px;
-    padding: 6px;
-    border-radius: 18px;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    backdrop-filter: none;
   }
   .hero-info-dot {
     flex: 1;
-    min-height: 50px;
-    border-radius: 13px;
+    min-height: 0;
     border: none;
+    border-radius: 0;
     background: transparent;
     color: var(--text-muted);
     cursor: pointer;
-    padding: 8px 10px;
+    padding: 13px 6px 11px;
     display: inline-flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1px;
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 3px;
+    position: relative;
+    transition: color 0.22s ease;
     -webkit-tap-highlight-color: transparent;
   }
-  .hero-info-dot:hover {
-    color: var(--slide-accent-dark);
-    background: rgba(var(--slide-accent-rgb), 0.09);
+  .hero-info-dot::after {
+    content: '';
+    position: absolute;
+    left: 18%;
+    right: 18%;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: var(--slide-accent);
+    transform: scaleX(0);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
+  .hero-info-dot:hover { color: var(--text); }
   .hero-info-dot.active {
-    background: linear-gradient(135deg, var(--slide-accent), var(--slide-accent-dark));
-    color: #fff;
-    box-shadow: 0 12px 28px rgba(var(--slide-accent-rgb), 0.18);
+    color: var(--slide-accent);
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
   }
+  .hero-info-dot.active::after { transform: scaleX(1); }
   .hero-info-tab-num {
-    font-size: 10px;
+    font-size: 9px;
     line-height: 1;
-    font-weight: 900;
-    letter-spacing: 0.5px;
-    opacity: 0.72;
-  }
-  .hero-info-tab-label {
-    font-size: 12px;
-    line-height: 1.2;
     font-weight: 800;
+    letter-spacing: 0.7px;
+    opacity: 0.55;
+  }
+  .hero-info-dot.active .hero-info-tab-num { opacity: 0.9; }
+  .hero-info-tab-label {
+    font-size: 11.5px;
+    line-height: 1.2;
+    font-weight: 700;
   }
 
   /* =============================================
@@ -1286,7 +1261,7 @@
   ============================================= */
   .final-cta {
     padding: 110px 0;
-    background: var(--bg-warm);
+    background: transparent;
     border-top: 1px solid var(--border-soft);
   }
   .final-cta-inner {
@@ -1296,17 +1271,16 @@
   }
   .final-cta-card {
     background:
-      radial-gradient(circle at 75% 25%, rgba(63, 179, 154, 0.25), transparent 60%),
-      linear-gradient(135deg, var(--teal-dark), var(--teal-deeper));
+      radial-gradient(circle at 75% 25%, rgba(40, 225, 255, 0.18), transparent 60%),
+      linear-gradient(135deg, rgba(15, 23, 54, 0.95), rgba(11, 16, 34, 0.98));
     color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 24px;
     padding: 72px 56px;
     position: relative;
     overflow: hidden;
     text-align: center;
-    box-shadow:
-      0 34px 90px rgba(5, 61, 51, 0.22),
-      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    box-shadow: 0 18px 55px rgba(0, 0, 0, 0.35);
   }
   .final-cta-card::before {
     content: '';
@@ -1355,13 +1329,13 @@
     flex-wrap: wrap;
   }
   .btn-light {
-    background: #fff;
-    color: var(--text);
+    background: var(--teal);
+    color: #070A12;
   }
   .btn-light:hover {
-    background: var(--cream);
+    background: var(--teal-light);
     transform: translateY(-1px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.20);
+    box-shadow: 0 12px 28px rgba(40, 225, 255, 0.22);
   }
   .btn-on-dark {
     background: transparent;
@@ -1419,7 +1393,7 @@
     color: var(--text-muted);
     transition: color 0.15s;
   }
-  .footer-col a:hover { color: var(--teal-dark); }
+  .footer-col a:hover { color: var(--teal-light); }
 
   .footer-bottom {
     padding-top: 28px;
@@ -1512,16 +1486,9 @@
     .hero-eyebrow-dot { padding: 6px; }
     .hero-eyebrow-dot img { width: 14px; height: 14px; }
 
-    .hero-info-viewport { min-height: 330px; }
-    .hero-info-block { padding: 28px 56px; }
-    .hero-info-arrow--prev { left: 0; }
-    .hero-info-arrow--next { right: 0; }
-    .hero-info-block h3 { font-size: 16px; padding-right: 48px; }
-    .hero-info-icon { width: 38px; height: 38px; }
-    .hero-info-icon svg { width: 18px; height: 18px; }
-    .hero-info-block p { font-size: 14px; padding-left: 50px; }
-    .hero-info-block ul { padding-left: 50px; }
-    .hero-info-block li { font-size: 13.5px; }
+    .hero-info-progress { padding: 0 44px 22px; }
+    .hero-info-stage { padding: 0 44px; }
+    .hero-info-dots { padding: 0 44px; }
     .hero-info-tab-label { font-size: 10.5px; }
 
     .hero-actions { margin-top: 28px; gap: 12px; }
@@ -1540,15 +1507,9 @@
 
   /* ── Phone  ≤ 620 px ──────────────────────────────────────────────────── */
   @media (max-width: 620px) {
-    .hero-info-viewport { min-height: 286px; }
-    .hero-info-block { padding: 22px 22px; }
-    .hero-info-arrow { display: none; }
-    .hero-info-arrow--prev { left: 0; }
-    .hero-info-arrow--next { right: 0; }
-    .hero-info-dots { border-radius: 16px; padding: 5px; }
-    .hero-info-dot { min-height: 44px; padding: 7px 4px; }
-    .hero-info-tab-num { font-size: 9px; }
-    .hero-info-tab-label { font-size: 9.5px; }
+    .hero-info-progress { padding: 0 22px 18px; }
+    .hero-info-stage { padding: 0 22px; }
+    .hero-info-dots { padding: 0 22px; }
 
     /* CTA full-width on small screens */
     .hero-actions { flex-direction: column; gap: 10px; }
@@ -1592,16 +1553,14 @@
     }
 
     /* Info carousel — tighter on small phones */
-    .hero-info-viewport { min-height: 260px; }
-    .hero-info-block { padding: 18px 16px; }
-    .hero-info-block h3 { font-size: 14.5px; margin-bottom: 6px; }
-    .hero-info-icon { width: 34px; height: 34px; border-radius: 9px; }
-    .hero-info-icon svg { width: 17px; height: 17px; }
-    .hero-info-num { font-size: 12px; top: 12px; right: 14px; }
-    .hero-info-block p { font-size: 13px; padding-left: 44px; }
-    .hero-info-block ul { padding-left: 44px; gap: 5px; }
-    .hero-info-block li { font-size: 13px; padding-left: 20px; }
-    .hero-info-dots { margin-top: 16px; }
+    .hero-info-progress { padding: 0 16px 16px; }
+    .hero-info-stage { padding: 0 16px; }
+    .hero-info-dots { padding: 0 16px; margin-top: 16px; }
+    .hero-info-arrow { display: none; }
+    .hero-info-block h3 { font-size: 20px; }
+    .hero-info-icon { width: 40px; height: 40px; }
+    .hero-info-icon svg { width: 20px; height: 20px; }
+    .hero-slide-body p, .hero-slide-body li { font-size: 14px; }
 
     /* Section titles */
     .section-title em::after { height: 2px; }
@@ -1642,14 +1601,311 @@
     .hero-inner { padding: 20px 14px 40px; }
     .mob-hero-name { font-size: 24px; }
     .mob-hero-logo { width: 40px; height: 40px; }
-    .hero-info-block p, .hero-info-block ul { padding-left: 0; }
-    .hero-info-block h3 { font-size: 14px; }
-    .hero-info-block p, .hero-info-block li { font-size: 12.5px; }
-    .hero-info-num { font-size: 11px; }
+    .hero-info-progress { padding: 0 12px 14px; }
+    .hero-info-stage, .hero-info-dots { padding: 0 12px; }
     .hero-eyebrow-text { font-size: 10.5px; }
     .section-title { font-size: 26px; }
     .final-cta h2 { font-size: 22px; }
     .final-cta-card { padding: 32px 16px; }
+  }
+
+  /* =============================================
+     FIRST-VISIT INTRO MODAL
+  ============================================= */
+  body.intro-open { overflow: hidden; }
+
+  .intro-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .intro-modal:not([hidden]) { pointer-events: auto; }
+  .intro-modal--visible { opacity: 1; }
+  .intro-modal--closing { opacity: 0; }
+
+  .intro-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 6, 12, 0.82);
+    backdrop-filter: blur(10px);
+  }
+
+  .intro-panel-wrap {
+    position: relative;
+    width: min(100%, 620px);
+    z-index: 1;
+    transform: translateY(18px) scale(0.98);
+    transition: transform 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .intro-modal--visible .intro-panel-wrap { transform: translateY(0) scale(1); }
+  .intro-modal--closing .intro-panel-wrap { transform: translateY(12px) scale(0.98); }
+
+  .intro-panel {
+    position: relative;
+    background: linear-gradient(180deg, rgba(15, 23, 54, 0.96), rgba(11, 16, 34, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+    display: flex;
+    flex-direction: column;
+    max-height: min(90vh, 760px);
+  }
+
+  .intro-panel-accent {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #28E1FF, #A78BFA, #FBBF24);
+    z-index: 2;
+  }
+
+  .intro-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 24px 0;
+    gap: 16px;
+  }
+
+  .intro-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .intro-header .geneorx-brand-name { font-size: 15px; }
+
+  .intro-skip {
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px 14px;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .intro-skip:hover {
+    color: var(--text);
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .intro-progress {
+    display: flex;
+    gap: 6px;
+    padding: 18px 24px 0;
+  }
+  .intro-progress-seg {
+    flex: 1;
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    position: relative;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  .intro-progress-seg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: scaleX(0);
+    transform-origin: left center;
+    background: linear-gradient(90deg, #1E9BB8, #28E1FF);
+    transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .intro-progress-seg.active::after,
+  .intro-progress-seg.done::after { transform: scaleX(1); }
+  .intro-progress-seg.done::after { opacity: 0.45; }
+
+
+  .intro-viewport {
+    overflow: hidden;
+    padding: 20px 24px 0;
+    flex: 1;
+    min-height: 260px;
+    touch-action: pan-y;
+    width: 100%;
+  }
+
+  .intro-track {
+    display: flex;
+    width: 100%;
+    transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+
+  .intro-slide {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-right: 2px;
+  }
+
+  .intro-slide-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    color: #070A12;
+    background: linear-gradient(135deg, #28E1FF, #1E9BB8);
+    box-shadow: 0 8px 20px rgba(40, 225, 255, 0.16);
+  }
+  .intro-slide-icon svg { width: 26px; height: 26px; }
+  .intro-slide--blue .intro-slide-icon { background: linear-gradient(135deg, #5EEBFF, #2B7A9B); }
+  .intro-slide--violet .intro-slide-icon { background: linear-gradient(135deg, #A78BFA, #6B5B95); color: #fff; }
+  .intro-slide--amber .intro-slide-icon { background: linear-gradient(135deg, #FBBF24, #C17D3A); }
+
+  .intro-slide-tag {
+    display: inline-flex;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    color: var(--teal-light);
+    background: rgba(40, 225, 255, 0.10);
+    border: 1px solid rgba(40, 225, 255, 0.18);
+    margin-bottom: 12px;
+  }
+
+  .intro-slide-title {
+    font-size: clamp(24px, 4vw, 30px);
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    line-height: 1.15;
+    color: var(--text);
+    margin: 0 0 14px;
+  }
+
+  .intro-slide-content p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text-soft);
+    margin: 0 0 12px;
+  }
+  .intro-slide-content ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .intro-slide-content li {
+    position: relative;
+    padding-left: 20px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-soft);
+  }
+  .intro-slide-content li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--teal);
+    box-shadow: 0 0 10px rgba(40, 225, 255, 0.35);
+  }
+  .intro-slide-content li strong { color: var(--text); font-weight: 600; }
+
+  .intro-footer {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin-top: 8px;
+  }
+
+  .intro-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 46px;
+    padding: 0 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    border: 1px solid transparent;
+  }
+  .intro-nav-btn--ghost {
+    justify-self: start;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.10);
+    color: var(--text-soft);
+  }
+  .intro-nav-btn--ghost:hover:not(:disabled) {
+    color: var(--text);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+  .intro-nav-btn--ghost:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .intro-nav-btn--primary {
+    justify-self: end;
+    background: linear-gradient(135deg, rgba(40, 225, 255, 0.95), rgba(94, 235, 255, 0.88));
+    color: #070A12;
+    border: none;
+    outline: none;
+    box-shadow: 0 8px 24px rgba(40, 225, 255, 0.18);
+  }
+  .intro-nav-btn--primary:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+  .intro-nav-btn--primary:focus-visible {
+    outline: 2px solid rgba(40, 225, 255, 0.45);
+    outline-offset: 2px;
+  }
+
+  .intro-step-counter {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 620px) {
+    .intro-modal { padding: 12px; align-items: flex-end; }
+    .intro-panel-wrap { width: 100%; }
+    .intro-panel { border-radius: 20px 20px 16px 16px; max-height: 92vh; }
+    .intro-viewport { padding: 16px 16px 0; min-height: 240px; }
+    .intro-header, .intro-progress, .intro-footer { padding-left: 16px; padding-right: 16px; }
+    .intro-footer { grid-template-columns: 1fr 1fr; }
+    .intro-step-counter { grid-column: 1 / -1; order: -1; margin-bottom: 4px; }
+    .intro-nav-btn--ghost { justify-self: stretch; }
+    .intro-nav-btn--primary { justify-self: stretch; grid-column: 1 / -1; width: 100%; }
+    .hero-info-progress { padding: 0 16px 18px; }
+    .hero-info-stage { padding: 0; }
+    .hero-info-dots { padding: 0 16px; margin-top: 12px; }
+    .hero-info-arrow { display: none; }
   }
 </style>
 </head>
@@ -1658,16 +1914,7 @@
 <!-- NAV -->
 <nav class="nav">
   <div class="nav-inner">
-    <a href="{{ route('home') }}" class="nav-brand">
-      <img src="{{ asset('logo.svg') }}" alt="GeneoRx" class="nav-logo">
-      <span class="nav-name">GeneoRx</span>
-    </a>
-
-    <div class="nav-links">
-      <a href="#how" class="nav-link">How it works</a>
-      <a href="#demo" class="nav-link">Demo</a>
-      <a href="#faq" class="nav-link">FAQ</a>
-    </div>
+    @include('partials.geneorx-brand', ['size' => 34, 'href' => route('home'), 'class' => 'nav-brand'])
 
     <div class="nav-cta">
       @auth
@@ -1686,11 +1933,6 @@
 
   <!-- Mobile menu -->
   <div class="mobile-menu" id="mobileMenu">
-    <ul>
-      <li><a href="#how">How it works</a></li>
-      <li><a href="#demo">Demo</a></li>
-      <li><a href="#faq">FAQ</a></li>
-    </ul>
     <div class="mobile-menu-cta">
       @auth
         <a href="{{ route('treatments') }}" class="btn btn-primary">Open dashboard</a>
@@ -1713,14 +1955,19 @@
 
       {{-- Mobile-only brand header: actual logo + name ─ hidden on desktop --}}
       <div class="mob-hero-brand">
-        <img src="{{ asset('logo.svg') }}" alt="GeneoRx" class="mob-hero-logo">
+        @include('partials.geneorx-brand', ['size' => 44, 'href' => route('home')])
         <div>
-          <div class="mob-hero-name">GeneoRx</div>
           <div class="mob-hero-tagline">Personal medication intelligence</div>
         </div>
       </div>
 
       <div class="hero-info-slider">
+        <div class="hero-info-progress" id="heroInfoProgress" aria-hidden="true">
+          @foreach ($introSlides as $i => $slide)
+            <span class="hero-info-progress-seg{{ $i === 0 ? ' active' : '' }}" data-step="{{ $i }}"></span>
+          @endforeach
+        </div>
+
         <div class="hero-info-stage">
           <div class="hero-info-glow" aria-hidden="true"></div>
 
@@ -1728,62 +1975,14 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
 
-          <div class="hero-info-card-wrap">
-            <div class="hero-info-progress" aria-hidden="true">
-              <div class="hero-info-progress-fill" id="heroInfoProgress"></div>
-            </div>
-            <div class="hero-info-viewport" id="heroInfoTrack">
-              <div class="hero-info-block hero-info-teal active">
-                <span class="hero-info-num">01</span>
-                <h3>
-                  <span class="hero-info-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  </span>
-                  What is GeneoRx?
-                </h3>
-                <p>GeneoRx is your personal medication intelligence platform connecting medications, symptoms, and nutrient levels to help you understand what's really going on in your body giving you a clearer picture of your health.</p>
-              </div>
-              <div class="hero-info-block hero-info-blue">
-                <span class="hero-info-num">02</span>
-                <h3>
-                  <span class="hero-info-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-                  </span>
-                  How does it work?
-                </h3>
-                <p>GeneoRx analyzes:</p>
-                <ul>
-                  <li>Your medications</li>
-                  <li>Your symptoms over time</li>
-                  <li>Known drug–nutrient interactions</li>
-                </ul>
-                <p>As you check in regularly, it builds a personalized profile, spotting patterns and improving accuracy over time.</p>
-              </div>
-              <div class="hero-info-block hero-info-violet">
-                <span class="hero-info-num">03</span>
-                <h3>
-                  <span class="hero-info-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                  </span>
-                  How does it help you?
-                </h3>
-                <ul>
-                  <li><strong>Explains symptoms</strong> – Understand possible links to medications or nutrient imbalances</li>
-                  <li><strong>Finds root causes</strong> – Highlights what may be driving issues like fatigue or brain fog</li>
-                  <li><strong>Tracks progress</strong> – Monitors changes over time</li>
-                  <li><strong>Prepares you for doctor visits</strong> – Provides a quick health summary for your doctor</li>
-                </ul>
-              </div>
-              <div class="hero-info-block hero-info-amber">
-                <span class="hero-info-num">04</span>
-                <h3>
-                  <span class="hero-info-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                  </span>
-                  In short
-                </h3>
-                <p>GeneoRx helps you connect the dots between your medications, symptoms, and nutrition so you can make smarter health decisions.</p>
-              </div>
+          <div class="hero-info-viewport">
+            <div class="hero-info-track" id="heroInfoTrack">
+            @foreach ($introSlides as $i => $slide)
+              @include('partials.hero-slide-block', [
+                'slide' => $slide,
+                'index' => $i,
+              ])
+            @endforeach
             </div>
           </div>
 
@@ -1793,219 +1992,20 @@
         </div>
 
         <div class="hero-info-dots" id="heroInfoTabs" aria-label="Slide navigation">
-          <button type="button" class="hero-info-dot" data-slide="0" aria-label="What is GeneoRx?">
-            <span class="hero-info-tab-num">01</span>
-            <span class="hero-info-tab-label">What</span>
-          </button>
-          <button type="button" class="hero-info-dot active" data-slide="1" aria-label="How does it work?">
-            <span class="hero-info-tab-num">02</span>
-            <span class="hero-info-tab-label">How</span>
-          </button>
-          <button type="button" class="hero-info-dot" data-slide="2" aria-label="How does it help you?">
-            <span class="hero-info-tab-num">03</span>
-            <span class="hero-info-tab-label">Help</span>
-          </button>
-          <button type="button" class="hero-info-dot" data-slide="3" aria-label="In short">
-            <span class="hero-info-tab-num">04</span>
-            <span class="hero-info-tab-label">Summary</span>
-          </button>
+          @foreach ($introSlides as $i => $slide)
+            <button type="button"
+                    class="hero-info-dot{{ $i === 0 ? ' active' : '' }}"
+                    data-slide="{{ $i }}"
+                    aria-label="{{ $slide['tab_aria'] }}">
+              <span class="hero-info-tab-num">{{ $slide['num'] }}</span>
+              <span class="hero-info-tab-label">{{ $slide['tab_label'] }}</span>
+            </button>
+          @endforeach
         </div>
       </div>
     </div>
   </div>
 </header>
-
-<!-- HOW IT WORKS -->
-<section class="steps-section" id="how">
-  <div class="steps-inner">
-    <div class="steps-head reveal">
-      <div class="section-tag">How it works</div>
-      <h2 class="section-title">Three steps to your<br><em>first insight</em>.</h2>
-      <p class="section-desc">No long forms. No medical jargon. Just thoughtful questions and a personalized response.</p>
-    </div>
-
-    <div class="steps-flow">
-      <div class="step-card reveal">
-        <div class="step-num">i</div>
-        <h3>Add your medications or symptoms</h3>
-        <p>Tell GeneoRx what you take and how you feel. We support commonly prescribed medications and their known nutrient interactions.</p>
-      </div>
-      <div class="step-card reveal">
-        <div class="step-num">ii</div>
-        <h3>Log your check-ins</h3>
-        <p>Weekly check-ins build a personal profile that spots patterns over time, tracking energy, mood, sleep, and focus.</p>
-      </div>
-      <div class="step-card reveal">
-        <div class="step-num">iii</div>
-        <h3>Get your insight</h3>
-        <p>Receive a plain-language explanation of possible connections plus specific questions to bring to your doctor.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- DEMO -->
-<section class="demo-section" id="demo">
-  <div class="demo">
-    <div class="demo-head reveal">
-      <div class="section-tag">Quick check</div>
-      <h2 class="section-title">See it for <em>yourself</em>.</h2>
-      <p class="section-desc">No account required. Pick a medication and a symptom to see a sample insight.</p>
-    </div>
-
-    <div class="demo-card reveal">
-      <div class="demo-card-hd">
-        <h3>Medication &amp; symptom pattern check</h3>
-        <p>This is a guided sample. Sign up to build your full profile.</p>
-      </div>
-      <div class="demo-card-bd">
-        <div class="field">
-          <label for="medication">Your medication</label>
-          <select id="medication">
-            <option value="">None or unsure</option>
-            <option value="metformin">Metformin (for diabetes)</option>
-            <option value="statin">Statin (for cholesterol)</option>
-            <option value="ppi">Omeprazole or PPI (for acid reflux)</option>
-            <option value="birthcontrol">Birth control or hormonal</option>
-            <option value="antidepressant">Antidepressant or SSRI</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="symptom">Your main symptom</label>
-          <select id="symptom">
-            <option value="">Select a symptom</option>
-            <option value="fatigue">Fatigue or low energy</option>
-            <option value="brainfog">Brain fog or poor concentration</option>
-            <option value="musclepain">Muscle pain or weakness</option>
-            <option value="dizziness">Dizziness or lightheadedness</option>
-            <option value="sleep">Sleep problems</option>
-            <option value="digestive">Digestive issues</option>
-          </select>
-        </div>
-        <button class="demo-submit" onclick="generateInsight()">See my insight</button>
-
-        <div class="result" id="resultBox">
-          <div class="result-title">Your GeneoRx insight</div>
-          <div class="result-block">
-            <h4>What GeneoRx sees</h4>
-            <p id="insight"></p>
-          </div>
-          <div class="result-block">
-            <h4>What this may mean</h4>
-            <p id="meaning"></p>
-          </div>
-          <div class="result-block">
-            <h4>Questions for your doctor</h4>
-            <p id="doctor"></p>
-          </div>
-          <p class="result-note"> 
-            Educational guidance only  this is not medical advice. Always discuss persistent symptoms and medication concerns with your healthcare provider.
-          </p>
-          <div class="result-cta">
-            <a href="{{ route('register') }}" class="btn btn-primary">Save my profile</a>
-            <a href="{{ route('login') }}" class="btn btn-outline">Sign in</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- TESTIMONIALS -->
-<section class="testimonials">
-  <div class="testimonials-inner">
-    <div class="testimonials-head reveal">
-      <div class="section-tag">What people say</div>
-      <h2 class="section-title">Built for those who want <em>real answers</em>.</h2>
-      <p class="section-desc">Educational guidance that helps people prepare for better conversations with their doctors.</p>
-    </div>
-
-    <div class="testimonials-grid">
-      <div class="quote reveal">
-        <div class="quote-mark">"</div>
-        <p class="quote-text"> 
-          I had been on Metformin for years and constantly felt drained. GeneoRx suggested I ask about B12  turned out my levels were genuinely low. Game changer.
-        </p>
-        <div class="quote-author">
-          <div class="quote-avatar">SR</div>
-          <div class="quote-meta">
-            <div class="quote-name">Sarah R.</div>
-            <div class="quote-role">Type 2 diabetes patient</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="quote reveal">
-        <div class="quote-mark">"</div>
-        <p class="quote-text">
-          The doctor summary feature alone is worth it. I walk into appointments organized for the first time in years.
-        </p>
-        <div class="quote-author">
-          <div class="quote-avatar">MK</div>
-          <div class="quote-meta">
-            <div class="quote-name">Michael K.</div>
-            <div class="quote-role">Multiple medications</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="quote reveal">
-        <div class="quote-mark">"</div>
-        <p class="quote-text">
-          I finally have a clear picture of what is going on. The weekly check-ins are quick and the trends are eye-opening.
-        </p>
-        <div class="quote-author">
-          <div class="quote-avatar">JL</div>
-          <div class="quote-meta">
-            <div class="quote-name">Jenna L.</div>
-            <div class="quote-role">Long-term PPI user</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FAQ -->
-<section class="faq-section" id="faq">
-  <div class="faq-inner">
-    <div class="faq-head reveal">
-      <div class="section-tag">FAQ</div>
-      <h2 class="section-title">Frequently asked <em>questions</em>.</h2>
-    </div>
-
-    <div class="faq-list">
-      <details class="faq reveal">
-        <summary>Is GeneoRx a substitute for medical advice?</summary>
-        <div class="faq-body"> 
-          No. GeneoRx is educational guidance only  it surfaces possible patterns from your medications and symptoms and prepares you to have better conversations with your doctor. It does not diagnose, treat, or replace professional medical care.
-        </div>
-      </details>
-
-      <details class="faq reveal">
-        <summary>How does GeneoRx use my data?</summary>
-        <div class="faq-body">
-          Your data stays private. We use it solely to surface your personal insights and never sell or share it with third parties. Data is encrypted in transit and at rest. You can request deletion at any time.
-        </div>
-      </details>
-
-      <details class="faq reveal">
-        <summary>Which medications are supported?</summary>
-        <div class="faq-body">
-          GeneoRx supports commonly prescribed medications with well-documented nutrient and symptom interactions, including Metformin, statins, PPIs, hormonal contraceptives, and SSRIs. We add new medications based on user demand and clinical evidence.
-        </div>
-      </details>
-
-      <details class="faq reveal">
-        <summary>How often should I check in?</summary>
-        <div class="faq-body">
-          Weekly check-ins work best. They take less than two minutes and let GeneoRx build a meaningful profile of how you are feeling over time, which improves the accuracy of your insights.
-        </div>
-      </details>
-
-    </div>
-  </div>
-</section>
 
 <!-- FINAL CTA -->
 <section class="final-cta">
@@ -2029,8 +2029,7 @@
     <div class="footer-top">
       <div class="footer-brand-area">
         <div class="footer-brand">
-          <img src="{{ asset('logo.svg') }}" alt="GeneoRx">
-          <span class="footer-brand-name">GeneoRx</span>
+          @include('partials.geneorx-brand', ['size' => 30, 'href' => route('home')])
         </div>
         <p class="footer-tagline">
           Personal medication intelligence. Helping you connect the dots between medications, symptoms, and nutrition.
@@ -2040,17 +2039,26 @@
       <div class="footer-col">
         <h4>Product</h4>
         <ul>
-          <li><a href="#how">How it works</a></li>
-          <li><a href="#demo">Demo</a></li>
+          <li><a href="{{ route('treatments') }}">Open dashboard</a></li>
+          <li><a href="#" id="replayIntro">Replay intro</a></li>
         </ul>
       </div>
 
       <div class="footer-col">
         <h4>Account</h4>
         <ul>
-          <li><a href="{{ route('login') }}">Sign in</a></li>
-          <li><a href="{{ route('register') }}">Create account</a></li>
-          <li><a href="#faq">FAQ</a></li>
+          @auth
+            @if(session('is_web_guest'))
+              <li><a href="{{ route('login') }}">Sign in to your account</a></li>
+              <li><a href="{{ route('register') }}">Create account</a></li>
+            @else
+              <li><a href="{{ route('treatments') }}">Open dashboard</a></li>
+            @endif
+          @else
+            <li><a href="{{ route('login') }}">Sign in</a></li>
+            <li><a href="{{ route('register') }}">Create account</a></li>
+            <li><a href="{{ route('guest') }}">Try as guest</a></li>
+          @endauth
         </ul>
       </div>
 
@@ -2071,68 +2079,10 @@
   </div>
 </footer>
 
+@include('partials.intro-modal')
+
+<script src="{{ asset('js/intro-modal.js') }}"></script>
 <script>
-  const insights = {
-    'metformin-fatigue': {
-      i: 'Fatigue selected in a long-term Metformin user.',
-      m: 'Metformin can reduce absorption of Vitamin B12 over time in some individuals. Fatigue, especially with tingling or mood changes, may sometimes relate to this pattern.',
-      d: 'Ask whether Vitamin B12 testing is appropriate, how long you have been on Metformin, and whether levels have been checked recently.',
-    },
-    'statin-musclepain': {
-      i: 'Muscle discomfort selected in a statin user.',
-      m: 'Statins can sometimes affect CoQ10 levels, which plays a role in muscle energy. Muscle symptoms in statin users are worth tracking and discussing with your prescriber.',
-      d: 'Discuss the timing of muscle symptoms relative to starting the statin, whether dose adjustment or CoQ10 support might be relevant.',
-    },
-    'ppi-fatigue': {
-      i: 'Fatigue selected in a proton pump inhibitor user.',
-      m: 'Long-term PPI use can sometimes be associated with lower magnesium and B12 levels. Both are linked to energy and overall wellbeing.',
-      d: 'Ask whether magnesium or B12 testing is appropriate, and review the duration and necessity of your PPI use.',
-    },
-    'ppi-digestive': {
-      i: 'Digestive issues selected in a PPI user.',
-      m: 'PPIs reduce stomach acid, which can sometimes affect digestion and gut microbiome balance.',
-      d: 'Discuss whether your current PPI dose and duration are still appropriate.',
-    },
-    'antidepressant-sleep': {
-      i: 'Sleep problems selected in an antidepressant user.',
-      m: 'Some antidepressants can affect sleep architecture, particularly when starting or adjusting dose.',
-      d: 'Discuss the timing of sleep changes relative to your medication and whether dose timing might help.',
-    },
-    'brainfog': {
-      i: 'Brain fog selected as a primary symptom.',
-      m: 'Brain fog can overlap with medication side effects, sleep disruption, nutrient gaps (B12, magnesium, iron), and stress.',
-      d: 'Discuss when it started, whether any medication or lifestyle changes happened around the same time, and whether basic nutrient screening would be useful.',
-    },
-    'fatigue': {
-      i: 'Fatigue selected without a specific medication pattern.',
-      m: 'Fatigue is common and can relate to nutrition, sleep, stress, thyroid function, or other factors.',
-      d: 'Ask about nutrient testing (B12, iron, vitamin D), thyroid function, and recent lifestyle changes.',
-    },
-    'default': {
-      i: 'A possible medication–symptom pattern has been detected.',
-      m: 'Tracking your symptoms over time helps clarify whether a medication, nutrient pattern, or other factor is contributing.',
-      d: 'Bring persistent symptoms, their timing, and your full medication list to your healthcare provider.',
-    },
-  };
-
-  function generateInsight() {
-    const med = document.getElementById('medication').value;
-    const symptom = document.getElementById('symptom').value;
-    if (!symptom) { alert('Please select a symptom.'); return; }
-
-    const key = insights[med + '-' + symptom] ? med + '-' + symptom
-              : insights[symptom]              ? symptom
-              :                                  'default';
-    const data = insights[key];
-
-    document.getElementById('insight').textContent = data.i;
-    document.getElementById('meaning').textContent = data.m;
-    document.getElementById('doctor').textContent  = data.d;
-    const box = document.getElementById('resultBox');
-    box.style.display = 'block';
-    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-
   // Mobile menu
   const navToggle = document.getElementById('navToggle');
   const mobileMenu = document.getElementById('mobileMenu');
@@ -2150,41 +2100,6 @@
     });
   }
 
-  // Nav scroll-spy — highlight the active section link
-  (function () {
-    const spySections = [
-      { id: 'how',     href: '#how'     },
-      { id: 'demo',    href: '#demo'    },
-      { id: 'faq',     href: '#faq'     },
-    ];
-    const navLinkEls = document.querySelectorAll('.nav-links .nav-link');
-
-    function setActive(href) {
-      navLinkEls.forEach(el => el.classList.toggle('active', el.getAttribute('href') === href));
-    }
-
-    const spyObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const match = spySections.find(s => s.id === entry.target.id);
-          if (match) setActive(match.href);
-        }
-      });
-    }, { threshold: 0, rootMargin: '-30% 0px -65% 0px' });
-
-    spySections.forEach(s => {
-      const el = document.getElementById(s.id);
-      if (el) spyObserver.observe(el);
-    });
-
-    // Clear active when scrolled back to top (hero)
-    const heroObserver = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) setActive('');
-    }, { threshold: 0.4 });
-    const hero = document.querySelector('.hero');
-    if (hero) heroObserver.observe(hero);
-  })();
-
   // Scroll reveal
   const reveals = document.querySelectorAll('.reveal');
   const io = new IntersectionObserver((entries) => {
@@ -2197,29 +2112,29 @@
   }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
   reveals.forEach(el => io.observe(el));
 
-  // Hero info carousel — starts on "How does it work?"
+  // Hero info carousel
   (function () {
-    const viewport = document.getElementById('heroInfoTrack');
+    const track = document.getElementById('heroInfoTrack');
     const hero = document.getElementById('heroSection');
     const slider = document.querySelector('.hero-info-slider');
     const dots = document.querySelectorAll('.hero-info-dot');
+    const progressSegs = document.querySelectorAll('.hero-info-progress-seg');
     const prevBtn = document.getElementById('heroInfoPrev');
     const nextBtn = document.getElementById('heroInfoNext');
-    const progress = document.getElementById('heroInfoProgress');
-    if (!viewport) return;
+    if (!track) return;
 
-    const slides = Array.from(viewport.querySelectorAll('.hero-info-block'));
+    const slides = Array.from(track.querySelectorAll('.hero-info-block'));
     if (!slides.length) return;
 
-    const SLIDE_DURATION = 6000;
-    let current = 1;
+    const SLIDE_DURATION = 7000;
+    let current = 0;
     let timer = null;
     let touchStartX = 0;
     const slideThemes = [
-      { accent: '#0E7C66', dark: '#075F4F', rgb: '14, 124, 102', lightRgb: '63, 179, 154' },
-      { accent: '#2B7A9B', dark: '#1E5A73', rgb: '43, 122, 155', lightRgb: '92, 173, 205' },
-      { accent: '#6B5B95', dark: '#4E4170', rgb: '107, 91, 149', lightRgb: '164, 145, 206' },
-      { accent: '#C17D3A', dark: '#9A5E22', rgb: '193, 125, 58', lightRgb: '229, 174, 112' },
+      { accent: '#28E1FF', dark: '#1E9BB8', rgb: '40, 225, 255', lightRgb: '94, 235, 255' },
+      { accent: '#5EEBFF', dark: '#2B7A9B', rgb: '43, 122, 155', lightRgb: '92, 173, 205' },
+      { accent: '#A78BFA', dark: '#6B5B95', rgb: '107, 91, 149', lightRgb: '164, 145, 206' },
+      { accent: '#FBBF24', dark: '#C17D3A', rgb: '193, 125, 58', lightRgb: '229, 174, 112' },
     ];
 
     function applySlideTheme(theme) {
@@ -2240,11 +2155,12 @@
     function goToSlide(idx) {
       current = ((idx % slides.length) + slides.length) % slides.length;
       applySlideTheme(slideThemes[current]);
-      slides.forEach((slide, i) => slide.classList.toggle('active', i === current));
+      track.style.transform = `translateX(-${current * 100}%)`;
       dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
-      if (progress) progress.style.width = `${((current + 1) / slides.length) * 100}%`;
-      if (prevBtn) prevBtn.disabled = false;
-      if (nextBtn) nextBtn.disabled = false;
+      progressSegs.forEach((seg, i) => {
+        seg.classList.toggle('active', i === current);
+        seg.classList.toggle('done', i < current);
+      });
     }
 
     function startAutoplay() {
@@ -2274,12 +2190,12 @@
       });
     }
 
-    viewport.addEventListener('touchstart', (e) => {
+    track.addEventListener('touchstart', (e) => {
       touchStartX = e.changedTouches[0].screenX;
       if (timer) clearInterval(timer);
     }, { passive: true });
 
-    viewport.addEventListener('touchend', (e) => {
+    track.addEventListener('touchend', (e) => {
       const delta = e.changedTouches[0].screenX - touchStartX;
       if (Math.abs(delta) > 50) {
         goToSlide(delta < 0 ? current + 1 : current - 1);
@@ -2287,7 +2203,7 @@
       startAutoplay();
     }, { passive: true });
 
-    goToSlide(1);
+    goToSlide(0);
     startAutoplay();
   })();
 </script>

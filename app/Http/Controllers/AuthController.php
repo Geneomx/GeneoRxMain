@@ -12,12 +12,28 @@ use Illuminate\Support\Facades\Hash;
 class AuthController extends Controller
 {
     /**
+     * End a guest demo session so the visitor can sign in or register.
+     */
+    private function endGuestSessionIfNeeded(Request $request): void
+    {
+        if (Auth::check() && session('is_web_guest')) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+    }
+
+    /**
      * Show the login form
      */
-    public function showLogin()
+    public function showLogin(Request $request)
     {
         if (Auth::check()) {
-            return redirect()->route('home');
+            if (session('is_web_guest')) {
+                $this->endGuestSessionIfNeeded($request);
+            } else {
+                return redirect()->route('treatments');
+            }
         }
 
         return view('auth.login');
@@ -28,6 +44,10 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
+        if (session('is_web_guest')) {
+            $this->endGuestSessionIfNeeded($request);
+        }
+
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required|min:6',
@@ -35,6 +55,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+            $request->session()->forget('is_web_guest');
 
             return redirect()->route('treatments')->with('success', 'Welcome back!');
         }
@@ -47,10 +68,14 @@ class AuthController extends Controller
     /**
      * Show the registration form
      */
-    public function showRegister()
+    public function showRegister(Request $request)
     {
         if (Auth::check()) {
-            return redirect()->route('home');
+            if (session('is_web_guest')) {
+                $this->endGuestSessionIfNeeded($request);
+            } else {
+                return redirect()->route('treatments');
+            }
         }
 
         return view('auth.register');
@@ -61,6 +86,10 @@ class AuthController extends Controller
      */
     public function register(Request $request, EmailOtpService $otps)
     {
+        if (session('is_web_guest')) {
+            $this->endGuestSessionIfNeeded($request);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -75,6 +104,7 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+        $request->session()->forget('is_web_guest');
         if (! empty($validated['phone'])) {
             UserProfile::firstOrCreate(
                 ['user_id' => $user->id],

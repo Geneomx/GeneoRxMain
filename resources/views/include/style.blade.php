@@ -39,7 +39,8 @@
     .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 44px}
     .top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap}
     .brand{display:flex;align-items:center;gap:12px;min-width:260px}
-    .brandmark{
+    .brandmark,
+    .geneorx-brandmark{
       width:44px;height:44px;border-radius:14px;
       border:1px solid rgba(255,255,255,.14);
       background: rgba(15,23,54,.50);
@@ -47,7 +48,8 @@
       overflow:hidden;
       box-shadow: 0 14px 34px rgba(40,225,255,.12);
     }
-    .brandmark img{
+    .brandmark img,
+    .geneorx-brandmark img{
       width:40px;height:40px;object-fit:contain;display:block;
       filter: drop-shadow(0 10px 18px rgba(0,0,0,.25));
     }

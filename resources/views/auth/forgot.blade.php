@@ -1,21 +1,11 @@
-@extends('layouts.app')
+@extends('layouts.auth')
 
-@push('styles')
-<style>
-  @media (max-width: 860px) {
-    .auth-intro { display: none; }
-    .auth-shell  { padding: 16px 0; }
-  }
-</style>
-@endpush
+@section('title', 'Forgot password — GeneoRx')
 
 @section('content')
 <div class="auth-shell">
   <div class="auth-intro">
-    <div class="auth-logo">
-      <img src="{{ asset('logo.svg') }}" alt="GeneoRx">
-      <span>GeneoRx</span>
-    </div>
+    @include('partials.geneorx-brand', ['size' => 40])
     <span class="eyebrow">Account recovery</span>
     <h1>Reset your password.</h1>
     <p class="sub">Enter the email address linked to your GeneoRx account and we will send you a secure reset link.</p>
@@ -36,9 +26,7 @@
     <div class="bd">
 
       @if (session('status'))
-        <div class="tagline" style="background:var(--teal-50);border-left:3px solid var(--teal);padding:14px 18px;border-radius:0 8px 8px 0;margin-bottom:22px;font-size:14.5px;color:var(--text-soft);">
-          {{ session('status') }}
-        </div>
+        <div class="tagline">{{ session('status') }}</div>
       @endif
 
       @if ($errors->any())
@@ -65,16 +53,12 @@
           >
         </div>
 
-        <button type="submit" class="primary">
-          Send reset link
-        </button>
+        <button type="submit" class="primary">Send reset link</button>
       </form>
 
       <div class="auth-actions">
         <a href="{{ route('login') }}">Back to sign in</a>
-        <a href="{{ route('register') }}">Create a free account</a>
       </div>
-      <p class="fineprint">GeneoRx is educational support only and does not replace medical advice.</p>
     </div>
   </div>
 </div>

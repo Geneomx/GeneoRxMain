@@ -3,7 +3,6 @@ import { View } from 'react-native';
 import { useWizard } from '@/store/WizardContext';
 import { MED_DB } from '@/content/wizardData';
 import {
-  computeContraindications,
   computeDrugInteractions,
   computeInsightEngine,
   computeMedicationSuccessPrediction,
@@ -12,7 +11,7 @@ import {
   latestCheckin,
   safetyFlags,
 } from '@/wizard/engine';
-import { HelpNote, KVItem, Section, Tagline } from '@/screens/wizard/ui';
+import { KVItem, Section, Tagline, Accordion } from '@/screens/wizard/ui';
 
 export const SummaryStep: React.FC = () => {
   const { state } = useWizard();
@@ -30,29 +29,39 @@ export const SummaryStep: React.FC = () => {
       success: computeMedicationSuccessPrediction(state),
       patterns: detectHealthPatterns(state),
       interactions: computeDrugInteractions(state),
-      contraindications: computeContraindications(state),
     };
   }, [state]);
 
   return (
     <View style={{ gap: 16 }}>
-      <HelpNote
-        what="A one-screen recap of everything from this session — your meds, symptoms, flags, predictions, and latest check-in."
-        why="Use it as a quick review before you leave, or to copy details when talking to your clinician."
-      />
       <Section>
-      <Tagline title="GeneoRx summary" body="Your overall dashboard view before you leave the portal." />
-      <KVItem k="Account">{(state.account.email || 'Guest')} • Consent: {state.account.consent ? 'Yes' : 'No'}</KVItem>
-      <KVItem k="Medications">{data.meds.length ? data.meds.join(', ') : 'No medications added.'}</KVItem>
-      <KVItem k="Symptoms">{state.symptoms.selected.length ? state.symptoms.selected.join(', ') : 'No symptoms selected.'}</KVItem>
-      <KVItem k="Safety flags">{data.flags.length ? data.flags.join(', ') : 'None'}</KVItem>
-      <KVItem k="Medication success prediction">{data.success.score}% • {data.success.level}{'\n'}{data.success.reason}</KVItem>
-      <KVItem k="Detected pattern">{data.patterns.length ? `${data.patterns[0].title} — ${data.patterns[0].note}` : 'No strong pattern detected yet.'}</KVItem>
-      <KVItem k="Drug interactions">{data.interactions.length ? data.interactions.map((x) => x.title).join(', ') : 'No interaction alerts triggered.'}</KVItem>
-      <KVItem k="Contraindications & cautions">{data.contraindications.length ? data.contraindications.map((x) => x.title).join(', ') : 'No contraindication alerts triggered.'}</KVItem>
-      <KVItem k="GeneoRx insight">{data.insight.summary}{'\n'}{data.insight.meaning}</KVItem>
-      <KVItem k="Latest check-in">{data.last ? `${fmtDate(data.last.dateISO)} • Adherence ${data.last.adherencePct}%` : 'No check-ins yet.'}</KVItem>
+        <Tagline
+          title="Your session"
+          body={`${state.profile.age || '—'} yrs · ${state.profile.gender || '—'}`}
+        />
+        <KVItem k="Medications">{data.meds.length ? data.meds.join(', ') : 'None added.'}</KVItem>
+        <KVItem k="Symptoms">{state.symptoms.selected.length ? state.symptoms.selected.join(', ') : 'None selected.'}</KVItem>
+        <KVItem k="Plan">
+          {state.plan.started
+            ? `Started ${fmtDate(state.plan.startDate)}${state.plan.recommendedSupplements.length ? ` · ${state.plan.recommendedSupplements.join(', ')}` : ''}`
+            : 'Not started yet.'}
+        </KVItem>
+        <KVItem k="Latest check-in">
+          {data.last ? `${fmtDate(data.last.dateISO)} · Adherence ${data.last.adherencePct}%` : 'None yet.'}
+        </KVItem>
+        {data.flags.length ? <KVItem k="Safety flags">{data.flags.join(', ')}</KVItem> : null}
       </Section>
+
+      <Accordion title="Clinical details" subtitle="Predictions, patterns, and insight">
+        <KVItem k="Success prediction">{data.success.score}% · {data.success.level}{'\n'}{data.success.reason}</KVItem>
+        <KVItem k="Pattern">
+          {data.patterns.length ? `${data.patterns[0].title} — ${data.patterns[0].note}` : 'No strong pattern yet.'}
+        </KVItem>
+        <KVItem k="Interactions">
+          {data.interactions.length ? data.interactions.map((x) => x.title).join(', ') : 'None flagged.'}
+        </KVItem>
+        <KVItem k="Insight">{data.insight.summary}{'\n'}{data.insight.meaning}</KVItem>
+      </Accordion>
     </View>
   );
 };

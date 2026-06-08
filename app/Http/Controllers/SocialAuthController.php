@@ -103,6 +103,7 @@ class SocialAuthController extends Controller
         }
 
         Auth::login($user, remember: true);
+        session()->forget('is_web_guest');
 
         return redirect()->intended(route('treatments'));
     }
