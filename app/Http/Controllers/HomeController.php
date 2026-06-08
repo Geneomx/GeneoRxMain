@@ -24,7 +24,7 @@ class HomeController extends Controller
     public function index()
     {
         return view('home', [
-            'introSlides' => config('intro_slides'),
+            'introSlides' => config('intro_slides', []),
         ]);
     }
 

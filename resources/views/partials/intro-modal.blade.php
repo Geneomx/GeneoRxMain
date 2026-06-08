@@ -1,3 +1,5 @@
+@include('partials.intro-slides-data')
+
 <div id="introModal" class="intro-modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="introModalTitle">
   <div class="intro-backdrop" id="introBackdrop"></div>
 

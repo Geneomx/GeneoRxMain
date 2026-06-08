@@ -1945,6 +1945,8 @@
   </div>
 </nav>
 
+@include('partials.intro-slides-data')
+
 <!-- HERO -->
 <header class="hero" id="heroSection">
   <div class="hero-orbits"></div>
