@@ -340,7 +340,7 @@
     top: 22%;
     pointer-events: none;
     opacity: 0.055;
-    background: center / contain no-repeat url('{{ \App\Support\LogoAssets::url('logo-mark.png') }}');
+    background: center / contain no-repeat url('{{ \App\Support\LogoAssets::mark() }}');
     filter: saturate(1.25);
     mix-blend-mode: screen;
     animation: heroLogoFloat 14s ease-in-out infinite alternate;

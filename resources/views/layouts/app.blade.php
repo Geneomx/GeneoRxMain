@@ -1143,7 +1143,7 @@
   <nav class="nav">
     <div class="nav-inner">
       <a href="{{ route('home') }}" class="nav-brand">
-        <img src="{{ \App\Support\LogoAssets::url('logo-mark.png') }}" alt="GeneoRx" class="nav-logo">
+        <img src="{{ \App\Support\LogoAssets::mark() }}" alt="GeneoRx" class="nav-logo">
         <span class="nav-name">GeneoRx</span>
       </a>
 

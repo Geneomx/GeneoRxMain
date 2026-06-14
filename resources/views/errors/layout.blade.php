@@ -132,7 +132,7 @@
 
   <nav class="nav">
     <a href="{{ url('/') }}" class="nav-brand">
-      <img src="{{ \App\Support\LogoAssets::url('logo-mark.png') }}" alt="GeneoRx">
+      <img src="{{ \App\Support\LogoAssets::mark() }}" alt="GeneoRx">
       <span class="nav-name">GeneoRx</span>
     </a>
   </nav>

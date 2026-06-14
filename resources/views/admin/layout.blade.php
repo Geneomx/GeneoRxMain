@@ -416,7 +416,7 @@
   <!-- TOP BAR -->
   <header class="admin-topbar">
     <a href="{{ route('home') }}" class="admin-brand">
-      <img src="{{ \App\Support\LogoAssets::url('logo-mark.png') }}" alt="GeneoRx">
+      <img src="{{ \App\Support\LogoAssets::mark() }}" alt="GeneoRx">
       <span class="admin-brand-name">GeneoRx</span>
       <span class="admin-brand-badge">Admin</span>
     </a>
