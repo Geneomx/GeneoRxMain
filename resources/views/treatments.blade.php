@@ -16,7 +16,6 @@
       @include('partials.geneorx-brand', [
         'variant' => 'full',
         'size' => 44,
-        'fullHeight' => 34,
         'subtitle' => 'Portal',
         'subtitleI18n' => 'portal.badge',
         'href' => route('home'),

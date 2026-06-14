@@ -143,9 +143,13 @@
     .geneorx-brand-full {
       display: block;
       width: auto;
-      max-width: min(240px, 58vw);
+      height: auto;
       object-fit: contain;
       filter: drop-shadow(0 10px 18px rgba(0,0,0,.18));
+    }
+    .portal-brand .geneorx-brand-full {
+      height: 42px;
+      max-width: min(280px, 62vw);
     }
     .geneorx-brand-subtitle {
       margin-left: 12px;

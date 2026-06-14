@@ -186,8 +186,12 @@
   .geneorx-brand-full {
     display: block;
     width: auto;
-    max-width: min(220px, 52vw);
+    height: auto;
     object-fit: contain;
+  }
+  .nav-brand-wrap .geneorx-brand-full {
+    height: 36px;
+    max-width: 220px;
   }
   .geneorx-brand-subtitle {
     margin-left: 12px;
@@ -200,7 +204,6 @@
     color: var(--text-soft);
     white-space: nowrap;
   }
-  .nav-brand-wrap .geneorx-brand-full { max-width: 180px; }
   .nav-links {
     display: flex;
     align-items: center;
@@ -1734,7 +1737,7 @@
 
     <div class="nav-inner">
       <div class="nav-brand-wrap">
-        @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 36, 'fullHeight' => 30, 'showName' => false, 'href' => route('home')])
+        @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 36, 'showName' => false, 'href' => route('home')])
       </div>
 
       <div class="nav-cta">
@@ -1819,7 +1822,7 @@
     <div class="footer-top">
       <div class="footer-brand-area">
         <div class="footer-brand">
-          @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 30, 'fullHeight' => 26, 'showName' => false, 'href' => route('home')])
+          @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 30, 'showName' => false, 'href' => route('home')])
         </div>
         <p class="footer-tagline">
           Personal medication intelligence. Helping you connect the dots between medications, symptoms, and nutrition.

@@ -5,7 +5,7 @@
 @section('content')
 <div class="auth-shell">
   <div class="auth-intro">
-    @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 40, 'fullHeight' => 36, 'showName' => false])
+    @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 40, 'showName' => false])
     <span class="eyebrow">Account recovery</span>
     <h1>Reset your password.</h1>
     <p class="sub">Enter the email address linked to your GeneoRx account and we will send you a secure reset link.</p>
