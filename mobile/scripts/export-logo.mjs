@@ -84,6 +84,8 @@ async function splashPng(out) {
 await iconMarkBuffer(512).then((b) => sharp(b).toFile(path.join(publicDir, 'logo-mark.png')));
 await fullLogoBuffer(600).then((b) => sharp(b).toFile(path.join(publicDir, 'logo-preview-full.png')));
 await appIcon(512, path.join(publicDir, 'logo-preview-icon.png'));
+await appIcon(192, path.join(publicDir, 'favicon.png'));
+await appIcon(180, path.join(publicDir, 'apple-touch-icon.png'));
 
 await fullLogoBuffer(820).then((b) => sharp(b).toFile(path.join(assets, 'logo.png')));
 await appIcon(1024, path.join(assets, 'icon.png'));

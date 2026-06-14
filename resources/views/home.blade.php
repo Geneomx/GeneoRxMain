@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GeneoRx   Personal medication intelligence</title>
-<link rel="icon" type="image/svg+xml" href="{{ asset('logo.svg') }}">
+@include('partials.logo-head')
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@1,8..60,400&display=swap" rel="stylesheet">
@@ -340,7 +340,7 @@
     top: 22%;
     pointer-events: none;
     opacity: 0.055;
-    background: center / contain no-repeat url('{{ asset('logo.svg') }}');
+    background: center / contain no-repeat url('{{ \App\Support\LogoAssets::url('logo-mark.png') }}');
     filter: saturate(1.25);
     mix-blend-mode: screen;
     animation: heroLogoFloat 14s ease-in-out infinite alternate;

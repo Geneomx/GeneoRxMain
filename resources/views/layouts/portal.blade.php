@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>GeneoRx — Trusted Health Companion Portal</title>
-  <link rel="icon" type="image/svg+xml" href="{{ asset('logo.svg') }}">
+  @include('partials.logo-head')
   @include('include.style')
   @stack('styles')
   <style>
