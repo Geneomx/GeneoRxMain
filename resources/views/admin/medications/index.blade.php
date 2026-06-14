@@ -7,7 +7,7 @@
     <h1>Medications</h1>
     <p>{{ $medications->total() }} {{ Str::plural('medication', $medications->total()) }} in the catalog.</p>
   </div>
-  <a href="{{ route('admin.medications.create') }}" class="btn btn-primary">+ Add medication</a>
+  <a href="{{ route('admin.medications.create') }}" class="btn btn-primary">+ Add medication with evidence</a>
 </div>
 
 {{-- SEARCH / FILTER --}}
@@ -60,19 +60,33 @@
             </td>
             <td style="font-family:monospace;font-size:12px;color:var(--text-muted);">{{ $med->slug }}</td>
             <td style="font-size:12.5px;">
-              @php $claims = $med->claims ?? []; @endphp
+              @php
+                $claims = $med->claims ?? [];
+                $totalCitations = collect($claims)->sum(fn ($c) => count($c['citations'] ?? []));
+              @endphp
               @if(count($claims))
                 @foreach(array_slice($claims, 0, 3) as $cl)
-                  <span style="display:inline-block;background:var(--teal-50);color:var(--teal-dark);border-radius:4px;padding:1px 7px;font-size:11.5px;margin:1px;">
-                    {{ $cl['nutrient'] }}
-                    <span style="opacity:.6">({{ $cl['source_quality'] }})</span>
+                  @php
+                    $q = $cl['source_quality'] ?? 'Moderate';
+                    $qBg = $q === 'High' ? '#F0FDF4' : ($q === 'Low' ? 'var(--bg-muted)' : '#FFFBEB');
+                    $qColor = $q === 'High' ? '#166534' : ($q === 'Low' ? 'var(--text-muted)' : '#92400E');
+                    $citeN = count($cl['citations'] ?? []);
+                  @endphp
+                  <span style="display:inline-flex;align-items:center;gap:4px;background:{{ $qBg }};color:{{ $qColor }};border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:600;margin:2px 2px 2px 0;">
+                    {{ $cl['nutrient'] ?? '—' }}
+                    @if($citeN)
+                      <span style="opacity:.75;font-weight:500;">{{ $citeN }} {{ Str::plural('cite', $citeN) }}</span>
+                    @endif
                   </span>
                 @endforeach
                 @if(count($claims) > 3)
-                  <span style="font-size:11px;color:var(--text-muted);"> +{{ count($claims) - 3 }}</span>
+                  <span style="font-size:11px;color:var(--text-muted);">+{{ count($claims) - 3 }} more</span>
+                @endif
+                @if($totalCitations)
+                  <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">{{ $totalCitations }} total {{ Str::plural('citation', $totalCitations) }}</div>
                 @endif
               @else
-                <span style="color:var(--text-muted);font-size:12px;">None</span>
+                <span style="color:var(--text-muted);font-size:12px;">No evidence</span>
               @endif
             </td>
             <td style="font-size:12px;color:var(--text-muted);">

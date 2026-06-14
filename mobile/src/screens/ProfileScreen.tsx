@@ -21,14 +21,18 @@ import { useWizard } from '@/store/WizardContext';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Loader } from '@/components/Loader';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useTranslation } from '@/hooks/useTranslation';
 import { colors, spacing } from '@/theme';
 import type { ProfileStackParamList } from '@/navigation/ProfileStack';
 
 export const ProfileScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const { data, loading, refresh, save } = useProfile();
   const { signOut, user, isGuest } = useAuth();
   const { reset: resetWizard } = useWizard();
+  const { page, scrollBottom } = useResponsiveLayout();
 
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
@@ -57,9 +61,12 @@ export const ProfileScreen: React.FC = () => {
         profile: { age, gender, phone, pregnant, kidneyDisease, anticoagulants },
         account: { consent },
       });
-      Alert.alert('Saved', 'Your profile has been updated.');
+      Alert.alert(t('mobile.profile.saved_title'), t('mobile.profile.saved_body'));
     } catch (err) {
-      Alert.alert('Could not save', err instanceof Error ? err.message : 'Please try again.');
+      Alert.alert(
+        t('mobile.profile.save_error_title'),
+        err instanceof Error ? err.message : t('mobile.profile.save_error_body'),
+      );
     } finally {
       setSaving(false);
     }
@@ -67,12 +74,12 @@ export const ProfileScreen: React.FC = () => {
 
   function confirmResetApp() {
     Alert.alert(
-      'Reset everything?',
-      'This permanently clears all local data on this device — your profile, Guided wizard entries, medications, check-ins, and sign-in — then returns you to the Welcome screen. This cannot be undone.',
+      t('mobile.profile.reset_title'),
+      t('mobile.profile.reset_body'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Reset everything',
+          text: t('mobile.profile.reset_btn'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -91,17 +98,18 @@ export const ProfileScreen: React.FC = () => {
 
   if (loading && !data) return <Loader />;
 
-  const displayName = data?.user?.name || user?.name || 'Your account';
+  const displayName = data?.user?.name || user?.name || t('mobile.profile.your_account');
   const displayEmail = data?.user?.email || user?.email || '';
   const initials = displayName.charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: scrollBottom }]}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
+        <View style={page}>
         {/* HEADER */}
         <View style={styles.brandRow}>
           <Image
@@ -115,7 +123,7 @@ export const ProfileScreen: React.FC = () => {
             style={({ pressed }) => [styles.settingsBtn, pressed && { opacity: 0.7 }]}
             hitSlop={8}
           >
-            <Text style={styles.settingsBtnText}>Settings</Text>
+            <Text style={styles.settingsBtnText}>{t('mobile.profile.settings')}</Text>
           </Pressable>
         </View>
 
@@ -126,10 +134,10 @@ export const ProfileScreen: React.FC = () => {
           </View>
           <View style={styles.profileMeta}>
             <Text style={styles.profileName}>{displayName}</Text>
-            <Text style={styles.profileEmail}>{displayEmail || 'No email'}</Text>
+            <Text style={styles.profileEmail}>{displayEmail || t('mobile.profile.no_email')}</Text>
             <View style={[styles.planTag, isGuest && styles.planTagGuest]}>
               <Text style={[styles.planTagText, isGuest && styles.planTagTextGuest]}>
-                {isGuest ? 'Guest mode' : 'Free plan'}
+                {isGuest ? t('mobile.profile.guest_mode') : t('mobile.profile.free_plan')}
               </Text>
             </View>
           </View>
@@ -138,49 +146,45 @@ export const ProfileScreen: React.FC = () => {
         {/* HEALTH PROFILE SECTION */}
         <View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTag}>  Health profile</Text>
-            <Text style={styles.sectionTitle}>About you</Text>
-            <Text style={styles.sectionSub}>
-              Helps GeneoRx personalize your insights and surface relevant safety considerations.
-            </Text>
+            <Text style={styles.sectionTag}>  {t('mobile.profile.health_tag')}</Text>
+            <Text style={styles.sectionTitle}>{t('mobile.profile.about_you')}</Text>
+            <Text style={styles.sectionSub}>{t('mobile.profile.about_sub')}</Text>
           </View>
 
           <View style={styles.row}>
             <View style={styles.col}>
-              <Input label="Age" value={age} onChangeText={setAge} keyboardType="number-pad" placeholder="35" />
+              <Input label={t('account.age')} value={age} onChangeText={setAge} keyboardType="number-pad" placeholder={t('account.age_placeholder')} />
             </View>
             <View style={styles.col}>
-              <Input label="Gender" value={gender} onChangeText={setGender} placeholder="e.g. Female" />
+              <Input label={t('account.gender')} value={gender} onChangeText={setGender} placeholder={t('account.gender')} />
             </View>
           </View>
-          <Input label="Phone (optional)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+1 555 000 0000" />
+          <Input label={t('mobile.profile.phone_optional')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+1 555 000 0000" />
         </View>
 
         {/* SAFETY FLAGS */}
         <View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTag}>  Safety</Text>
-            <Text style={styles.sectionTitle}>Important considerations</Text>
-            <Text style={styles.sectionSub}>
-              These flags affect which insights GeneoRx surfaces for you.
-            </Text>
+            <Text style={styles.sectionTag}>  {t('mobile.profile.safety_tag')}</Text>
+            <Text style={styles.sectionTitle}>{t('mobile.profile.safety_title')}</Text>
+            <Text style={styles.sectionSub}>{t('mobile.profile.safety_sub')}</Text>
           </View>
 
           <Toggle
-            label="Pregnant"
-            description="Affects medication-safety considerations"
+            label={t('account.pregnant')}
+            description={t('mobile.profile.pregnant_desc')}
             value={pregnant}
             onValueChange={setPregnant}
           />
           <Toggle
-            label="Kidney disease"
-            description="Adjusts dose and interaction awareness"
+            label={t('account.chip.kidney')}
+            description={t('mobile.profile.kidney_desc')}
             value={kidneyDisease}
             onValueChange={setKidneyDisease}
           />
           <Toggle
-            label="Taking anticoagulants"
-            description="Highlights bleeding risk interactions"
+            label={t('account.chip.anticoag')}
+            description={t('mobile.profile.anticoag_desc')}
             value={anticoagulants}
             onValueChange={setAnticoagulants}
           />
@@ -189,12 +193,12 @@ export const ProfileScreen: React.FC = () => {
         {/* CONSENT */}
         <View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTag}>  Consent</Text>
-            <Text style={styles.sectionTitle}>Personalized insights</Text>
+            <Text style={styles.sectionTag}>  {t('mobile.profile.consent_tag')}</Text>
+            <Text style={styles.sectionTitle}>{t('mobile.profile.consent_title')}</Text>
           </View>
           <Toggle
-            label="I consent"
-            description="GeneoRx may use my health information to personalize my insights. Educational guidance only   not medical advice."
+            label={t('mobile.profile.consent_label')}
+            description={t('mobile.profile.consent_desc')}
             value={consent}
             onValueChange={setConsent}
           />
@@ -202,20 +206,19 @@ export const ProfileScreen: React.FC = () => {
 
         {/* ACTIONS */}
         <View style={styles.actions}>
-          <Button title="Save profile" onPress={onSave} loading={saving} />
-          <Button title="Sign out" variant="secondary" onPress={signOut} />
+          <Button title={t('mobile.profile.save')} onPress={onSave} loading={saving} />
+          <Button title={t('mobile.profile.sign_out')} variant="secondary" onPress={signOut} />
           <Pressable
             onPress={confirmResetApp}
             style={({ pressed }) => [styles.resetLink, pressed && { opacity: 0.6 }]}
             hitSlop={8}
           >
-            <Text style={styles.resetLinkText}>Reset app &amp; clear all local data</Text>
+            <Text style={styles.resetLinkText}>{t('mobile.profile.reset_link')}</Text>
           </Pressable>
         </View>
 
-        <Text style={styles.legal}>
-          © GeneoRx · Educational guidance only   not medical advice.
-        </Text>
+        <Text style={styles.legal}>{t('mobile.settings.copyright')}</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -245,15 +248,14 @@ const Toggle: React.FC<{
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.backgroundAlt },
   content: {
-    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xxl,
     gap: spacing.md,
   },
 
   /* BRAND */
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  brandLogo: { width: 26, height: 26 },
+  brandLogo: { height: 32, width: 124 },
   brandName: { fontSize: 14.5, fontWeight: '800', color: colors.text, letterSpacing: -0.2, flex: 1 },
   settingsBtn: {
     paddingHorizontal: 12,

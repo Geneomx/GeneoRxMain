@@ -1,60 +1,79 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Linking, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { useWizard } from '@/store/WizardContext';
-import { FinePrint, HelpNote, Section, Segmented, Tagline, ToggleRow } from '@/screens/wizard/ui';
-import { colors } from '@/theme';
-
-const TYPES = [
-  { label: 'Bug', value: 'Bug' },
-  { label: 'Suggestion', value: 'Suggestion' },
-  { label: 'Question', value: 'Question' },
-  { label: 'Other', value: 'Other' },
-];
+import { useTranslation } from '@/hooks/useTranslation';
+import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
+import { FinePrint, HelpNote, OptionGrid, Section, Tagline, ToggleRow } from '@/screens/wizard/ui';
+import { colors, spacing } from '@/theme';
 
 export const FeedbackStep: React.FC = () => {
   const { state, update } = useWizard();
+  const { t } = useTranslation();
+  const goToDashboard = useDashboardNavigation();
   const [type, setType] = useState('Suggestion');
   const [canContact, setCanContact] = useState(true);
   const [message, setMessage] = useState('');
 
+  const types = useMemo(
+    () => [
+      { label: t('feedback.type.bug.short'), value: 'Bug' },
+      { label: t('feedback.type.suggestion.short'), value: 'Suggestion' },
+      { label: t('feedback.type.question.short'), value: 'Question' },
+      { label: t('feedback.type.other.short'), value: 'Other' },
+    ],
+    [t],
+  );
+
+  const finish = () => {
+    setMessage('');
+    goToDashboard();
+  };
+
   const send = () => {
     const msg = message.trim();
     if (!msg) {
-      Alert.alert('Add a message', 'Please write your feedback before sending.');
+      finish();
       return;
     }
-    const email = state.account.email || 'anonymous';
+    const email = state.account.email || t('common.anonymous');
     update((d) => {
       d.feedback.push({ dateISO: new Date().toISOString(), type, message: msg, canContact, email });
     });
-    const subj = encodeURIComponent(`GeneoRx Portal Feedback (${type})`);
-    const body = encodeURIComponent(`Type: ${type}\nFrom: ${email}\nCan we contact you?: ${canContact ? 'Yes' : 'No'}\n\nMessage:\n${msg}\n`);
-    Linking.openURL(`mailto:info@geneorx.com?subject=${subj}&body=${body}`).catch(() =>
-      Alert.alert('Saved', 'Your feedback was saved. Email could not be opened on this device.'),
+    const subj = encodeURIComponent(`${t('feedback.title')} (${type})`);
+    const body = encodeURIComponent(
+      `${t('feedback.type')}: ${type}\n${t('account.email')}: ${email}\n${t('feedback.contact')}: ${canContact ? t('common.yes') : t('common.no')}\n\n${t('feedback.message')}:\n${msg}\n`,
     );
-    setMessage('');
+    void Linking.openURL(`mailto:info@geneorx.com?subject=${subj}&body=${body}`).catch(() => undefined);
+    finish();
   };
 
   return (
-    <View style={{ gap: 16 }}>
-      <HelpNote
-        what="Pick a type, write your message, and tap Send. It opens your email app with the message pre-filled to the GeneoRx team."
-        why="Your notes directly shape what we fix and build next."
-      />
+    <View style={{ gap: spacing.md }}>
+      <HelpNote what={t('step.9.sub')} why={t('feedback.sub')} />
       <Section>
-      <Tagline title="Your feedback is valuable" body="Send questions or improvement ideas to the GeneoRx team." />
+        <Tagline title={t('feedback.modal_title')} body={t('feedback.modal_sub')} />
 
-      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>Feedback type</Text>
-      <Segmented value={type} onChange={setType} options={TYPES} />
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{t('feedback.type')}</Text>
+        <OptionGrid value={type} onChange={setType} options={types} />
 
-      <ToggleRow label="GeneoRx can contact me about this feedback" value={canContact} onChange={setCanContact} />
+        <ToggleRow label={t('feedback.contact')} value={canContact} onChange={setCanContact} />
 
-      <Input label="Message" placeholder="Tell us what you liked, what was confusing, and what you want next…" value={message} onChangeText={setMessage} multiline style={{ minHeight: 110, textAlignVertical: 'top' }} />
+        <Input
+          label={t('feedback.message')}
+          placeholder={t('feedback.message_placeholder')}
+          value={message}
+          onChangeText={setMessage}
+          multiline
+          style={{ minHeight: 110, textAlignVertical: 'top' }}
+        />
 
-      <Button title="Send to info@geneorx.com" onPress={send} />
-      <FinePrint>Opens your email app with a pre-filled message. A copy is saved on this device.</FinePrint>
+        <View style={{ gap: spacing.sm }}>
+          <Button title={t('feedback.send_short')} onPress={send} />
+          <Button title={t('nav.dashboard')} variant="secondary" onPress={finish} />
+        </View>
+        <FinePrint>{t('step.9.sub')}</FinePrint>
       </Section>
     </View>
   );

@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { login as apiLogin, logout as apiLogout, register as apiRegister } from '@/api/auth';
+import { fetchProfile } from '@/api/profile';
 import type { SocialLoginResponse } from '@/api/auth';
 import { clearToken, getToken, setToken } from './tokenStorage';
 import type { AuthUser, LoginPayload, RegisterPayload } from '@/types/api';
@@ -45,12 +46,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setEmailVerified(true);
         } else if (stored) {
           setTokenState(stored);
-          // For existing sessions (restored from storage) we treat email as
-          // already verified   they passed verification before this session.
           setUser(USER_PLACEHOLDER);
           setEmailVerified(true);
+          try {
+            const data = await fetchProfile();
+            if (!cancelled && data.user) {
+              setUser(data.user);
+              setEmailVerified(true);
+            }
+          } catch {
+            // keep placeholder until profile loads elsewhere
+          }
         }
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
@@ -65,17 +73,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(res.user);
     setIsGuest(false);
     // If they have already verified their email, let them straight in
-    setEmailVerified(res.user.emailVerified ?? false);
+    setEmailVerified(true);
   }, []);
 
   const signUp = useCallback(async (payload: RegisterPayload) => {
     const res = await apiRegister(payload);
     await setToken(res.token);
     setTokenState(res.token);
-    setUser(res.user);
+    setUser({ ...res.user, emailVerified: true });
     setIsGuest(false);
-    // Fresh registration   always needs verification
-    setEmailVerified(false);
+    setEmailVerified(true);
   }, []);
 
   /** Used by useSocialAuth after Google/Apple backend verification succeeds. */

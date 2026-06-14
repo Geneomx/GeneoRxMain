@@ -82,20 +82,84 @@
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(7, 10, 18, 0.88);
-    backdrop-filter: saturate(180%) blur(16px);
-    -webkit-backdrop-filter: saturate(180%) blur(16px);
-    border-bottom: 1px solid var(--border);
+    background: rgba(7, 10, 18, 0.92);
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
   }
-  .nav-inner {
+  .nav-shell {
     max-width: 1180px;
     margin: 0 auto;
-    padding: 12px 28px;
+  }
+  .nav-intro {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 28px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background:
+      linear-gradient(180deg, rgba(40, 225, 255, 0.04), transparent 70%);
+  }
+  .nav-tagline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    width: fit-content;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 1.65px;
+    text-transform: uppercase;
+    color: var(--teal-light);
+  }
+  .nav-tagline::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal-light), var(--teal-dark));
+    box-shadow: 0 0 14px rgba(40, 225, 255, 0.55);
+    flex-shrink: 0;
+  }
+  .nav-lead {
+    margin: 0;
+    max-width: 640px;
+    font-size: 14px;
+    line-height: 1.55;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+  .nav-inner {
+    padding: 12px 28px 14px;
     display: flex;
     align-items: center;
     gap: 14px;
   }
-  .nav-brand { margin-right: auto; }
+  .nav-brand-wrap {
+    margin-right: auto;
+    min-width: 0;
+  }
+  .nav-brand-wrap .geneorx-brand { flex-shrink: 0; }
+  .nav-brand-wrap .geneorx-brand-name {
+    font-size: 18px;
+    letter-spacing: -0.35px;
+  }
+  .nav-brand-wrap .geneorx-brandmark {
+    box-shadow: 0 10px 28px rgba(40, 225, 255, 0.16);
+  }
+  .mobile-menu-intro {
+    display: none;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-menu-intro .nav-tagline { margin-bottom: 8px; }
+  .mobile-menu-intro .nav-lead {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-soft);
+  }
   .geneorx-brand {
     display: inline-flex;
     align-items: center;
@@ -190,6 +254,9 @@
     box-shadow: var(--shadow-lg);
   }
   .mobile-menu.open { display: block; }
+  .mobile-menu-lang {
+    margin-bottom: 14px;
+  }
   .mobile-menu-cta {
     display: flex;
     flex-direction: column;
@@ -354,90 +421,10 @@
     position: relative;
     max-width: 960px;
     margin: 0 auto;
-    padding: 54px 28px 80px;
+    padding: 32px 28px 80px;
     display: flex;
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .hero-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    align-self: flex-start;
-    gap: 9px;
-    padding: 6px 16px 6px 8px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid var(--teal-100);
-    box-shadow: 0 2px 8px rgba(14, 124, 102, 0.08);
-    margin-bottom: 28px;
-    backdrop-filter: blur(8px);
-    animation: heroBlockIn 0.5s ease forwards;
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  .hero-eyebrow-dot {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
-    color: #fff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 800;
-    box-shadow: 0 2px 8px rgba(14, 124, 102, 0.30);
-    flex-shrink: 0;
-    overflow: hidden;
-    padding: 6px;
-  }
-  .hero-eyebrow-dot img { filter: brightness(0) invert(1); }
-  .hero-eyebrow-text {
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--text-soft);
-    letter-spacing: 0.15px;
-  }
-
-  .hero-title {
-    max-width: 680px;
-    font-size: clamp(42px, 7vw, 76px);
-    line-height: 0.96;
-    letter-spacing: -3.2px;
-    color: var(--text);
-    font-weight: 900;
-    margin: 0 0 18px;
-    animation: heroBlockIn 0.55s ease 0.08s forwards;
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  .hero-title em {
-    position: relative;
-    display: inline-block;
-    font-family: 'Source Serif 4', serif;
-    font-weight: 400;
-    color: var(--teal-dark);
-  }
-  .hero-title em::after {
-    content: '';
-    position: absolute;
-    left: 2%;
-    right: 2%;
-    bottom: 7px;
-    height: 10px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(63, 179, 154, 0.28), rgba(14, 124, 102, 0.12));
-    z-index: -1;
-  }
-  .hero-subtitle {
-    max-width: 620px;
-    font-size: 18px;
-    line-height: 1.72;
-    color: var(--text-soft);
-    margin-bottom: 24px;
-    animation: heroBlockIn 0.55s ease 0.16s forwards;
-    opacity: 0;
-    transform: translateY(16px);
   }
   .hero-trust-row {
     display: flex;
@@ -477,8 +464,6 @@
     gap: 14px;
     align-items: center;
     flex-wrap: wrap;
-    margin-top: 8px;
-    padding-top: 10px;
   }
   .hero-actions .btn-dark {
     box-shadow: 0 2px 0 rgba(0,0,0,0.06), 0 8px 24px rgba(15, 31, 27, 0.18);
@@ -493,81 +478,70 @@
     box-shadow: 0 6px 20px rgba(14, 124, 102, 0.12);
   }
 
-  /* HERO INFO — professional track slider */
-  .hero-info-slider {
-    margin-top: 0;
+  /* HERO INFO — static banner grid */
+  .hero-info-banners {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
     width: 100%;
-    --slide-accent: var(--hero-accent);
-    --slide-accent-dark: var(--hero-accent-dark);
-    --slide-accent-rgb: var(--hero-accent-rgb);
-    --slide-accent-light-rgb: var(--hero-accent-light-rgb);
-    animation: heroBlockIn 0.6s ease 0.32s forwards;
-    opacity: 0;
-    transform: translateY(16px);
-    transition: color 0.35s ease;
-  }
-
-  .hero-info-stage {
-    position: relative;
-    padding: 0 56px;
-    max-width: 820px;
+    max-width: 920px;
     margin: 0 auto;
   }
 
-  .hero-info-glow {
-    position: absolute;
-    inset: 10% 8% 5%;
-    background:
-      radial-gradient(ellipse at 30% 40%, rgba(var(--slide-accent-rgb), 0.12), transparent 62%);
-    filter: blur(48px);
-    pointer-events: none;
-    z-index: 0;
-    transition: background 0.55s ease;
-  }
-
-  .hero-info-progress {
-    display: none;
-  }
-  .hero-info-progress-seg {
-    flex: 1;
-    height: 2px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-    overflow: hidden;
-    position: relative;
-  }
-  .hero-info-progress-seg::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    transform: scaleX(0);
-    transform-origin: left center;
-    background: linear-gradient(90deg, var(--slide-accent-dark), var(--slide-accent));
-    border-radius: inherit;
-    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .hero-info-progress-seg.active::after { transform: scaleX(1); }
-  .hero-info-progress-seg.done::after { transform: scaleX(1); opacity: 0.4; }
-
-  .hero-info-viewport {
-    overflow: hidden;
-    position: relative;
-    z-index: 1;
-  }
-
-  .hero-info-track {
-    display: flex;
-    width: 100%;
-    align-items: flex-start;
-    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform;
-  }
-
   .hero-info-block {
-    flex: 0 0 100%;
-    min-width: 100%;
-    padding: 4px 4px 8px;
+    position: relative;
+    padding: 22px 22px 20px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
     box-sizing: border-box;
+    opacity: 0;
+    transform: translateY(16px);
+    animation: heroBlockIn 0.55s ease forwards;
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    overflow: hidden;
+  }
+  .hero-info-block:nth-child(1) { animation-delay: 0.28s; }
+  .hero-info-block:nth-child(2) { animation-delay: 0.36s; }
+  .hero-info-block:nth-child(3) { animation-delay: 0.44s; }
+  .hero-info-block:nth-child(4) { animation-delay: 0.52s; }
+  .hero-info-block::before {
+    content: '';
+    display: block;
+    width: 44px;
+    height: 3px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--slide-accent), transparent);
+    margin-bottom: 14px;
+    opacity: 0.85;
+  }
+  .hero-info-block:hover {
+    transform: translateY(-4px);
+    border-color: rgba(var(--slide-accent-rgb), 0.28);
+    box-shadow: 0 16px 40px rgba(var(--slide-accent-rgb), 0.12);
+  }
+
+  .hero-info-teal {
+    --slide-accent: #28E1FF;
+    --slide-accent-dark: #1E9BB8;
+    --slide-accent-rgb: 40, 225, 255;
+  }
+  .hero-info-blue {
+    --slide-accent: #5EEBFF;
+    --slide-accent-dark: #2B7A9B;
+    --slide-accent-rgb: 43, 122, 155;
+  }
+  .hero-info-violet {
+    --slide-accent: #A78BFA;
+    --slide-accent-dark: #6B5B95;
+    --slide-accent-rgb: 107, 91, 149;
+  }
+  .hero-info-amber {
+    --slide-accent: #FBBF24;
+    --slide-accent-dark: #C17D3A;
+    --slide-accent-rgb: 193, 125, 58;
   }
 
   .hero-slide-meta {
@@ -590,13 +564,7 @@
     background: transparent;
     border: none;
   }
-  .hero-slide-counter {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-  }
-  .hero-slide-counter-sep { opacity: 0.45; margin: 0 2px; }
+  .hero-slide-counter { display: none; }
 
   .hero-slide-title-row {
     display: flex;
@@ -605,17 +573,17 @@
     margin-bottom: 18px;
   }
   .hero-info-block h3 {
-    font-size: clamp(22px, 3vw, 28px);
+    font-size: clamp(18px, 2.2vw, 22px);
     font-weight: 800;
-    line-height: 1.2;
-    letter-spacing: -0.5px;
+    line-height: 1.25;
+    letter-spacing: -0.4px;
     color: var(--text);
     margin: 0;
-    padding: 4px 0 0;
+    padding: 2px 0 0;
   }
   .hero-info-icon {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border-radius: 14px;
     display: inline-flex;
     align-items: center;
@@ -625,13 +593,13 @@
     background: linear-gradient(135deg, var(--slide-accent), var(--slide-accent-dark));
     box-shadow: 0 8px 24px rgba(var(--slide-accent-rgb), 0.22);
   }
-  .hero-info-icon svg { width: 24px; height: 24px; stroke: currentColor; }
+  .hero-info-icon svg { width: 22px; height: 22px; stroke: currentColor; }
 
   .hero-slide-body p {
-    font-size: 16px;
+    font-size: 14px;
     color: var(--text-soft);
-    line-height: 1.7;
-    margin: 0 0 12px;
+    line-height: 1.6;
+    margin: 0 0 10px;
   }
   .hero-slide-body ul {
     list-style: none;
@@ -644,9 +612,9 @@
   .hero-slide-body li {
     position: relative;
     padding-left: 20px;
-    font-size: 15px;
+    font-size: 13.5px;
     color: var(--text-soft);
-    line-height: 1.6;
+    line-height: 1.55;
   }
   .hero-slide-body li::before {
     content: '';
@@ -665,100 +633,6 @@
   .hero-info-blue .hero-info-icon   { background: linear-gradient(135deg, #5EEBFF, #2B7A9B); color: #070A12; }
   .hero-info-violet .hero-info-icon { background: linear-gradient(135deg, #A78BFA, #6B5B95); color: #fff; }
   .hero-info-amber .hero-info-icon  { background: linear-gradient(135deg, #FBBF24, #C17D3A); color: #070A12; }
-
-  .hero-info-arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 4;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(11, 16, 34, 0.92);
-    color: var(--text);
-    opacity: 0.85;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(10px);
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .hero-info-stage:hover .hero-info-arrow,
-  .hero-info-arrow:focus-visible { opacity: 1; }
-  .hero-info-arrow:hover {
-    border-color: rgba(var(--slide-accent-rgb), 0.45);
-    box-shadow: 0 8px 28px rgba(var(--slide-accent-rgb), 0.22);
-    transform: translateY(-50%) scale(1.04);
-  }
-  .hero-info-arrow:disabled { opacity: 0.35; cursor: default; transform: translateY(-50%); }
-  .hero-info-arrow--prev { left: 0; }
-  .hero-info-arrow--next { right: 0; }
-
-  .hero-info-dots {
-    display: flex;
-    align-items: stretch;
-    max-width: 820px;
-    margin: 24px auto 0;
-    padding: 0 56px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background: none;
-    gap: 0;
-  }
-  .hero-info-dot {
-    flex: 1;
-    min-height: 0;
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 13px 6px 11px;
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    position: relative;
-    transition: color 0.22s ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .hero-info-dot::after {
-    content: '';
-    position: absolute;
-    left: 18%;
-    right: 18%;
-    bottom: 0;
-    height: 2px;
-    border-radius: 2px 2px 0 0;
-    background: var(--slide-accent);
-    transform: scaleX(0);
-    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .hero-info-dot:hover { color: var(--text); }
-  .hero-info-dot.active {
-    color: var(--slide-accent);
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
-  }
-  .hero-info-dot.active::after { transform: scaleX(1); }
-  .hero-info-tab-num {
-    font-size: 9px;
-    line-height: 1;
-    font-weight: 800;
-    letter-spacing: 0.7px;
-    opacity: 0.55;
-  }
-  .hero-info-dot.active .hero-info-tab-num { opacity: 0.9; }
-  .hero-info-tab-label {
-    font-size: 11.5px;
-    line-height: 1.2;
-    font-weight: 700;
-  }
 
   /* =============================================
      SECTION TYPE
@@ -1420,78 +1294,37 @@
   }
 
   /* =============================================
-     MOBILE HERO BRAND  (logo + name, shown only on mobile)
-  ============================================= */
-  .mob-hero-brand {
-    display: none;
-  }
-
-  /* =============================================
      RESPONSIVE
   ============================================= */
+
+  @media (max-width: 1100px) {
+    .nav-intro { padding: 12px 20px 10px; }
+    .nav-inner { padding: 10px 20px 12px; }
+    .nav-lead { font-size: 13px; max-width: 520px; }
+  }
 
   @media (max-width: 980px) {
 
     .hero-inner {
-      padding: 40px 24px 64px;
+      padding: 28px 24px 64px;
       max-width: 100%;
     }
     .hero-orbits { display: none !important; }
 
-    .mob-hero-brand {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 26px;
-    }
-    .mob-hero-logo { width: 52px; height: 52px; }
-    .mob-hero-name {
-      font-size: 30px; font-weight: 800;
-      letter-spacing: -0.7px; color: var(--text); line-height: 1;
-    }
-    .mob-hero-tagline {
-      font-size: 13px; font-weight: 500;
-      color: var(--text-muted); letter-spacing: 0.1px; margin-top: 3px;
-    }
+    .nav-intro { display: none; }
+    .mobile-menu-intro { display: block; }
 
-    .hero-eyebrow {
-      margin-bottom: 22px;
+    .hero-info-banners,
+    .hero-info-block {
       opacity: 1 !important;
       transform: none !important;
       animation: none !important;
     }
-    .hero-title,
-    .hero-subtitle,
-    .hero-trust-row,
-    .hero-info-slider {
-      opacity: 1 !important;
-      transform: none !important;
-      animation: none !important;
-    }
-    .hero-title {
-      font-size: clamp(34px, 10vw, 52px);
-      letter-spacing: -1.8px;
-      line-height: 1;
-    }
-    .hero-subtitle {
-      font-size: 16px;
-      margin-bottom: 20px;
-    }
-    .hero-trust-row { margin-bottom: 24px; }
-    .hero-trust-pill {
-      min-height: 34px;
-      padding: 7px 11px;
-      font-size: 12px;
-    }
-    .hero-eyebrow-dot { padding: 6px; }
-    .hero-eyebrow-dot img { width: 14px; height: 14px; }
 
-    .hero-info-progress { padding: 0 44px 22px; }
-    .hero-info-stage { padding: 0 44px; }
-    .hero-info-dots { padding: 0 44px; }
-    .hero-info-tab-label { font-size: 10.5px; }
-
-    .hero-actions { margin-top: 28px; gap: 12px; }
+    .hero-info-banners {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
 
     /* Section / layout */
     .testimonials-grid { grid-template-columns: 1fr; }
@@ -1507,44 +1340,14 @@
 
   /* ── Phone  ≤ 620 px ──────────────────────────────────────────────────── */
   @media (max-width: 620px) {
-    .hero-info-progress { padding: 0 22px 18px; }
-    .hero-info-stage { padding: 0 22px; }
-    .hero-info-dots { padding: 0 22px; }
-
-    /* CTA full-width on small screens */
-    .hero-actions { flex-direction: column; gap: 10px; }
-    .hero-actions .btn { width: 100%; justify-content: center; }
+    .hero-info-banners { gap: 10px; }
+    .nav-inner { padding: 10px 16px 12px; align-items: center; }
   }
 
   /* ── Phone  ≤ 520 px ──────────────────────────────────────────────────── */
   @media (max-width: 520px) {
-    .hero { padding: 48px 0 0; }
-    .hero-inner { padding: 24px 16px 48px; }
-
-    /* Brand header tighter */
-    .mob-hero-logo { width: 44px; height: 44px; }
-    .mob-hero-name { font-size: 26px; }
-    .mob-hero-brand { margin-bottom: 20px; }
-
-    /* Eyebrow tighter */
-    .hero-eyebrow { padding: 5px 12px 5px 7px; gap: 7px; margin-bottom: 18px; }
-    .hero-eyebrow-dot { width: 24px; height: 24px; padding: 5px; }
-    .hero-eyebrow-dot img { width: 13px; height: 13px; }
-    .hero-eyebrow-text { font-size: 11.5px; }
-    .hero-title {
-      font-size: 34px;
-      letter-spacing: -1.1px;
-      margin-bottom: 12px;
-    }
-    .hero-title em::after {
-      bottom: 3px;
-      height: 7px;
-    }
-    .hero-subtitle {
-      font-size: 14.5px;
-      line-height: 1.62;
-      margin-bottom: 16px;
-    }
+    .hero { padding: 24px 0 0; }
+    .hero-inner { padding: 20px 16px 48px; }
     .hero-trust-row { gap: 7px; margin-bottom: 18px; }
     .hero-trust-pill {
       width: 100%;
@@ -1552,15 +1355,15 @@
       font-size: 11.5px;
     }
 
-    /* Info carousel — tighter on small phones */
-    .hero-info-progress { padding: 0 16px 16px; }
-    .hero-info-stage { padding: 0 16px; }
-    .hero-info-dots { padding: 0 16px; margin-top: 16px; }
-    .hero-info-arrow { display: none; }
-    .hero-info-block h3 { font-size: 20px; }
+    /* Info banners — tighter on small phones */
+    .hero-info-block {
+      padding: 18px 16px 16px;
+      border-radius: 16px;
+    }
+    .hero-info-block h3 { font-size: 18px; }
     .hero-info-icon { width: 40px; height: 40px; }
     .hero-info-icon svg { width: 20px; height: 20px; }
-    .hero-slide-body p, .hero-slide-body li { font-size: 14px; }
+    .hero-slide-body p, .hero-slide-body li { font-size: 13.5px; }
 
     /* Section titles */
     .section-title em::after { height: 2px; }
@@ -1598,12 +1401,7 @@
 
   /* ── Extra-small phones  ≤ 380 px ────────────────────────────────────── */
   @media (max-width: 380px) {
-    .hero-inner { padding: 20px 14px 40px; }
-    .mob-hero-name { font-size: 24px; }
-    .mob-hero-logo { width: 40px; height: 40px; }
-    .hero-info-progress { padding: 0 12px 14px; }
-    .hero-info-stage, .hero-info-dots { padding: 0 12px; }
-    .hero-eyebrow-text { font-size: 10.5px; }
+    .hero-inner { padding: 16px 14px 40px; }
     .section-title { font-size: 26px; }
     .final-cta h2 { font-size: 22px; }
     .final-cta-card { padding: 32px 16px; }
@@ -1902,10 +1700,6 @@
     .intro-step-counter { grid-column: 1 / -1; order: -1; margin-bottom: 4px; }
     .intro-nav-btn--ghost { justify-self: stretch; }
     .intro-nav-btn--primary { justify-self: stretch; grid-column: 1 / -1; width: 100%; }
-    .hero-info-progress { padding: 0 16px 18px; }
-    .hero-info-stage { padding: 0; }
-    .hero-info-dots { padding: 0 16px; margin-top: 12px; }
-    .hero-info-arrow { display: none; }
   }
 </style>
 </head>
@@ -1913,33 +1707,50 @@
 
 <!-- NAV -->
 <nav class="nav">
-  <div class="nav-inner">
-    @include('partials.geneorx-brand', ['size' => 34, 'href' => route('home'), 'class' => 'nav-brand'])
-
-    <div class="nav-cta">
-      @auth
-        <a href="{{ route('treatments') }}" class="btn btn-primary">Open dashboard</a>
-      @else
-        <a href="{{ route('guest') }}"    class="btn btn-ghost nav-cta-extra">Guest login</a>
-        <a href="{{ route('login') }}"    class="btn btn-outline nav-cta-extra">Sign in</a>
-        <a href="{{ route('register') }}" class="btn btn-primary">Create account</a>
-      @endauth
+  <div class="nav-shell">
+    <div class="nav-intro">
+      <p class="nav-tagline" data-i18n="hero.eyebrow">Personal medication intelligence</p>
+      <p class="nav-lead" data-i18n="portal.sub">Your trusted health companion for smarter medication, symptom, and nutrient support</p>
     </div>
 
-    <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
+    <div class="nav-inner">
+      <div class="nav-brand-wrap">
+        @include('partials.geneorx-brand', ['size' => 36, 'href' => route('home')])
+      </div>
+
+      <div class="nav-cta">
+        @include('partials.language-selector')
+        @auth
+          <a href="{{ route('treatments') }}" class="btn btn-primary" data-i18n="nav.dashboard">Open dashboard</a>
+        @else
+          <a href="{{ route('guest') }}"    class="btn btn-ghost nav-cta-extra" data-i18n="nav.guest">Guest login</a>
+          <a href="{{ route('login') }}"    class="btn btn-outline nav-cta-extra" data-i18n="nav.signin">Sign in</a>
+          <a href="{{ route('register') }}" class="btn btn-primary" data-i18n="nav.register">Create account</a>
+        @endauth
+      </div>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
   </div>
 
   <!-- Mobile menu -->
   <div class="mobile-menu" id="mobileMenu">
+    <div class="mobile-menu-intro">
+      <p class="nav-tagline" data-i18n="hero.eyebrow">Personal medication intelligence</p>
+      <p class="nav-lead" data-i18n="portal.sub">Your trusted health companion for smarter medication, symptom, and nutrient support</p>
+    </div>
+    <div class="mobile-menu-lang">
+      @include('partials.language-selector')
+    </div>
     <div class="mobile-menu-cta">
       @auth
-        <a href="{{ route('treatments') }}" class="btn btn-primary">Open dashboard</a>
+        <a href="{{ route('treatments') }}" class="btn btn-primary" data-i18n="nav.dashboard">Open dashboard</a>
       @else
-        <a href="{{ route('guest') }}"    class="btn btn-ghost">Guest login</a>
-        <a href="{{ route('login') }}"    class="btn btn-outline">Sign in</a>
-        <a href="{{ route('register') }}" class="btn btn-primary">Create account</a>
+        <a href="{{ route('guest') }}"    class="btn btn-ghost" data-i18n="nav.guest">Guest login</a>
+        <a href="{{ route('login') }}"    class="btn btn-outline" data-i18n="nav.signin">Sign in</a>
+        <a href="{{ route('register') }}" class="btn btn-primary" data-i18n="nav.register">Create account</a>
       @endauth
     </div>
   </div>
@@ -1955,55 +1766,13 @@
   <div class="hero-inner">
     <div class="hero-content">
 
-      {{-- Mobile-only brand header: actual logo + name ─ hidden on desktop --}}
-      <div class="mob-hero-brand">
-        @include('partials.geneorx-brand', ['size' => 44, 'href' => route('home')])
-        <div>
-          <div class="mob-hero-tagline">Personal medication intelligence</div>
-        </div>
-      </div>
-
-      <div class="hero-info-slider">
-        <div class="hero-info-progress" id="heroInfoProgress" aria-hidden="true">
-          @foreach ($introSlides as $i => $slide)
-            <span class="hero-info-progress-seg{{ $i === 0 ? ' active' : '' }}" data-step="{{ $i }}"></span>
-          @endforeach
-        </div>
-
-        <div class="hero-info-stage">
-          <div class="hero-info-glow" aria-hidden="true"></div>
-
-          <button type="button" class="hero-info-arrow hero-info-arrow--prev" id="heroInfoPrev" aria-label="Previous slide">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-
-          <div class="hero-info-viewport">
-            <div class="hero-info-track" id="heroInfoTrack">
-            @foreach ($introSlides as $i => $slide)
-              @include('partials.hero-slide-block', [
-                'slide' => $slide,
-                'index' => $i,
-              ])
-            @endforeach
-            </div>
-          </div>
-
-          <button type="button" class="hero-info-arrow hero-info-arrow--next" id="heroInfoNext" aria-label="Next slide">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
-
-        <div class="hero-info-dots" id="heroInfoTabs" aria-label="Slide navigation">
-          @foreach ($introSlides as $i => $slide)
-            <button type="button"
-                    class="hero-info-dot{{ $i === 0 ? ' active' : '' }}"
-                    data-slide="{{ $i }}"
-                    aria-label="{{ $slide['tab_aria'] }}">
-              <span class="hero-info-tab-num">{{ $slide['num'] }}</span>
-              <span class="hero-info-tab-label">{{ $slide['tab_label'] }}</span>
-            </button>
-          @endforeach
-        </div>
+      <div class="hero-info-banners">
+        @foreach ($introSlides as $i => $slide)
+          @include('partials.hero-slide-block', [
+            'slide' => $slide,
+            'index' => $i,
+          ])
+        @endforeach
       </div>
     </div>
   </div>
@@ -2014,11 +1783,11 @@
   <div class="final-cta-inner">
     <div class="final-cta-card reveal">
       <div class="final-cta-content">
-        <h2>Ready for a <em>clearer picture</em> of your health?</h2>
-        <p>Join people who use GeneoRx to turn their medications and symptoms into something useful.</p>
+        <h2 data-i18n="cta.heading">Ready for a clearer picture of your health?</h2>
+        <p data-i18n="cta.sub">Join people who use GeneoRx to turn their medications and symptoms into something useful.</p>
         <div class="final-cta-actions">
-          <a href="{{ route('register') }}" class="btn btn-light btn-lg">Create your free account</a>
-          <a href="{{ route('guest') }}" class="btn btn-on-dark btn-lg">Try as guest</a>
+          <a href="{{ route('register') }}" class="btn btn-light btn-lg" data-i18n="cta.register">Create your free account</a>
+          <a href="{{ route('guest') }}" class="btn btn-on-dark btn-lg" data-i18n="cta.guest">Try as guest</a>
         </div>
       </div>
     </div>
@@ -2113,101 +1882,6 @@
     });
   }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
   reveals.forEach(el => io.observe(el));
-
-  // Hero info carousel
-  (function () {
-    const track = document.getElementById('heroInfoTrack');
-    const hero = document.getElementById('heroSection');
-    const slider = document.querySelector('.hero-info-slider');
-    const dots = document.querySelectorAll('.hero-info-dot');
-    const progressSegs = document.querySelectorAll('.hero-info-progress-seg');
-    const prevBtn = document.getElementById('heroInfoPrev');
-    const nextBtn = document.getElementById('heroInfoNext');
-    if (!track) return;
-
-    const slides = Array.from(track.querySelectorAll('.hero-info-block'));
-    if (!slides.length) return;
-
-    const SLIDE_DURATION = 7000;
-    let current = 0;
-    let timer = null;
-    let touchStartX = 0;
-    const slideThemes = [
-      { accent: '#28E1FF', dark: '#1E9BB8', rgb: '40, 225, 255', lightRgb: '94, 235, 255' },
-      { accent: '#5EEBFF', dark: '#2B7A9B', rgb: '43, 122, 155', lightRgb: '92, 173, 205' },
-      { accent: '#A78BFA', dark: '#6B5B95', rgb: '107, 91, 149', lightRgb: '164, 145, 206' },
-      { accent: '#FBBF24', dark: '#C17D3A', rgb: '193, 125, 58', lightRgb: '229, 174, 112' },
-    ];
-
-    function applySlideTheme(theme) {
-      if (!theme) return;
-      [hero, slider].forEach((element) => {
-        if (!element) return;
-        element.style.setProperty('--hero-accent', theme.accent);
-        element.style.setProperty('--hero-accent-dark', theme.dark);
-        element.style.setProperty('--hero-accent-rgb', theme.rgb);
-        element.style.setProperty('--hero-accent-light-rgb', theme.lightRgb);
-        element.style.setProperty('--slide-accent', theme.accent);
-        element.style.setProperty('--slide-accent-dark', theme.dark);
-        element.style.setProperty('--slide-accent-rgb', theme.rgb);
-        element.style.setProperty('--slide-accent-light-rgb', theme.lightRgb);
-      });
-    }
-
-    function goToSlide(idx) {
-      current = ((idx % slides.length) + slides.length) % slides.length;
-      applySlideTheme(slideThemes[current]);
-      track.style.transform = `translateX(-${current * 100}%)`;
-      dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
-      progressSegs.forEach((seg, i) => {
-        seg.classList.toggle('active', i === current);
-        seg.classList.toggle('done', i < current);
-      });
-    }
-
-    function startAutoplay() {
-      if (timer) clearInterval(timer);
-      timer = setInterval(() => {
-        goToSlide(current >= slides.length - 1 ? 0 : current + 1);
-      }, SLIDE_DURATION);
-    }
-
-    dots.forEach((dot, idx) => {
-      dot.addEventListener('click', () => {
-        goToSlide(idx);
-        startAutoplay();
-      });
-    });
-
-    if (prevBtn) {
-      prevBtn.addEventListener('click', () => {
-        goToSlide(current - 1);
-        startAutoplay();
-      });
-    }
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        goToSlide(current + 1);
-        startAutoplay();
-      });
-    }
-
-    track.addEventListener('touchstart', (e) => {
-      touchStartX = e.changedTouches[0].screenX;
-      if (timer) clearInterval(timer);
-    }, { passive: true });
-
-    track.addEventListener('touchend', (e) => {
-      const delta = e.changedTouches[0].screenX - touchStartX;
-      if (Math.abs(delta) > 50) {
-        goToSlide(delta < 0 ? current + 1 : current - 1);
-      }
-      startAutoplay();
-    }, { passive: true });
-
-    goToSlide(0);
-    startAutoplay();
-  })();
 </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { colors, spacing } from '@/theme';
 
 interface Props {
@@ -16,14 +17,15 @@ export const Screen: React.FC<Props> = ({
   contentStyle,
   padded = true,
 }) => {
+  const { page, scrollBottom } = useResponsiveLayout();
   const inner = (
-    <View style={[padded ? styles.padded : null, contentStyle]}>{children}</View>
+    <View style={[styles.content, page, padded ? styles.padded : null, contentStyle]}>{children}</View>
   );
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       {scroll ? (
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[styles.scroll, { paddingBottom: scrollBottom }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -38,6 +40,7 @@ export const Screen: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: colors.background },
-  scroll: { flexGrow: 1 },
-  padded: { padding: spacing.lg, gap: spacing.md },
+  scroll: { flexGrow: 1, alignItems: 'center' },
+  content: { gap: spacing.md },
+  padded: { paddingTop: spacing.lg, gap: spacing.md },
 });

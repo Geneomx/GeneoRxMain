@@ -33,6 +33,10 @@ export function citationToLink(token: string): string {
     const id = t.split(':')[1].toUpperCase();
     return `https://pmc.ncbi.nlm.nih.gov/articles/${id}/`;
   }
+  const doiPrefixed = t.match(/^DOI:\s*(10\.\S+)$/i);
+  if (doiPrefixed) return `https://doi.org/${doiPrefixed[1]}`;
+  if (/^10\.\d{4,}\/\S+$/i.test(t)) return `https://doi.org/${t}`;
+  if (/^https?:\/\/\S+$/i.test(t)) return t;
   return '';
 }
 export function doseFactor(d: string): number {

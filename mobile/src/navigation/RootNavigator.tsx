@@ -1,10 +1,8 @@
 import React from 'react';
 import { NavigationContainer, DefaultTheme, LinkingOptions } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@/auth/AuthContext';
 import { AuthStack } from './AuthStack';
 import { AppTabs } from './AppTabs';
-import { VerifyEmailScreen } from '@/screens/VerifyEmailScreen';
 import { Loader } from '@/components/Loader';
 import { colors } from '@/theme';
 
@@ -37,28 +35,14 @@ const navTheme = {
   },
 };
 
-// A tiny stack so VerifyEmail gets a clean navigator context
-const VerifyStack = createNativeStackNavigator();
-
 export const RootNavigator: React.FC = () => {
-  const { token, loading, emailVerified, isGuest } = useAuth();
+  const { token, loading } = useAuth();
 
   if (loading) return <Loader />;
 
   return (
     <NavigationContainer theme={navTheme} linking={linking}>
-      {/* No token → auth flow */}
-      {!token && <AuthStack />}
-
-      {/* Token + unverified email → verify screen (guests are always "verified") */}
-      {token && !emailVerified && !isGuest && (
-        <VerifyStack.Navigator screenOptions={{ headerShown: false }}>
-          <VerifyStack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
-        </VerifyStack.Navigator>
-      )}
-
-      {/* Token + verified (or guest) → main app */}
-      {token && (emailVerified || isGuest) && <AppTabs />}
+      {!token ? <AuthStack /> : <AppTabs />}
     </NavigationContainer>
   );
 };

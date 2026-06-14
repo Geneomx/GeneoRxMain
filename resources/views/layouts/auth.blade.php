@@ -97,6 +97,13 @@
       border-color: var(--border);
       background: rgba(255, 255, 255, 0.06);
     }
+    .auth-top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
 
     .auth-main {
       max-width: 1180px;
@@ -288,7 +295,10 @@
 <body>
   <header class="auth-top">
     @include('partials.geneorx-brand', ['size' => 36])
-    <a href="{{ route('home') }}" class="auth-top-link">Back to home</a>
+    <div class="auth-top-actions">
+      @include('partials.language-selector')
+      <a href="{{ route('home') }}" class="auth-top-link" data-i18n="auth.back">Back to home</a>
+    </div>
   </header>
 
   <main class="auth-main">

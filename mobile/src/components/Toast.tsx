@@ -18,13 +18,13 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const insets = useSafeAreaInsets();
   const [toast, setToast] = useState<ToastState | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(20)).current;
+  const translateY = useRef(new Animated.Value(-16)).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hide = useCallback(() => {
     Animated.parallel([
       Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 20, duration: 180, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: -16, duration: 180, useNativeDriver: true }),
     ]).start(() => setToast(null));
   }, [opacity, translateY]);
 
@@ -33,7 +33,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (timer.current) clearTimeout(timer.current);
       setToast({ message, type });
       opacity.setValue(0);
-      translateY.setValue(20);
+      translateY.setValue(-16);
       Animated.parallel([
         Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
         Animated.spring(translateY, { toValue: 0, useNativeDriver: true, friction: 8 }),
@@ -55,7 +55,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           pointerEvents="none"
           style={[
             styles.wrap,
-            { bottom: insets.bottom + 24, opacity, transform: [{ translateY }] },
+            { top: insets.top + 10, opacity, transform: [{ translateY }] },
           ]}
         >
           <View
@@ -86,16 +86,16 @@ export function useToast(): ToastContextValue {
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    right: spacing.md,
+    left: spacing.md,
+    alignItems: 'flex-end',
+    zIndex: 9999,
   },
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    maxWidth: 420,
+    maxWidth: 300,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: radius.pill,

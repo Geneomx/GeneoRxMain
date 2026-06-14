@@ -12,14 +12,17 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button } from '@/components/Button';
 import { useAuth } from '@/auth/AuthContext';
 import { sendOtp, verifyOtp } from '@/api/auth';
+import { useTranslation } from '@/hooks/useTranslation';
 import { colors, spacing } from '@/theme';
 
 const CODE_LENGTH = 6;
 
 export const VerifyEmailScreen: React.FC = () => {
   const { user, signOut, markEmailVerified } = useAuth();
+  const { t } = useTranslation();
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
@@ -50,9 +53,9 @@ export const VerifyEmailScreen: React.FC = () => {
     try {
       await sendOtp(user.email);
       startCooldown(60);
-      if (!silent) Alert.alert('Sent', 'A new code has been sent to your email.');
+      if (!silent) Alert.alert(t('mobile.alert.updated'), t('mobile.auth.code_sent'));
     } catch (err: any) {
-      if (!silent) Alert.alert('Error', err?.message ?? 'Could not send code. Please try again.');
+      if (!silent) Alert.alert(t('mobile.alert.error'), err?.message ?? t('mobile.alert.try_again'));
     } finally {
       setResending(false);
     }
@@ -60,7 +63,7 @@ export const VerifyEmailScreen: React.FC = () => {
 
   async function handleVerify() {
     if (code.length !== CODE_LENGTH) {
-      Alert.alert('Incomplete', `Please enter all ${CODE_LENGTH} digits.`);
+      Alert.alert(t('mobile.auth.incomplete_code'), t('mobile.auth.enter_all_digits', { digits: CODE_LENGTH }));
       return;
     }
     if (!user?.email) return;
@@ -72,7 +75,7 @@ export const VerifyEmailScreen: React.FC = () => {
       // RootNavigator will now render AppTabs because emailVerified = true
     } catch (err: any) {
       const msg = err?.message ?? 'Incorrect code. Please check your email and try again.';
-      Alert.alert('Incorrect code', msg);
+      Alert.alert(t('mobile.auth.incorrect_code'), msg);
       setCode('');
       inputRef.current?.focus();
     } finally {
@@ -114,10 +117,9 @@ export const VerifyEmailScreen: React.FC = () => {
           </View>
 
           {/* Copy */}
-          <Text style={s.title}>Check your email</Text>
+          <Text style={s.title}>{t('mobile.auth.verify_check_email')}</Text>
           <Text style={s.sub}>
-            We sent a {CODE_LENGTH}-digit code to{'\n'}
-            <Text style={s.email}>{user?.email ?? 'your email address'}</Text>
+            {t('mobile.auth.verify_sent', { digits: CODE_LENGTH, email: user?.email ?? 'your email' })}
           </Text>
 
           {/* Code input */}
@@ -153,23 +155,23 @@ export const VerifyEmailScreen: React.FC = () => {
           </View>
 
           {/* Verify button */}
-          <Pressable
+          <Button
+            title={verifying ? t('mobile.auth.verifying') : t('mobile.auth.verify_btn')}
             onPress={handleVerify}
-            style={({ pressed }) => [s.btn, (pressed || verifying) && { opacity: 0.75 }]}
+            loading={verifying}
             disabled={verifying || code.length < CODE_LENGTH}
-          >
-            <Text style={s.btnText}>{verifying ? 'Verifying…' : 'Verify email'}</Text>
-          </Pressable>
+            style={{ width: '100%', marginBottom: 20 }}
+          />
 
           {/* Resend */}
           <View style={s.resendRow}>
-            <Text style={s.resendLabel}>Didn't receive it? </Text>
+            <Text style={s.resendLabel}>{t('mobile.auth.didnt_receive')}</Text>
             {cooldown > 0 ? (
-              <Text style={s.resendCountdown}>Resend in {cooldown}s</Text>
+              <Text style={s.resendCountdown}>{t('mobile.auth.resend_in', { seconds: cooldown })}</Text>
             ) : (
               <Pressable onPress={() => handleSend(false)} disabled={resending}>
                 <Text style={[s.resendLink, resending && { opacity: 0.5 }]}>
-                  {resending ? 'Sending…' : 'Resend code'}
+                  {resending ? t('mobile.auth.sending') : t('mobile.auth.resend')}
                 </Text>
               </Pressable>
             )}
@@ -177,11 +179,11 @@ export const VerifyEmailScreen: React.FC = () => {
 
           {/* Sign out link */}
           <Pressable onPress={signOut} style={s.signOutBtn}>
-            <Text style={s.signOutText}>Use a different account</Text>
+            <Text style={s.signOutText}>{t('mobile.auth.use_different')}</Text>
           </Pressable>
 
           <Text style={s.legal}>
-            Check your spam folder if you don't see it within a couple of minutes.
+            {t('mobile.auth.verify_spam')}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -202,7 +204,7 @@ const s = StyleSheet.create({
   brandRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 36, alignSelf: 'flex-start',
   },
-  logo: { width: 28, height: 28 },
+  logo: { height: 32, width: 124 },
   brandName: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
 
   iconWrap: { marginBottom: 24 },
@@ -263,16 +265,6 @@ const s = StyleSheet.create({
   boxChar: {
     fontSize: 24, fontWeight: '700', color: colors.text,
   },
-
-  btn: {
-    width: '100%',
-    height: 52,
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 20,
-  },
-  btnText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
 
   resendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
   resendLabel: { fontSize: 14.5, color: colors.textMuted },

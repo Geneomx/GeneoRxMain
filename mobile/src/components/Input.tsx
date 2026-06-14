@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
-import { colors, radius, spacing, typography } from '@/theme';
+import { colors, radius, spacing, touchMin, typography } from '@/theme';
 
 interface Props extends TextInputProps {
   label?: string;
@@ -23,18 +23,18 @@ export const Input: React.FC<Props> = ({ label, error, style, ...rest }) => {
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.xs },
-  label: { ...typography.bodyMuted, color: colors.text, fontWeight: '600' },
+  label: { ...typography.bodyMuted, color: colors.text, fontWeight: '700', fontSize: 15 },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.button,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: 15,
+    paddingVertical: spacing.sm + 4,
+    fontSize: 16,
     color: colors.text,
-    minHeight: 44,
+    minHeight: touchMin,
   },
   inputError: { borderColor: colors.danger },
-  error: { color: colors.danger, fontSize: 12 },
+  error: { color: colors.danger, fontSize: 14 },
 });

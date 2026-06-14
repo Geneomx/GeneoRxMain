@@ -23,13 +23,14 @@ export interface CheckinSymptomItem {
   symptom: string;
   change: SymptomChange;
   changeScore: number;
+  severityNow?: number;
 }
 
 export interface WizardCheckin {
   dateISO: string;
   adherencePct: number;
   supplementsTaken: string[];
-  symptoms: { items: CheckinSymptomItem[] };
+  symptoms: { items: CheckinSymptomItem[]; improvementScore?: number };
   wellbeing: Wellbeing;
   sideEffects: string;
   notes: string;

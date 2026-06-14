@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import { Button } from '@/components/Button';
+import { useTranslation } from '@/hooks/useTranslation';
 import { resetPassword } from '@/api/auth';
 import { colors, spacing } from '@/theme';
 import type { AuthStackParamList } from '@/navigation/AuthStack';
@@ -23,6 +25,7 @@ type Nav = NativeStackNavigationProp<AuthStackParamList>;
 
 export const ResetPasswordScreen: React.FC<Props> = ({ route }) => {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const { token = '', email = '' } = route.params ?? {};
 
   const [password, setPassword] = useState('');
@@ -32,11 +35,11 @@ export const ResetPasswordScreen: React.FC<Props> = ({ route }) => {
 
   async function handleReset() {
     if (password.length < 8) {
-      Alert.alert('Too short', 'Password must be at least 8 characters.');
+      Alert.alert(t('mobile.alert.too_short'), t('mobile.alert.min_8_chars'));
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Mismatch', 'Passwords do not match. Please check and try again.');
+      Alert.alert(t('mobile.alert.mismatch'), t('mobile.alert.passwords_no_match'));
       return;
     }
     if (!token || !email) {
@@ -66,20 +69,19 @@ export const ResetPasswordScreen: React.FC<Props> = ({ route }) => {
           </View>
 
           <View style={s.iconWrap}>
-            <View style={[s.iconCircle, { backgroundColor: '#F0FDF4', borderColor: '#A7F3D0' }]}>
+            <View style={[s.iconCircle, { backgroundColor: colors.successBg, borderColor: colors.success }]}>
               <Text style={s.iconText}>✓</Text>
             </View>
           </View>
 
-          <Text style={s.title}>Password reset</Text>
-          <Text style={s.sub}>Your password has been updated successfully. Sign in with your new password to continue.</Text>
+          <Text style={s.title}>{t('mobile.auth.reset_done_title')}</Text>
+          <Text style={s.sub}>{t('mobile.auth.reset_done_sub')}</Text>
 
-          <Pressable
-            style={({ pressed }) => [s.btn, pressed && { opacity: 0.8 }]}
+          <Button
+            title={t('mobile.auth.signin_now')}
             onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={s.btnText}>Sign in now</Text>
-          </Pressable>
+            style={{ width: '100%' }}
+          />
         </ScrollView>
       </SafeAreaView>
     );
@@ -104,18 +106,17 @@ export const ResetPasswordScreen: React.FC<Props> = ({ route }) => {
             </View>
           </View>
 
-          <Text style={s.title}>Choose a new password</Text>
+          <Text style={s.title}>{t('mobile.auth.reset_choose')}</Text>
           <Text style={s.sub}>
-            Resetting password for <Text style={s.em}>{email}</Text>.
-            Choose something secure you haven't used before.
+            {t('mobile.auth.reset_for_email', { email })}
           </Text>
 
           <View style={s.field}>
-            <Text style={s.label}>New password</Text>
+            <Text style={s.label}>{t('mobile.auth.new_password')}</Text>
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="At least 8 characters"
+              placeholder={t('mobile.settings.new_pw_ph')}
               placeholderTextColor={colors.textDim}
               secureTextEntry
               autoCapitalize="none"
@@ -126,11 +127,11 @@ export const ResetPasswordScreen: React.FC<Props> = ({ route }) => {
           </View>
 
           <View style={s.field}>
-            <Text style={s.label}>Confirm new password</Text>
+            <Text style={s.label}>{t('mobile.settings.confirm_new_password')}</Text>
             <TextInput
               value={confirm}
               onChangeText={setConfirm}
-              placeholder="Repeat your new password"
+              placeholder={t('mobile.settings.confirm_pw_ph')}
               placeholderTextColor={colors.textDim}
               secureTextEntry
               autoCapitalize="none"
@@ -141,19 +142,19 @@ export const ResetPasswordScreen: React.FC<Props> = ({ route }) => {
             />
           </View>
 
-          <Pressable
-            style={({ pressed }) => [s.btn, (pressed || loading) && { opacity: 0.75 }]}
+          <Button
+            title={loading ? t('mobile.auth.resetting') : t('mobile.auth.set_new_password')}
             onPress={handleReset}
+            loading={loading}
             disabled={loading}
-          >
-            <Text style={s.btnText}>{loading ? 'Resetting…' : 'Set new password'}</Text>
-          </Pressable>
+            style={{ width: '100%', marginTop: 8, marginBottom: 16 }}
+          />
 
           <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={s.backBtn}>
-            <Text style={s.backText}>Request a new link instead</Text>
+            <Text style={s.backText}>{t('mobile.auth.request_new_link')}</Text>
           </Pressable>
 
-          <Text style={s.legal}>Educational guidance only   not medical advice.</Text>
+          <Text style={s.legal}>{t('mobile.legal')}</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -170,7 +171,7 @@ const s = StyleSheet.create({
     paddingBottom: 48,
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 36, alignSelf: 'flex-start' },
-  logo: { width: 28, height: 28 },
+  logo: { height: 32, width: 124 },
   brandName: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
 
   iconWrap: { marginBottom: 24 },
@@ -191,15 +192,8 @@ const s = StyleSheet.create({
   input: {
     height: 50, paddingHorizontal: 14,
     borderWidth: 1, borderColor: colors.border, borderRadius: 12,
-    fontSize: 15.5, color: colors.text, backgroundColor: colors.background,
+    fontSize: 15.5, color: colors.text, backgroundColor: colors.surfaceAlt,
   },
-
-  btn: {
-    width: '100%', height: 52,
-    backgroundColor: colors.primary, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center', marginTop: 8, marginBottom: 16,
-  },
-  btnText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
 
   backBtn: { padding: 8, marginBottom: 24 },
   backText: { fontSize: 14.5, color: colors.textMuted, fontWeight: '500' },

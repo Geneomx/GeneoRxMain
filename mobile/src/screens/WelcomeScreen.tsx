@@ -1,407 +1,293 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import {
-  Animated,
-  Dimensions,
-  Easing,
   Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
-import { colors, spacing } from '@/theme';
-import { useAuth } from '@/auth/AuthContext';
+import { LanguageSelector } from '@/components/LanguageSelector';
 import { ABOUT_CARDS } from '@/content/homeContent';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { colors, layout, portalCard, radius, spacing } from '@/theme';
+import { useAuth } from '@/auth/AuthContext';
+import { translate } from '@/content/siteTranslations';
+import { useLanguage } from '@/store/LanguageContext';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '@/navigation/AuthStack';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
 
-const { width: SCREEN_W } = Dimensions.get('window');
-const SNAP = SCREEN_W;
-const WATERMARK_SIZE = Math.round(SCREEN_W * 0.95);
-const TOTAL = ABOUT_CARDS.length;
+const SLIDE_ACCENTS = ['#4BAEC8', '#A78BFA', '#FF4FD8', '#34D399'] as const;
 
-// Per-slide accent palette (mirrors the website slide themes)
-const THEMES = [
-  { accent: '#0E7C66' }, // teal
-  { accent: '#2B7A9B' }, // blue
-  { accent: '#6B5B95' }, // purple
-  { accent: '#1F9281' }, // teal-green (summary)
-];
+const ACCENT_BG: Record<string, string> = {
+  '#4BAEC8': colors.primary50,
+  '#A78BFA': 'rgba(167, 139, 250, 0.12)',
+  '#FF4FD8': 'rgba(255, 79, 216, 0.10)',
+  '#34D399': colors.successBg,
+};
+
+function getSlideCopy(index: number, lang: string) {
+  const bullets =
+    index === 1
+      ? [0, 1, 2].map((bi) => translate(`slide.1.b${bi}`, lang))
+      : index === 2
+        ? [0, 1, 2, 3].map((bi) => translate(`slide.2.b${bi}`, lang))
+        : [];
+
+  return {
+    tag: translate(`slide.${index}.tag`, lang),
+    title: translate(`slide.${index}.title`, lang),
+    body:
+      index === 1
+        ? translate('slide.1.p0', lang)
+        : index === 0 || index === 3
+          ? translate(`slide.${index}.p0`, lang)
+          : '',
+    bullets,
+    extra: index === 1 ? translate('slide.1.p1', lang) : '',
+  };
+}
+
+const DnaMark = () => (
+  <Svg width={28} height={28} viewBox="0 0 48 60" fill="none">
+    <Path d="M8 0C34 18 34 42 8 60" stroke={colors.primaryLight} strokeWidth={5} strokeLinecap="round" />
+    <Path d="M40 0C14 18 14 42 40 60" stroke={colors.text} strokeWidth={5} strokeLinecap="round" opacity={0.78} />
+    <Path d="M14 12H34" stroke={colors.primaryLight} strokeWidth={4} strokeLinecap="round" />
+    <Path d="M10 30H38" stroke={colors.text} strokeWidth={4} strokeLinecap="round" opacity={0.78} />
+    <Path d="M14 48H34" stroke={colors.primaryLight} strokeWidth={4} strokeLinecap="round" />
+  </Svg>
+);
 
 export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const { continueAsGuest } = useAuth();
-  const float = useRef(new Animated.Value(0)).current;
-  const spin = useRef(new Animated.Value(0)).current;
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const enter = useRef(new Animated.Value(0)).current;
-  const colorAnim = useRef(new Animated.Value(0)).current;
-  const sliderRef = useRef<ScrollView>(null);
-  const [activeCard, setActiveCard] = useState(0);
-
-  // Gentle breathe for the watermark
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(float, {
-          toValue: 1,
-          duration: 3000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(float, {
-          toValue: 0,
-          duration: 3000,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [float]);
-
-  // Slow continuous rotation for the watermark
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(spin, {
-        toValue: 1,
-        duration: 40000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [spin]);
-
-  // Entrance animation
-  useEffect(() => {
-    Animated.timing(enter, {
-      toValue: 1,
-      duration: 650,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [enter]);
-
-  // Smoothly fade the halo color toward the active slide's accent.
-  // NOTE: backgroundColor is NOT supported by the native driver, so this
-  // animation must stay JS-driven (useNativeDriver: false) and use its own
-  // Animated.Value — never scrollX (which is native-driven for transforms).
-  useEffect(() => {
-    Animated.timing(colorAnim, {
-      toValue: activeCard,
-      duration: 350,
-      easing: Easing.inOut(Easing.quad),
-      useNativeDriver: false,
-    }).start();
-  }, [activeCard, colorAnim]);
-
-  const enterTranslate = enter.interpolate({ inputRange: [0, 1], outputRange: [24, 0] });
-  const watermarkScale = float.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
-  const watermarkRotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  // Soft accent halo that shifts color toward the active slide (teal → blue → purple → green).
-  // Driven by colorAnim (JS) because backgroundColor can't run on the native driver.
-  const glowColor = colorAnim.interpolate({
-    inputRange: THEMES.map((_, i) => i),
-    outputRange: THEMES.map((t) => t.accent),
-    extrapolate: 'clamp',
-  });
-  const glowScale = float.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
-  // Subtle horizontal parallax: watermark drifts as the slides move.
-  const watermarkShift = scrollX.interpolate({
-    inputRange: [0, Math.max(1, (TOTAL - 1) * SNAP)],
-    outputRange: [26, -26],
-    extrapolate: 'clamp',
-  });
-
-  const goToCard = (i: number) => {
-    const idx = Math.max(0, Math.min(TOTAL - 1, i));
-    setActiveCard(idx);
-    sliderRef.current?.scrollTo({ x: idx * SNAP, animated: true });
-  };
-
-  const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / SNAP);
-    if (idx !== activeCard) setActiveCard(idx);
-  };
-
-  const activeTheme = THEMES[activeCard] ?? THEMES[0];
+  const { language } = useLanguage();
+  const lang = language.code;
+  const { page, scrollBottom } = useResponsiveLayout();
 
   return (
     <View style={styles.root}>
-      {/* Gradient background + decorative dots */}
-      <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Defs>
-          <LinearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#E7F3EF" />
-            <Stop offset="0.45" stopColor="#F3FAF8" />
-            <Stop offset="1" stopColor="#FFFFFF" />
-          </LinearGradient>
-        </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill="url(#bg)" />
-        <Circle cx={SCREEN_W * 0.12} cy={96} r={6} fill="#0E7C66" opacity={0.08} />
-        <Circle cx={SCREEN_W * 0.9} cy={150} r={9} fill="#0E7C66" opacity={0.06} />
-        <Circle cx={SCREEN_W * 0.82} cy={70} r={4} fill="#0E7C66" opacity={0.1} />
-        <Circle cx={SCREEN_W * 0.18} cy={430} r={5} fill="#0E7C66" opacity={0.06} />
-        <Circle cx={SCREEN_W * 0.88} cy={500} r={7} fill="#0E7C66" opacity={0.05} />
-      </Svg>
-
-      {/* Faint animated watermark logo behind everything */}
-      <Animated.View
-        style={[styles.watermarkWrap, { transform: [{ translateX: watermarkShift }] }]}
-        pointerEvents="none"
-      >
-        <Animated.Image
-          source={require('../../assets/logo.png')}
-          resizeMode="contain"
-          style={[
-            styles.watermark,
-            { transform: [{ rotate: watermarkRotate }, { scale: watermarkScale }] },
-          ]}
-        />
-      </Animated.View>
-
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-        {/* Brand */}
-        <View style={styles.brandRow}>
-          <Image source={require('../../assets/logo.png')} style={styles.brandLogo} resizeMode="contain" />
-          <Text style={styles.brandName}>GeneoRx</Text>
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={[styles.topHeader, page]}>
+          <View style={styles.brandRow}>
+            <Image source={require('../../assets/logo.png')} style={styles.brandLogo} resizeMode="contain" />
+          </View>
+          <LanguageSelector compact />
         </View>
 
-        <Animated.View style={[styles.body, { opacity: enter, transform: [{ translateY: enterTranslate }] }]}>
-          {/* Soft, layered color halo behind the active slide */}
-          <View style={styles.glowWrap} pointerEvents="none">
-            <Animated.View style={{ transform: [{ scale: glowScale }] }}>
-              <Animated.View style={[styles.glowOuter, { backgroundColor: glowColor }]}>
-                <Animated.View style={[styles.glowInner, { backgroundColor: glowColor }]} />
-              </Animated.View>
-            </Animated.View>
-          </View>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottom }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.page, page]}>
+            <View style={styles.mainBox}>
+              <View style={styles.dnaBadge}>
+                <DnaMark />
+              </View>
+              {ABOUT_CARDS.map((card, i) => {
+                const accent = SLIDE_ACCENTS[i] ?? SLIDE_ACCENTS[0];
+                const copy = getSlideCopy(i, lang);
+                const accentBg = ACCENT_BG[accent] ?? colors.primary50;
+                return (
+                  <View key={card.num}>
+                    {i > 0 ? <View style={styles.sectionRule} /> : null}
+                    <View style={[styles.section, card.summary && styles.sectionSummary]}>
+                      <Text style={styles.featureTitle}>{copy.title}</Text>
 
-          {/* Boxless one-at-a-time cross-fade slider */}
-          <Animated.ScrollView
-            ref={sliderRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            decelerationRate="fast"
-            onMomentumScrollEnd={onScrollEnd}
-            scrollEventThrottle={16}
-            onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
-              useNativeDriver: true,
-            })}
-            style={styles.slider}
-          >
-            {ABOUT_CARDS.map((card, i) => {
-              const theme = THEMES[i] ?? THEMES[0];
-              const inputRange = [(i - 1) * SNAP, i * SNAP, (i + 1) * SNAP];
-              const opacity = scrollX.interpolate({
-                inputRange,
-                outputRange: [0, 1, 0],
-                extrapolate: 'clamp',
-              });
-              const translateY = scrollX.interpolate({
-                inputRange,
-                outputRange: [14, 0, 14],
-                extrapolate: 'clamp',
-              });
-              const scale = scrollX.interpolate({
-                inputRange,
-                outputRange: [0.94, 1, 0.94],
-                extrapolate: 'clamp',
-              });
-              return (
-                <View key={card.num} style={styles.slide}>
-                  <Animated.View
-                    style={[styles.slideInner, { opacity, transform: [{ translateY }, { scale }] }]}
-                  >
-                    <View style={styles.kickerRow}>
-                      <Text style={[styles.kicker, { color: theme.accent }]}>
-                        {card.num} / 0{TOTAL}
-                      </Text>
-                      <View style={styles.segments}>
-                        {ABOUT_CARDS.map((_, si) => (
-                          <View
-                            key={si}
-                            style={[
-                              styles.segment,
-                              { backgroundColor: si <= i ? theme.accent : colors.borderSoft },
-                              si === i && styles.segmentActive,
-                            ]}
-                          />
-                        ))}
-                      </View>
+                      {copy.body ? <Text style={styles.featureBody}>{copy.body}</Text> : null}
+
+                      {copy.bullets.length > 0 && (
+                        <View style={styles.bulletList}>
+                          {copy.bullets.map((b, bi) => (
+                            <View key={bi} style={styles.bulletRow}>
+                              <View style={[styles.bulletCheck, { backgroundColor: accentBg }]}>
+                                <Text style={[styles.bulletCheckMark, { color: accent }]}>✓</Text>
+                              </View>
+                              <Text style={styles.bulletText}>{b}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      {copy.extra ? (
+                        <View style={styles.extraPanel}>
+                          <Text style={styles.featureExtra}>{copy.extra}</Text>
+                        </View>
+                      ) : null}
                     </View>
-
-                    <Text style={styles.cardTitle}>{card.title}</Text>
-
-                    {card.body ? <Text style={styles.cardBody}>{card.body}</Text> : null}
-
-                    {card.bullets.length > 0 && (
-                      <View style={styles.bulletList}>
-                        {card.bullets.map((b, bi) => (
-                          <View key={bi} style={styles.bulletRow}>
-                            <View style={[styles.bulletDot, { backgroundColor: theme.accent }]} />
-                            <Text style={styles.bulletText}>{b}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-
-                    {card.extra ? <Text style={styles.cardExtra}>{card.extra}</Text> : null}
-                  </Animated.View>
-                </View>
-              );
-            })}
-          </Animated.ScrollView>
-
-          {/* Dots */}
-          <View style={styles.dotsRow}>
-            {ABOUT_CARDS.map((_, i) => (
-              <Pressable key={i} onPress={() => goToCard(i)} hitSlop={10}>
-                <View
-                  style={[
-                    styles.dot,
-                    i === activeCard && [styles.dotActive, { backgroundColor: activeTheme.accent }],
-                  ]}
-                />
-              </Pressable>
-            ))}
+                  </View>
+                );
+              })}
+            </View>
           </View>
-        </Animated.View>
+        </ScrollView>
 
-        {/* Actions */}
-        <View style={styles.actions}>
-          <Button title="Create your free account" onPress={() => navigation.navigate('Register')} style={styles.primaryCta} />
-          <Button title="Sign in" variant="secondary" onPress={() => navigation.navigate('Login')} style={styles.secondaryCta} />
-          <Pressable
-            style={({ pressed }) => [styles.guestLink, pressed && { opacity: 0.6 }]}
-            onPress={() => continueAsGuest()}
-          >
-            <Text style={styles.guestLinkText}>
-              Or <Text style={styles.guestLinkAccent}>continue as guest →</Text>
-            </Text>
-          </Pressable>
-          <Text style={styles.legal}>Free to start · Educational guidance only · not medical advice</Text>
-        </View>
+        <SafeAreaView edges={['bottom']} style={styles.actionsWrap}>
+          <View style={[styles.actions, page]}>
+            <Button
+              title={translate('cta.register', lang)}
+              onPress={() => navigation.navigate('Register')}
+            />
+            <Button
+              title={translate('nav.signin', lang)}
+              variant="secondary"
+              onPress={() => navigation.navigate('Login')}
+            />
+            <Pressable
+              onPress={() => continueAsGuest()}
+              style={({ pressed }) => [styles.guestLink, pressed && { opacity: 0.7 }]}
+              hitSlop={8}
+            >
+              <Text style={styles.guestLinkText}>{translate('welcome.guest', lang)}</Text>
+            </Pressable>
+            <Text style={styles.legal}>{translate('welcome.legal', lang)}</Text>
+          </View>
+        </SafeAreaView>
       </SafeAreaView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F3FAF8' },
+  root: { flex: 1, backgroundColor: colors.background },
   safe: { flex: 1 },
 
-  /* WATERMARK */
-  watermarkWrap: {
-    ...StyleSheet.absoluteFillObject,
+  topHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+    backgroundColor: colors.backgroundAlt,
   },
-  watermark: { width: WATERMARK_SIZE, height: WATERMARK_SIZE, opacity: 0.13 },
-
-  /* BRAND */
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'center',
-    gap: 9,
-    marginTop: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    shadowColor: '#0F1F1B',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
   },
-  brandLogo: { width: 26, height: 26 },
+  brandText: { flex: 1, minWidth: 0 },
+  brandLogo: { height: 42, width: 168 },
   brandName: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  brandTag: { fontSize: 11, fontWeight: '600', color: colors.textMuted, marginTop: 1 },
 
-  /* BODY */
-  body: { flex: 1, justifyContent: 'center' },
+  scroll: { flex: 1 },
+  scrollContent: { alignItems: 'center', paddingTop: spacing.md },
+  page: {
+    width: '100%',
+    maxWidth: layout.contentMaxWidth,
+    alignSelf: 'center',
+  },
 
-  /* GLOW — two concentric translucent circles fake a soft radial falloff */
-  glowWrap: {
-    ...StyleSheet.absoluteFillObject,
+  mainBox: {
+    ...portalCard,
+    position: 'relative',
+    padding: spacing.lg,
+    gap: 0,
+    overflow: 'hidden',
+  },
+  dnaBadge: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  glowOuter: {
-    width: SCREEN_W * 0.92,
-    height: SCREEN_W * 0.92,
-    borderRadius: SCREEN_W * 0.46,
-    opacity: 0.1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  glowInner: {
-    width: SCREEN_W * 0.56,
-    height: SCREEN_W * 0.56,
-    borderRadius: SCREEN_W * 0.28,
-    opacity: 0.16,
+    backgroundColor: colors.primary50,
+    borderWidth: 1,
+    borderColor: colors.primary100,
+    opacity: 0.9,
   },
 
-  /* SLIDER */
-  slider: { flexGrow: 0 },
-  slide: { width: SCREEN_W, justifyContent: 'center' },
-  slideInner: { minHeight: 300, paddingHorizontal: spacing.lg, justifyContent: 'center' },
-  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  kicker: { fontSize: 13, fontWeight: '800', letterSpacing: 1.5 },
-  segments: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  segment: { height: 3, width: 14, borderRadius: 2 },
-  segmentActive: { width: 26 },
-  cardTitle: {
-    fontSize: 26,
+  section: { gap: 8, paddingVertical: 2 },
+  sectionSummary: {
+    backgroundColor: colors.primary50,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.primary100,
+  },
+  sectionRule: {
+    height: 1,
+    backgroundColor: colors.borderSoft,
+    marginVertical: spacing.md,
+  },
+
+  featureTitle: {
+    fontSize: 15,
     fontWeight: '800',
     color: colors.text,
-    letterSpacing: -0.5,
-    marginBottom: 14,
-    lineHeight: 32,
+    lineHeight: 20,
   },
-  cardBody: { fontSize: 15, color: colors.textSoft, lineHeight: 22, marginBottom: 2 },
-  cardExtra: { fontSize: 14, color: colors.textMuted, lineHeight: 21, marginTop: 12, fontStyle: 'italic' },
-  bulletList: { marginTop: 10, gap: 10 },
+  featureBody: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
+
+  bulletList: { gap: 8, marginTop: 4, paddingLeft: 4 },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  bulletDot: { width: 7, height: 7, borderRadius: 4, marginTop: 7, flexShrink: 0 },
-  bulletText: { flex: 1, fontSize: 15, color: colors.textSoft, lineHeight: 22 },
-
-  /* DOTS */
-  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 24 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.borderSoft },
-  dotActive: { width: 26, borderRadius: 4 },
-
-  /* ACTIONS */
-  actions: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm, gap: 10 },
-  primaryCta: {
-    borderRadius: 14,
-    minHeight: 54,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.32,
-    shadowRadius: 14,
-    elevation: 8,
+  bulletCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+    flexShrink: 0,
   },
-  secondaryCta: {
-    borderRadius: 14,
-    minHeight: 52,
+  bulletCheckMark: { fontSize: 10, fontWeight: '900' },
+  bulletText: { flex: 1, fontSize: 13, color: colors.textSoft, lineHeight: 19 },
+
+  extraPanel: {
+    backgroundColor: colors.ghostBg,
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    marginTop: 4,
   },
-  guestLink: { paddingVertical: 4, alignItems: 'center' },
-  guestLinkText: { fontSize: 14, color: colors.textMuted },
-  guestLinkAccent: { color: colors.primaryDark, fontWeight: '700' },
-  legal: { fontSize: 12, color: colors.textMuted, textAlign: 'center', marginTop: 2 },
+  featureExtra: {
+    fontSize: 12,
+    color: colors.textMuted,
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+
+  actionsWrap: {
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+    backgroundColor: colors.backgroundAlt,
+  },
+  actions: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: 10,
+  },
+  guestLink: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  guestLinkText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  legal: {
+    fontSize: 11,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 16,
+    paddingTop: 2,
+  },
 });

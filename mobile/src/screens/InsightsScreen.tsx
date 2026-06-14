@@ -16,12 +16,16 @@ import {
   computeNutrientScores,
   detectHealthPatterns,
   recommendSupplements,
+  successLabel,
   tierFromScore,
   type AlertItem,
 } from '@/wizard/engine';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useTranslation } from '@/hooks/useTranslation';
 import { STEP_LABELS } from '@/content/wizardData';
+import { Button } from '@/components/Button';
 import { Loader } from '@/components/Loader';
-import { colors, spacing } from '@/theme';
+import { colors, portalCard, radius, spacing } from '@/theme';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { AppTabsParamList } from '@/navigation/AppTabs';
 
@@ -31,10 +35,10 @@ const RESULTS_STEP = STEP_LABELS.indexOf('Results');
 
 // Map a card "priority" string to its badge colors.
 const PRIORITY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  High: { bg: '#FEF2F2', text: '#DC2626', border: '#FCA5A5' },
-  Moderate: { bg: '#FFFBEB', text: '#D97706', border: '#FCD34D' },
-  Low: { bg: '#EFF6FF', text: '#2563EB', border: '#BFDBFE' },
-  Info: { bg: '#EFF6FF', text: '#2563EB', border: '#BFDBFE' },
+  High: { bg: colors.dangerBg, text: colors.danger, border: 'rgba(251, 113, 133, 0.35)' },
+  Moderate: { bg: colors.warningBg, text: colors.warning, border: 'rgba(251, 191, 36, 0.35)' },
+  Low: { bg: colors.successBg, text: colors.success, border: 'rgba(52, 211, 153, 0.35)' },
+  Info: { bg: colors.primary50, text: colors.primary, border: 'rgba(40, 225, 255, 0.35)' },
 };
 
 interface SecondaryCard {
@@ -49,6 +53,8 @@ interface SecondaryCard {
 export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
   const { data, loading } = useProfile();
   const { state: wizState, hydrated, setStep } = useWizard();
+  const { t, language } = useTranslation();
+  const { page, scrollBottom } = useResponsiveLayout();
 
   // Real adherence summary still comes from logged check-ins (last 7).
   const checkins = useMemo(() => data?.checkins ?? [], [data]);
@@ -61,12 +67,12 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
 
   const hasInputs = wizState.meds.length > 0 || wizState.symptoms.selected.length > 0;
 
-  const insight = useMemo(() => computeInsightEngine(wizState), [wizState]);
-  const interactions = useMemo(() => computeDrugInteractions(wizState), [wizState]);
-  const contraindications = useMemo(() => computeContraindications(wizState), [wizState]);
+  const insight = useMemo(() => computeInsightEngine(wizState, t), [wizState, language, t]);
+  const interactions = useMemo(() => computeDrugInteractions(wizState, t), [wizState, language, t]);
+  const contraindications = useMemo(() => computeContraindications(wizState, t), [wizState, language, t]);
   const scores = useMemo(() => computeNutrientScores(wizState), [wizState]);
   const recs = useMemo(() => recommendSupplements(scores), [scores]);
-  const patterns = useMemo(() => detectHealthPatterns(wizState), [wizState]);
+  const patterns = useMemo(() => detectHealthPatterns(wizState, t), [wizState, language, t]);
 
   // Secondary cards: alerts first (safety), then top nutrient signals.
   const secondaryCards = useMemo<SecondaryCard[]>(() => {
@@ -77,7 +83,7 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
       title: a.title,
       body: `${a.note} ${a.action}`.trim(),
       priority: a.level,
-      link: 'Discuss with your clinician',
+      link: t('mobile.insights.discuss'),
     });
     interactions.forEach((a) => cards.push(alertCard(a, '⚠️')));
     contraindications.forEach((a) => cards.push(alertCard(a, '🛡️')));
@@ -87,16 +93,16 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
       cards.push({
         id: `nut-${nut}`,
         icon: '🌿',
-        title: `${nut} signal`,
+        title: t('mobile.insights.nutrient_signal', { nutrient: nut }),
         body: rec
-          ? `Estimated ${tier.toLowerCase()} support signal (${sc}%). Often supported with ${rec.supplement}.`
-          : `Estimated ${tier.toLowerCase()} support signal (${sc}%) based on your medications and symptoms.`,
+          ? t('mobile.insights.nutrient_body_rec', { tier: tier.toLowerCase(), pct: sc, supplement: rec.supplement })
+          : t('mobile.insights.nutrient_body', { tier: tier.toLowerCase(), pct: sc }),
         priority: tier,
-        link: 'View full results →',
+        link: t('mobile.insights.view_results'),
       });
     });
     return cards;
-  }, [interactions, contraindications, scores, recs]);
+  }, [interactions, contraindications, scores, recs, t]);
 
   const reviewCount = interactions.length + contraindications.length;
 
@@ -109,14 +115,19 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: scrollBottom }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={page}>
         {/* HEADER */}
         <View style={styles.header}>
-          <Text style={styles.pageTitle}>Your Insights</Text>
+          <Text style={styles.pageTitle} numberOfLines={2}>{t('mobile.insights.title')}</Text>
           {reviewCount > 0 && (
             <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>{reviewCount} to review</Text>
+              <Text style={styles.newBadgeText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {t('mobile.insights.to_review', { count: reviewCount })}
+              </Text>
             </View>
           )}
         </View>
@@ -124,21 +135,14 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
         {!hasInputs ? (
           /* EMPTY — no wizard inputs to analyze yet */
           <View style={styles.emptyFeatured}>
-            <Text style={styles.emptyFeaturedTitle}>No insights yet</Text>
-            <Text style={styles.emptyFeaturedSub}>
-              Run the Guided setup to add your medications and symptoms. GeneoRx will then surface
-              interactions, nutrient signals, and cautions personalized to you.
-            </Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={openResults} activeOpacity={0.85}>
-              <Text style={styles.emptyBtnText}>Start Guided setup →</Text>
-            </TouchableOpacity>
+            <Text style={styles.emptyFeaturedTitle}>{t('mobile.insights.empty_title')}</Text>
+            <Text style={styles.emptyFeaturedSub}>{t('mobile.insights.empty_sub')}</Text>
+            <Button title={t('mobile.insights.start_guided')} onPress={openResults} />
           </View>
         ) : (
           <>
             {/* FEATURED — engine summary */}
             <TouchableOpacity style={styles.featuredCard} activeOpacity={0.88} onPress={openResults}>
-              <View style={styles.featuredCircle1} />
-              <View style={styles.featuredCircle2} />
               <View style={styles.featuredTags}>
                 <View style={styles.featuredTagPriority}>
                   <Text style={styles.featuredTagPriorityText}>
@@ -153,12 +157,12 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
               </View>
               <Text style={styles.featuredTitle}>{insight.summary}</Text>
               <Text style={styles.featuredBody}>{insight.meaning}</Text>
-              <Text style={styles.featuredLink}>View full results & evidence →</Text>
+              <Text style={styles.featuredLink}>{t('mobile.insights.view_results')}</Text>
             </TouchableOpacity>
 
             {/* DOCTOR PROMPT */}
             <View style={styles.doctorCard}>
-              <Text style={styles.doctorLabel}>DISCUSS WITH YOUR DOCTOR</Text>
+              <Text style={styles.doctorLabel}>{t('mobile.insights.doctor_label')}</Text>
               <Text style={styles.doctorBody}>{insight.doctorPrompt}</Text>
             </View>
 
@@ -189,7 +193,7 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
         )}
 
         {/* ADHERENCE SUMMARY */}
-        <Text style={styles.sectionLabel}>ADHERENCE SUMMARY</Text>
+        <Text style={styles.sectionLabel}>{t('mobile.insights.adherence_label')}</Text>
 
         <View style={styles.adherenceCard}>
           <View style={styles.adherenceCircle}>
@@ -197,106 +201,104 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
           </View>
           <View style={styles.adherenceInfo}>
             <Text style={styles.adherenceTitle}>
-              {avgAdherence === null
-                ? 'Keep tracking your doses!'
-                : avgAdherence >= 80
-                  ? 'Great adherence this week!'
-                  : 'Keep tracking your doses!'}
+              {avgAdherence === null || avgAdherence < 80
+                ? t('mobile.insights.adherence_track')
+                : t('mobile.insights.adherence_great')}
             </Text>
             <Text style={styles.adherenceSub}>
               {checkins.length > 0
-                ? `Based on your last ${Math.min(checkins.length, 7)} check-in${Math.min(checkins.length, 7) !== 1 ? 's' : ''}`
-                : 'Log check-ins to see your adherence'}
+                ? (() => {
+                    const n = Math.min(checkins.length, 7);
+                    return n === 1
+                      ? t('mobile.insights.adherence_based_one', { count: n })
+                      : t('mobile.insights.adherence_based_many', { count: n });
+                  })()
+                : t('mobile.insights.adherence_log')}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.legal}>Educational guidance only · not medical advice</Text>
+        <Text style={styles.legal}>{t('mobile.legal')}</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#EDF2F0' },
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 40 },
+  safe: { flex: 1, backgroundColor: colors.background },
+  content: { alignItems: 'center', paddingTop: spacing.md },
 
   header: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 18,
+    flexDirection: 'row', alignItems: 'flex-start',
+    justifyContent: 'space-between', marginBottom: 18, gap: 10,
   },
-  pageTitle: { fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
+  pageTitle: { fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5, flex: 1, minWidth: 0 },
   newBadge: {
     paddingVertical: 5, paddingHorizontal: 12, borderRadius: 999,
-    borderWidth: 1.2, borderColor: colors.primary, backgroundColor: colors.primary50,
+    borderWidth: 1, borderColor: 'rgba(40, 225, 255, 0.45)',
+    backgroundColor: 'rgba(40, 225, 255, 0.12)',
+    flexShrink: 0,
+    maxWidth: '46%',
   },
-  newBadgeText: { fontSize: 12.5, fontWeight: '700', color: colors.primaryDark },
+  newBadgeText: { fontSize: 12.5, fontWeight: '700', color: colors.primary },
 
   /* FEATURED */
   featuredCard: {
-    backgroundColor: '#0A4A38', borderRadius: 18,
-    padding: 22, marginBottom: 14, overflow: 'hidden',
-    shadowColor: '#0A4A38', shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22, shadowRadius: 14, elevation: 8,
+    ...portalCard,
+    padding: spacing.lg,
+    marginBottom: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+    gap: 8,
   },
-  featuredCircle1: {
-    position: 'absolute', right: -20, top: -20,
-    width: 110, height: 110, borderRadius: 55,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  featuredCircle2: {
-    position: 'absolute', right: 40, bottom: -30,
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  featuredTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  featuredTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   featuredTagPriority: {
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: colors.primary50,
+    borderWidth: 1,
+    borderColor: colors.primary100,
     paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999,
   },
-  featuredTagPriorityText: { fontSize: 11.5, fontWeight: '700', color: '#FFFFFF' },
+  featuredTagPriorityText: { fontSize: 12, fontWeight: '700', color: colors.primary },
   featuredTagType: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: colors.ghostBg,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
     paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999,
   },
-  featuredTagTypeText: { fontSize: 11.5, fontWeight: '600', color: 'rgba(255,255,255,0.82)' },
+  featuredTagTypeText: { fontSize: 12, fontWeight: '600', color: colors.textSoft },
   featuredTitle: {
-    fontSize: 19, fontWeight: '800', color: '#FFFFFF',
-    letterSpacing: -0.3, lineHeight: 25, marginBottom: 10,
+    fontSize: 18, fontWeight: '800', color: colors.text,
+    letterSpacing: -0.3, lineHeight: 24,
   },
   featuredBody: {
-    fontSize: 14, color: 'rgba(255,255,255,0.76)', lineHeight: 21, marginBottom: 14,
+    fontSize: 15, color: colors.textSoft, lineHeight: 22,
   },
-  featuredLink: { fontSize: 13.5, fontWeight: '700', color: 'rgba(255,255,255,0.62)' },
+  featuredLink: { fontSize: 14, fontWeight: '700', color: colors.primary, marginTop: 4 },
 
   /* DOCTOR PROMPT */
   doctorCard: {
-    backgroundColor: colors.primary50, borderRadius: 14, padding: 16, marginBottom: 14,
-    borderWidth: 1, borderColor: colors.primary100,
+    ...portalCard,
+    padding: 16, marginBottom: 14,
+    borderColor: 'rgba(40, 225, 255, 0.25)',
+    backgroundColor: colors.primary50,
   },
   doctorLabel: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 0.8, marginBottom: 6 },
   doctorBody: { fontSize: 13.5, color: colors.textSoft, lineHeight: 20 },
 
   /* EMPTY FEATURED */
   emptyFeatured: {
-    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24,
+    ...portalCard,
+    padding: 24,
     alignItems: 'center', marginBottom: 14,
-    borderWidth: 1, borderColor: colors.borderSoft,
   },
   emptyFeaturedTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 8 },
   emptyFeaturedSub: { fontSize: 13.5, color: colors.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
-  emptyBtn: {
-    backgroundColor: colors.primary, borderRadius: 12,
-    paddingVertical: 12, paddingHorizontal: 20, alignItems: 'center',
-  },
-  emptyBtnText: { fontSize: 14.5, fontWeight: '700', color: '#FFFFFF' },
 
   /* SECONDARY CARDS */
   secCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 14,
+    ...portalCard,
     padding: 16, marginBottom: 10,
-    shadowColor: '#0F1F1B', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   secRow: { flexDirection: 'row', gap: 12 },
   secIconWrap: {
@@ -315,7 +317,7 @@ const styles = StyleSheet.create({
   },
   secBadgeText: { fontSize: 11.5, fontWeight: '700' },
   secBody: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
-  secLink: { fontSize: 12.5, fontWeight: '700', color: colors.primaryDark, marginTop: 2 },
+  secLink: { fontSize: 12.5, fontWeight: '700', color: colors.primary, marginTop: 2 },
 
   /* ADHERENCE */
   sectionLabel: {
@@ -324,17 +326,15 @@ const styles = StyleSheet.create({
   },
   adherenceCard: {
     flexDirection: 'row', alignItems: 'center', gap: 16,
-    backgroundColor: colors.primary50, borderRadius: 16, padding: 18,
-    borderWidth: 1, borderColor: colors.primary100, marginBottom: 20,
-    shadowColor: '#0F1F1B', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    ...portalCard,
+    padding: 18, marginBottom: 20,
   },
   adherenceCircle: {
     width: 68, height: 68, borderRadius: 34,
     borderWidth: 4.5, borderColor: colors.primary,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.backgroundAlt,
   },
-  adherencePct: { fontSize: 16, fontWeight: '800', color: colors.primaryDark },
+  adherencePct: { fontSize: 16, fontWeight: '800', color: colors.primary },
   adherenceInfo: { flex: 1 },
   adherenceTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 },
   adherenceSub: { fontSize: 13, color: colors.textMuted },

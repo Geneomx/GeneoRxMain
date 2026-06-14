@@ -13,7 +13,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
+import { LanguageSelector } from '@/components/LanguageSelector';
 import { useAuth } from '@/auth/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { colors, spacing } from '@/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '@/navigation/AuthStack';
@@ -22,6 +24,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
 export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const { signUp } = useAuth();
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,22 +33,22 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
   async function onSubmit() {
     if (!name || !email || !password) {
-      Alert.alert('Missing info', 'Please fill out all required fields.');
+      Alert.alert(t('mobile.alert.missing_info'), t('mobile.alert.fill_all'));
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Weak password', 'Use at least 6 characters.');
+      Alert.alert(t('mobile.alert.weak_password'), t('mobile.alert.min_6_chars'));
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Passwords do not match', 'Please re-enter your password.');
+      Alert.alert(t('mobile.alert.password_mismatch'), t('mobile.alert.reenter_password'));
       return;
     }
     setSubmitting(true);
     try {
       await signUp({ name, email, password, password_confirmation: confirm });
     } catch (err) {
-      Alert.alert('Sign up failed', err instanceof Error ? err.message : 'Please try again.');
+      Alert.alert(t('mobile.alert.signup_failed'), err instanceof Error ? err.message : t('mobile.alert.try_again'));
     } finally {
       setSubmitting(false);
     }
@@ -64,9 +67,11 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         >
           {/* TOP BAR */}
           <View style={styles.topBar}>
-            <Pressable onPress={() => navigation.goBack()} hitSlop={14} style={styles.back}>
-              <Text style={styles.backText}>← Back</Text>
-            </Pressable>
+            <View style={styles.topBarSide}>
+              <Pressable onPress={() => navigation.goBack()} hitSlop={14} style={styles.back}>
+                <Text style={styles.backText}>← {t('nav.back')}</Text>
+              </Pressable>
+            </View>
             <View style={styles.brandRow}>
               <Image
                 source={require('../../assets/logo.png')}
@@ -75,39 +80,42 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
               />
               <Text style={styles.brandName}>GeneoRx</Text>
             </View>
+            <View style={[styles.topBarSide, styles.topBarSideRight]}>
+              <LanguageSelector compact />
+            </View>
           </View>
 
           {/* INTRO */}
           <View style={styles.intro}>
-            <Text style={styles.eyebrow}>  Get started</Text>
+            <Text style={styles.eyebrow}>  {t('mobile.auth.get_started')}</Text>
             <Text style={styles.title}>
-              Create your <Text style={styles.titleItalic}>free</Text>{'\n'}account.
+              {t('cta.register')}
             </Text>
             <Text style={styles.subtitle}>
-              Save your medications, symptoms, check-ins, and doctor summary across devices.
+              {t('mobile.auth.register_sub')}
             </Text>
 
             <View style={styles.benefits}>
               <View style={styles.benefitRow}>
                 <View style={styles.benefitDot} />
-                <Text style={styles.benefitText}>Free forever   no credit card required</Text>
+                <Text style={styles.benefitText}>{t('mobile.auth.benefit_free')}</Text>
               </View>
               <View style={styles.benefitRow}>
                 <View style={styles.benefitDot} />
-                <Text style={styles.benefitText}>Email verification for account security</Text>
+                <Text style={styles.benefitText}>{t('mobile.auth.benefit_verify')}</Text>
               </View>
               <View style={styles.benefitRow}>
                 <View style={styles.benefitDot} />
-                <Text style={styles.benefitText}>Weekly check-ins build your profile</Text>
+                <Text style={styles.benefitText}>{t('mobile.auth.benefit_checkins')}</Text>
               </View>
             </View>
           </View>
 
           {/* FORM */}
           <View style={styles.form}>
-            <Input label="Full name" value={name} onChangeText={setName} placeholder="Jane Doe" />
+            <Input label={t('mobile.auth.full_name')} value={name} onChangeText={setName} placeholder="Jane Doe" />
             <Input
-              label="Email address"
+              label={t('mobile.auth.email')}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -116,32 +124,32 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
               placeholder="you@example.com"
             />
             <Input
-              label="Password"
+              label={t('mobile.auth.password')}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              placeholder="At least 6 characters"
+              placeholder={t('mobile.alert.min_6_chars')}
             />
             <Input
-              label="Confirm password"
+              label={t('mobile.auth.confirm_password')}
               value={confirm}
               onChangeText={setConfirm}
               secureTextEntry
               placeholder="••••••••"
             />
-            <Button title="Create free account" onPress={onSubmit} loading={submitting} />
+            <Button title={t('mobile.auth.create_btn')} onPress={onSubmit} loading={submitting} />
           </View>
 
           {/* FOOTER LINK */}
           <View style={styles.bottomLink}>
-            <Text style={styles.bottomLinkLead}>Already have an account?</Text>
+            <Text style={styles.bottomLinkLead}>{t('mobile.auth.has_account')}</Text>
             <Pressable onPress={() => navigation.replace('Login')}>
-              <Text style={styles.bottomLinkAction}>Sign in →</Text>
+              <Text style={styles.bottomLinkAction}>{t('mobile.auth.signin_link')}</Text>
             </Pressable>
           </View>
 
           <Text style={styles.legal}>
-            By creating an account you agree to receive a 6-digit email verification code. Educational guidance only   not medical advice.
+            {t('mobile.auth.register_legal')}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -161,13 +169,19 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     marginBottom: spacing.xl,
   },
-  back: { padding: 4 },
+  topBarSide: {
+    flex: 1,
+    minWidth: 72,
+  },
+  topBarSideRight: {
+    alignItems: 'flex-end',
+  },
+  back: { padding: 4, alignSelf: 'flex-start' },
   backText: { fontSize: 14, fontWeight: '500', color: colors.textMuted },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  brandLogo: { width: 26, height: 26 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 7, justifyContent: 'center' },
+  brandLogo: { height: 32, width: 124 },
   brandName: { fontSize: 14.5, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
 
   /* INTRO */
@@ -175,7 +189,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.primaryDark,
+    color: colors.primaryLight,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     marginBottom: 12,
@@ -188,7 +202,7 @@ const styles = StyleSheet.create({
     lineHeight: 38,
     marginBottom: 12,
   },
-  titleItalic: { fontStyle: 'italic', fontWeight: '400', color: colors.primaryDark },
+  titleItalic: { fontStyle: 'italic', fontWeight: '400', color: colors.primaryLight },
   subtitle: { fontSize: 15, color: colors.textSoft, lineHeight: 22, marginBottom: 18 },
   benefits: { gap: 8 },
   benefitRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -196,7 +210,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.buttonPrimary,
   },
   benefitText: { fontSize: 13.5, color: colors.textSoft },
 
@@ -215,7 +229,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   bottomLinkLead: { fontSize: 14, color: colors.textMuted },
-  bottomLinkAction: { fontSize: 14, color: colors.primaryDark, fontWeight: '700' },
+  bottomLinkAction: { fontSize: 14, color: colors.primaryLight, fontWeight: '700' },
 
   legal: {
     fontSize: 11.5,

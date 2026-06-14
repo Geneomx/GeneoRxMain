@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
+import { useToast } from '@/components/Toast';
 import { useWizard } from '@/store/WizardContext';
-import { MED_DB } from '@/content/wizardData';
 import {
   aggregateEvidenceByNutrient,
   buildRoutineFromSupplements,
+  citationToLink,
   claimsForSelectedMeds,
   computeContraindications,
   computeDrugInteractions,
@@ -15,16 +16,73 @@ import {
   computePopulationInsights,
   computeWeeklyCoachMessage,
   detectHealthPatterns,
+  evidenceCoverage,
   evidencePanel,
-  fmtDate,
   recommendSupplements,
+  safetyFlags,
+  successLabel,
+  summarizeSourceQuality,
   tierFromScore,
+  uniq,
+  type Tier,
 } from '@/wizard/engine';
-import { Accordion, AlertBox, CiteChip, Divider, FinePrint, HelpNote, NoteBox, Section, Tagline, TierPill } from '@/screens/wizard/ui';
+import type { SourceQuality } from '@/content/wizardData';
+import { useTranslation } from '@/hooks/useTranslation';
+import {
+  AlertBox,
+  CiteChip,
+  Divider,
+  FinePrint,
+  KVItem,
+  NoteBox,
+  Section,
+  Tagline,
+  TierPill,
+} from '@/screens/wizard/ui';
 import { colors, radius, spacing } from '@/theme';
+
+function tierLabel(tier: Tier | SourceQuality, t: (key: string) => string): string {
+  const key = `tier.${String(tier).toLowerCase()}`;
+  const out = t(key);
+  return out !== key ? out : String(tier);
+}
+
+function topInlineCites(
+  nutrient: string,
+  claims: ReturnType<typeof aggregateEvidenceByNutrient>[string] | undefined,
+  t: (key: string) => string,
+) {
+  const seen = new Set<string>();
+  const cites: string[] = [];
+  for (const c of claims || []) {
+    for (const id of c.citations || []) {
+      const tok = String(id || '').trim();
+      if (!tok || seen.has(tok)) continue;
+      if (!citationToLink(tok)) continue;
+      seen.add(tok);
+      cites.push(tok);
+    }
+  }
+  const top = cites.slice(0, 2);
+  if (!top.length) {
+    return <FinePrint>{t('results.citations_not_loaded')}</FinePrint>;
+  }
+  return (
+    <View style={{ gap: 6 }}>
+      <FinePrint>{t('results.citations_label')}</FinePrint>
+      <View style={styles.citeRow}>
+        {top.map((c) => (
+          <CiteChip key={c} token={c} />
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export const ResultsStep: React.FC = () => {
   const { state, update } = useWizard();
+  const { t, language } = useTranslation();
+  const toast = useToast();
   const [insightOpen, setInsightOpen] = useState(false);
   const [openEvidence, setOpenEvidence] = useState<Record<string, boolean>>({});
 
@@ -32,13 +90,59 @@ export const ResultsStep: React.FC = () => {
   const recs = useMemo(() => recommendSupplements(scores), [scores]);
   const claims = useMemo(() => claimsForSelectedMeds(state), [state]);
   const evidenceMap = useMemo(() => aggregateEvidenceByNutrient(claims), [claims]);
-  const coach = useMemo(() => computeWeeklyCoachMessage(state), [state]);
-  const insight = useMemo(() => computeInsightEngine(state), [state]);
-  const success = useMemo(() => computeMedicationSuccessPrediction(state), [state]);
-  const patterns = useMemo(() => detectHealthPatterns(state), [state]);
-  const population = useMemo(() => computePopulationInsights(state), [state]);
-  const interactions = useMemo(() => computeDrugInteractions(state), [state]);
-  const contraindications = useMemo(() => computeContraindications(state), [state]);
+  const cov = useMemo(() => evidenceCoverage(state), [state]);
+  const flags = useMemo(() => safetyFlags(state, t), [state, language, t]);
+  const coach = useMemo(() => computeWeeklyCoachMessage(state, t), [state, language, t]);
+  const insight = useMemo(() => computeInsightEngine(state, t), [state, language, t]);
+  const success = useMemo(() => computeMedicationSuccessPrediction(state, t), [state, language, t]);
+  const patterns = useMemo(() => detectHealthPatterns(state, t), [state, language, t]);
+  const population = useMemo(() => computePopulationInsights(state, t), [state, language, t]);
+  const interactions = useMemo(() => computeDrugInteractions(state, t), [state, language, t]);
+  const contraindications = useMemo(() => computeContraindications(state, t), [state, language, t]);
+
+  const topSignal = scores.length
+    ? { nutrient: scores[0][0], score: scores[0][1], tier: tierFromScore(scores[0][1]) }
+    : null;
+  const recentSymptoms = state.symptoms.selected.length ? state.symptoms.selected.slice(0, 6) : [];
+  const symptomText = recentSymptoms.length ? recentSymptoms.join(', ') : t('results.no_symptoms_yet');
+
+  const whyReason = topSignal
+    ? t('results.why_reason_signal', { nutrient: topSignal.nutrient, symptoms: symptomText })
+    : state.symptomOnlyMode
+      ? t('results.why_reason_symptom_only', { symptoms: symptomText })
+      : t('results.why_reason_need_more');
+
+  const doctorTopics = useMemo(
+    () =>
+      uniq([
+        ...(topSignal ? [t('results.doctor_topic_testing', { nutrient: topSignal.nutrient })] : []),
+        ...interactions.map((x) => `${x.title}: ${x.action}`),
+        ...contraindications.map((x) => `${x.title}: ${x.action}`),
+      ]).slice(0, 4),
+    [topSignal, interactions, contraindications, t],
+  );
+
+  const planSupps = state.plan.recommendedSupplements.length
+    ? state.plan.recommendedSupplements
+    : recs.map((r) => r.supplement);
+  const routine = useMemo(() => buildRoutineFromSupplements(planSupps), [planSupps]);
+
+  const improveText =
+    success.score >= 75
+      ? t('results.improve_high')
+      : success.score >= 50
+        ? t('results.improve_mid')
+        : t('results.improve_low');
+
+  const scoreBadgeStyle =
+    success.score >= 75 ? styles.scoreBadgeHigh : success.score >= 50 ? styles.scoreBadgeMid : styles.scoreBadgeLow;
+  const scoreBadgeTextStyle =
+    success.score >= 75 ? styles.scoreBadgeTextHigh : success.score >= 50 ? styles.scoreBadgeTextMid : styles.scoreBadgeTextLow;
+
+  const customMeds = useMemo(
+    () => state.meds.filter((m) => m.medId.startsWith('custom:')),
+    [state.meds],
+  );
 
   const startPlan = () => {
     const supps = recs.map((r) => r.supplement);
@@ -48,123 +152,210 @@ export const ResultsStep: React.FC = () => {
       d.plan.recommendedSupplements = supps;
       d.plan.routine = buildRoutineFromSupplements(supps);
     });
+    toast.show(t('toast.plan_saved'));
   };
 
-  const noData = !state.meds.length && !state.symptoms.selected.length;
-  const customMeds = useMemo(
-    () => state.meds.filter((m) => m.medId.startsWith('custom:')),
-    [state.meds],
-  );
+  const action1Body = topSignal
+    ? t('results.action1_focus', { nutrient: topSignal.nutrient })
+    : t('results.action1_log_more');
 
   return (
     <View style={{ gap: spacing.md }}>
-      <HelpNote
-        what="This is your personalized read-out. Open each card to see signals, evidence, and a suggested routine — then tap Start plan."
-        why="Everything here is educational and built from your inputs plus published research. Always confirm changes with your clinician."
-      >
-        <Text style={styles.legend}>• Signal % bar = estimated strength of the signal for that nutrient.</Text>
-        <Text style={styles.legend}>• Tier (High / Moderate / Low) = how strong the evidence and likelihood are.</Text>
-        <Text style={styles.legend}>• Success prediction = an estimate of how likely your plan helps — not a guarantee.</Text>
-      </HelpNote>
-
-      {/* AI Coach */}
+      {/* AI Coach — matches website coachBox */}
       <Section style={styles.coach}>
-        <Text style={styles.coachKicker}>GENEORX COACH</Text>
+        <View style={styles.coachTitleRow}>
+          <Text style={styles.coachSpark}>✦</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.coachTitle}>{t('results.coach_title')}</Text>
+            <Text style={styles.coachSub}>{t('results.coach_sub')}</Text>
+          </View>
+        </View>
         <Text style={styles.coachHead}>{coach.headline}</Text>
         {coach.bullets.map((b, i) => (
           <Text key={i} style={styles.coachBullet}>• {b}</Text>
         ))}
-        <NoteBox>Next best action: {coach.nextBestAction}</NoteBox>
+        <Divider />
+        <Text style={styles.coachAction}>
+          <Text style={styles.coachActionBold}>{t('results.next_best_action')} </Text>
+          {coach.nextBestAction}
+        </Text>
       </Section>
 
-      {customMeds.length && !noData ? (
-        <Section>
+      {/* Results header + evidence coverage + safety banner */}
+      <Section>
+        <Tagline title={t('results.title')} body={t('results.sub')} />
+        <FinePrint>
+          {t('results.evidence_coverage')} <Text style={styles.strong}>{cov.evidenceCount}/{cov.selectedCount}</Text>
+        </FinePrint>
+        {flags.length ? (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>
+              <Text style={styles.strong}>{t('results.banner_title')} </Text>
+              {t('results.banner_body', { flags: flags.join(', ') })}
+            </Text>
+          </View>
+        ) : null}
+        {customMeds.length ? (
           <NoteBox>
-            {customMeds.length === 1 ? 'One custom medication isn’t' : `${customMeds.length} custom medications aren’t`} in our
-            research database yet, so {customMeds.length === 1 ? "it isn't" : "they aren't"} included in the nutrient-signal,
-            interaction, or caution analysis below. {customMeds.length === 1 ? "It's" : "They're"} still saved to your profile.
+            {customMeds.length === 1
+              ? t('results.custom_med_one')
+              : t('results.custom_med_many', { count: customMeds.length })}
           </NoteBox>
-        </Section>
-      ) : null}
+        ) : null}
+      </Section>
 
-      {noData ? (
-        <Section>
-          <Tagline title="Add inputs to see results" body="Go back and add medications and symptoms to generate nutrient signals, evidence, and recommendations." />
-          <FinePrint>Until then, GeneoRx can't estimate a success prediction or detect patterns — those numbers would just be defaults, not your results.</FinePrint>
-        </Section>
-      ) : null}
+      {/* Why might I feel this way? */}
+      <Section>
+        <Tagline title={t('results.why_title')} body={t('results.why_sub')} />
+        <KVItem k={t('results.likely_explanation')}>{whyReason}</KVItem>
+        <KVItem k={t('results.current_inputs')}>
+          {t('results.symptoms_label')} {symptomText}
+          {topSignal
+            ? `\n${t('results.top_signal')} ${topSignal.nutrient} (${topSignal.score}% • ${tierLabel(topSignal.tier, t)})`
+            : ''}
+        </KVItem>
+      </Section>
 
-      {/* Insight + metrics are only meaningful once there are inputs */}
-      {!noData ? (
-        <>
-          {/* Insight button */}
-          <Button title="Open GeneoRx Insight" variant="secondary" onPress={() => setInsightOpen(true)} />
+      {/* Doctor discussion topics */}
+      <Section>
+        <Tagline title={t('results.doctor_title')} body={t('results.doctor_sub')} />
+        {doctorTopics.length ? (
+          doctorTopics.map((topic, i) => (
+            <KVItem key={i} k={`${t('results.topic')} ${i + 1}`}>
+              {topic}
+            </KVItem>
+          ))
+        ) : (
+          <FinePrint>{t('results.doctor_empty')}</FinePrint>
+        )}
+      </Section>
 
-          {/* Metric grid */}
-          <View style={styles.grid}>
-            <View style={styles.metric}>
-              <Text style={styles.metricLabel}>Success prediction</Text>
-              <Text style={styles.metricBig}>{success.score}%</Text>
-              <Text style={styles.metricSub}>{success.level}</Text>
+      {/* Daily action plan */}
+      <Section>
+        <Tagline title={t('results.action_title')} body={t('results.action_sub')} />
+        <KVItem k={t('results.action1_title')}>{action1Body}</KVItem>
+        <KVItem k={t('results.action2_title')}>{t('results.action2_body')}</KVItem>
+        <KVItem k={t('results.action3_title')}>{t('results.action3_body')}</KVItem>
+        <KVItem k={t('results.action4_title')}>{t('results.action4_body')}</KVItem>
+      </Section>
+
+      {/* GeneoRx Insight popup */}
+      <Section>
+        <Tagline title={t('results.insight_title')} body={t('results.insight_sub')} />
+        <Button title={t('results.insight_btn')} onPress={() => setInsightOpen(true)} />
+      </Section>
+
+      {/* Detected patterns */}
+      <Section>
+        <Tagline title={t('results.patterns_title')} body={t('results.patterns_sub')} />
+        <KVItem k={t('results.patterns_detected')}>
+          {patterns.length
+            ? `${patterns[0].title}\n${patterns[0].note}`
+            : t('results.patterns_none')}
+        </KVItem>
+      </Section>
+
+      {/* Success / population / improve metrics */}
+      <Section>
+        <View style={styles.metricCard}>
+          <Text style={styles.metricKey}>{t('results.success_prob')}</Text>
+          <View style={styles.metricRow}>
+            <View style={[styles.scoreBadge, scoreBadgeStyle]}>
+              <Text style={[styles.scoreBadgeText, scoreBadgeTextStyle]}>{success.score}%</Text>
             </View>
-            <View style={styles.metric}>
-              <Text style={styles.metricLabel}>Detected pattern</Text>
-              <Text style={styles.metricMed}>{patterns.length ? patterns[0].title : 'None yet'}</Text>
-              <Text style={styles.metricSub}>{patterns.length ? patterns[0].confidence : '—'}</Text>
-            </View>
-            <View style={styles.metric}>
-              <Text style={styles.metricLabel}>Check-ins logged</Text>
-              <Text style={styles.metricBig}>{population.checkinCount}</Text>
-              <Text style={styles.metricSub}>Population signal</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.metricStrong}>{successLabel(success.level, t)}</Text>
+              <FinePrint>{success.reason}</FinePrint>
             </View>
           </View>
-        </>
-      ) : null}
+        </View>
 
-      {/* Alerts */}
-      {interactions.length ? (
-        <Section>
-          <Tagline title="Drug interactions" />
-          {interactions.map((a) => (
-            <AlertBox key={a.title} {...a} />
-          ))}
-        </Section>
-      ) : null}
-      {contraindications.length ? (
-        <Section>
-          <Tagline title="Contraindications & cautions" />
-          {contraindications.map((a) => (
-            <AlertBox key={a.title} {...a} />
-          ))}
-        </Section>
-      ) : null}
+        <View style={styles.metricCard}>
+          <Text style={styles.metricKey}>{t('results.population')}</Text>
+          <FinePrint>{population.message}</FinePrint>
+          {population.trackedSymptoms.length ? (
+            <Text style={styles.metricVal}>
+              {t('results.population_tracked')} {population.trackedSymptoms.join(', ')}
+            </Text>
+          ) : (
+            <Text style={styles.metricMuted}>{t('results.population_unlock')}</Text>
+          )}
+        </View>
 
-      {/* Nutrient signals + evidence */}
-      {scores.length ? (
-        <Accordion
-          title="Nutrient signals"
-          subtitle="Tap to see estimated support signals from your meds and symptoms, with evidence."
-          badge={scores.length}
-        >
-          {scores.map(([nut, sc]) => {
-            const tier = tierFromScore(sc);
-            const ev = evidencePanel(nut, evidenceMap[nut] || []);
+        <View style={styles.metricCard}>
+          <Text style={styles.metricKey}>{t('results.improve_success')}</Text>
+          <FinePrint>{improveText}</FinePrint>
+        </View>
+      </Section>
+
+      {/* Drug interactions */}
+      <Section>
+        <Tagline title={t('results.interactions_title')} body={t('results.interactions_sub')} />
+        {interactions.length ? (
+          interactions.map((a) => <AlertBox key={a.title} {...a} />)
+        ) : (
+          <FinePrint>{t('results.interactions_none')}</FinePrint>
+        )}
+      </Section>
+
+      {/* Contraindications */}
+      <Section>
+        <Tagline title={t('results.contraindications_title')} body={t('results.contraindications_sub')} />
+        {contraindications.length ? (
+          contraindications.map((a) => <AlertBox key={a.title} {...a} />)
+        ) : (
+          <FinePrint>{t('results.contraindications_none')}</FinePrint>
+        )}
+      </Section>
+
+      {/* Daily routine */}
+      <Section>
+        <Tagline title={t('results.routine_title')} body={t('results.routine_sub')} />
+        <KVItem k={t('results.routine.morning')}>
+          {routine.morning.length ? routine.morning.map((x) => `• ${x}`).join('\n') : ' '}
+        </KVItem>
+        <KVItem k={t('results.routine.midday')}>
+          {routine.midday.length ? routine.midday.map((x) => `• ${x}`).join('\n') : ' '}
+        </KVItem>
+        <KVItem k={t('results.routine.night')}>
+          {routine.night.length ? routine.night.map((x) => `• ${x}`).join('\n') : ' '}
+        </KVItem>
+        <KVItem k={t('results.routine.notes')}>
+          {routine.notes.length ? routine.notes.map((x) => `• ${x}`).join('\n') : ' '}
+        </KVItem>
+      </Section>
+
+      {/* Nutrient signals */}
+      <Section>
+        <Tagline title={t('results.nutrient_title')} body={t('results.nutrient_sub')} />
+        {!scores.length ? (
+          <FinePrint>{t('results.nutrient_none')}</FinePrint>
+        ) : (
+          scores.slice(0, 10).map(([nut, sc], idx) => {
+            const label = tierFromScore(sc);
+            const claimsForNut = evidenceMap[nut] || [];
+            const q = claimsForNut.length ? summarizeSourceQuality(claimsForNut) : ('Pending' as SourceQuality);
+            const ev = evidencePanel(nut, claimsForNut);
             const open = !!openEvidence[nut];
             return (
-              <View key={nut} style={styles.nutRow}>
-                <View style={styles.nutHead}>
-                  <Text style={styles.nutName}>{nut}</Text>
-                  <View style={styles.nutRight}>
-                    <Text style={styles.nutScore}>{sc}%</Text>
-                    <TierPill tier={tier} />
-                  </View>
+              <View key={nut} style={styles.nutItem}>
+                <KVItem k={nut}>
+                  <Text style={styles.metricStrong}>
+                    {tierLabel(label, t)} {t('results.signal')} ({sc}%)
+                  </Text>
+                </KVItem>
+                <View style={[styles.sourceBadge, q === 'Pending' && styles.sourceBadgePending]}>
+                  <Text style={styles.sourceBadgeText}>
+                    {t('results.source_quality')} {tierLabel(q, t)}
+                  </Text>
                 </View>
-                <View style={styles.barTrack}>
-                  <View style={[styles.barFill, { width: `${sc}%` }]} />
+                {topInlineCites(nut, claimsForNut, t)}
+                <View style={styles.evRow}>
+                  <FinePrint>{t('results.transparent_evidence')}</FinePrint>
+                  <Pressable onPress={() => setOpenEvidence((p) => ({ ...p, [nut]: !p[nut] }))}>
+                    <Text style={styles.evToggle}>{open ? t('results.evidence_hide') : t('results.evidence_toggle')}</Text>
+                  </Pressable>
                 </View>
-                <Pressable onPress={() => setOpenEvidence((p) => ({ ...p, [nut]: !p[nut] }))}>
-                  <Text style={styles.evToggle}>{open ? 'Hide evidence ▲' : 'Show evidence ▼'}</Text>
-                </Pressable>
                 {open ? (
                   <View style={{ gap: 8 }}>
                     {ev.citations.length ? (
@@ -174,69 +365,51 @@ export const ResultsStep: React.FC = () => {
                         ))}
                       </View>
                     ) : (
-                      <FinePrint>No citations attached yet for this nutrient.</FinePrint>
+                      <FinePrint>{t('results.no_citations')}</FinePrint>
                     )}
                     {ev.noteText ? <Text style={styles.evNote}>{ev.noteText}</Text> : null}
-                    {ev.labs.length ? <FinePrint>Optional labs: {ev.labs.join(', ')}</FinePrint> : null}
+                    {ev.labs.length ? <FinePrint>{t('results.labs_label')} {ev.labs.join(', ')}</FinePrint> : null}
                   </View>
                 ) : null}
+                {idx < Math.min(scores.length, 10) - 1 ? <Divider /> : null}
               </View>
             );
-          })}
-        </Accordion>
-      ) : null}
+          })
+        )}
+      </Section>
 
-      {/* Recommendations */}
-      {recs.length ? (
-        <Accordion
-          title="Recommended support"
-          subtitle="Educational suggestions, ranked by signal tier. Confirm with your clinician."
-          badge={recs.length}
-        >
-          {recs.map((r) => (
-            <View key={r.supplement} style={styles.recRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.recName}>{r.supplement}</Text>
-                <Text style={styles.recNut}>{r.nutrient}</Text>
-              </View>
-              <TierPill tier={r.tier} />
-            </View>
-          ))}
-        </Accordion>
-      ) : null}
-
-      {/* Start plan / routine */}
+      {/* Supplements + start plan */}
       <Section>
-        {state.plan.started ? (
-          <>
-            <Tagline title="Your plan is active" body={`Started ${fmtDate(state.plan.startDate)}.`} />
-            {(['morning', 'midday', 'night'] as const).map((slot) =>
-              state.plan.routine[slot].length ? (
-                <View key={slot} style={styles.routineSlot}>
-                  <Text style={styles.routineLabel}>{slot.toUpperCase()}</Text>
-                  {state.plan.routine[slot].map((item, i) => (
-                    <Text key={i} style={styles.routineItem}>• {item}</Text>
-                  ))}
-                </View>
-              ) : null,
-            )}
-            {state.plan.routine.notes.length ? (
-              <View style={{ gap: 4 }}>
-                <Divider />
-                {state.plan.routine.notes.map((n, i) => (
-                  <FinePrint key={i}>• {n}</FinePrint>
-                ))}
-              </View>
-            ) : null}
-            <Button title="Restart plan with today's date" variant="secondary" onPress={startPlan} />
-          </>
+        <Tagline title={t('results.supplements_title')} body={t('results.supplements_sub')} />
+        {!recs.length ? (
+          <FinePrint>{t('results.supplements_none')}</FinePrint>
         ) : (
           <>
-            <Tagline title="Start your plan" body="Save these recommendations and build a daily routine you can track in check-ins." />
-            <Button title="Start plan" onPress={startPlan} disabled={!recs.length} />
-            {!recs.length ? <FinePrint>Add meds or symptoms first to generate a plan.</FinePrint> : null}
+            {recs.map((r) => (
+              <View key={r.supplement} style={styles.recRow}>
+                <KVItem k={r.supplement}>
+                  <View style={styles.recMeta}>
+                    <TierPill tier={r.tier} />
+                    <Text style={styles.recDriven}>
+                      {' '}• {t('results.driven_by')} {r.nutrient} ({r.score}%)
+                    </Text>
+                  </View>
+                </KVItem>
+              </View>
+            ))}
+            <FinePrint>{t('results.supplements_disclaimer')}</FinePrint>
           </>
         )}
+
+        <Divider />
+
+        <Tagline title={t('results.start_plan')} body={t('results.start_plan_hint')} />
+        <Button
+          title={state.plan.started ? t('results.update_plan_btn') : t('results.start_plan_btn')}
+          onPress={startPlan}
+          disabled={!recs.length}
+        />
+        {!recs.length ? <FinePrint>{t('results.add_inputs_first')}</FinePrint> : null}
       </Section>
 
       {/* Insight modal */}
@@ -245,21 +418,21 @@ export const ResultsStep: React.FC = () => {
         <View style={styles.modalWrap} pointerEvents="box-none">
           <View style={styles.modal}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalKicker}>GENEORX INSIGHT</Text>
+              <Text style={styles.modalKicker}>{t('modal.insight.title').toUpperCase()}</Text>
               <Text style={styles.modalSummary}>{insight.summary}</Text>
-              <Text style={styles.modalLabel}>What this may mean</Text>
+              <Text style={styles.modalLabel}>{t('modal.insight.means')}</Text>
               <Text style={styles.modalBody}>{insight.meaning}</Text>
-              <Text style={styles.modalLabel}>Discuss with your doctor</Text>
+              <Text style={styles.modalLabel}>{t('modal.insight.doctor')}</Text>
               <Text style={styles.modalBody}>{insight.doctorPrompt}</Text>
-              <Text style={styles.modalLabel}>Why GeneoRx generated this</Text>
+              <Text style={styles.modalLabel}>{t('modal.insight.why')}</Text>
               <Text style={styles.modalBody}>
-                {insight.patterns.length ? `Pattern: ${insight.patterns[0].title}\n` : ''}
-                {insight.interactions.length ? `Interactions: ${insight.interactions.length}\n` : ''}
-                {insight.contraindications.length ? `Cautions: ${insight.contraindications.length}\n` : ''}
-                Success prediction: {insight.prediction.score}% ({insight.prediction.level})
+                {insight.patterns.length ? `${t('summary.pattern')}: ${insight.patterns[0].title}\n` : ''}
+                {insight.interactions.length ? `${t('summary.interactions_field')}: ${insight.interactions.length}\n` : ''}
+                {insight.contraindications.length ? `${t('summary.contraindications_field')}: ${insight.contraindications.length}\n` : ''}
+                {t('summary.success_prediction')}: {insight.prediction.score}% ({successLabel(insight.prediction.level, t)})
               </Text>
             </ScrollView>
-            <Button title="Close" variant="secondary" onPress={() => setInsightOpen(false)} />
+            <Button title={t('modal.insight.close')} variant="secondary" onPress={() => setInsightOpen(false)} />
           </View>
         </View>
       </Modal>
@@ -268,39 +441,76 @@ export const ResultsStep: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  legend: { fontSize: 12.5, color: colors.primaryDark, opacity: 0.9, lineHeight: 18 },
   coach: { backgroundColor: colors.primary50, borderColor: colors.primary100 },
-  coachKicker: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 1 },
-  coachHead: { fontSize: 17, fontWeight: '700', color: colors.text },
+  coachTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  coachSpark: { fontSize: 18, color: colors.primary, marginTop: 2 },
+  coachTitle: { fontSize: 16, fontWeight: '900', color: colors.text },
+  coachSub: { fontSize: 12, color: colors.textMuted, marginTop: 2, lineHeight: 17 },
+  coachHead: { fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 10 },
   coachBullet: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
+  coachAction: { fontSize: 14, color: colors.textSoft, lineHeight: 20 },
+  coachActionBold: { fontWeight: '800', color: colors.text },
 
-  grid: { flexDirection: 'row', gap: spacing.sm },
-  metric: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderSoft, padding: spacing.md, gap: 2, alignItems: 'flex-start' },
-  metricLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3 },
-  metricBig: { fontSize: 22, fontWeight: '800', color: colors.primary },
-  metricMed: { fontSize: 13, fontWeight: '700', color: colors.text },
-  metricSub: { fontSize: 11, color: colors.textMuted },
+  strong: { fontWeight: '800', color: colors.text },
+  banner: {
+    marginTop: 10,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.warningBg,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.35)',
+  },
+  bannerText: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
 
-  nutRow: { gap: 6, paddingVertical: 6 },
-  nutHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  nutName: { fontSize: 14, fontWeight: '700', color: colors.text },
-  nutRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  nutScore: { fontSize: 13, fontWeight: '700', color: colors.textSoft },
-  barTrack: { height: 7, borderRadius: 4, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
-  barFill: { height: 7, borderRadius: 4, backgroundColor: colors.primary },
+  metricCard: {
+    gap: 6,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+  },
+  metricKey: { fontSize: 11, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' },
+  metricRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
+  metricStrong: { fontSize: 14, fontWeight: '700', color: colors.text },
+  metricVal: { fontSize: 13, color: colors.textSoft, marginTop: 4 },
+  metricMuted: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
+
+  scoreBadge: {
+    minWidth: 52,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    alignItems: 'center',
+  },
+  scoreBadgeHigh: { backgroundColor: colors.successBg, borderWidth: 1, borderColor: 'rgba(52, 211, 153, 0.35)' },
+  scoreBadgeMid: { backgroundColor: colors.warningBg, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.35)' },
+  scoreBadgeLow: { backgroundColor: colors.dangerBg, borderWidth: 1, borderColor: 'rgba(251, 113, 133, 0.35)' },
+  scoreBadgeText: { fontSize: 16, fontWeight: '900' },
+  scoreBadgeTextHigh: { color: colors.success },
+  scoreBadgeTextMid: { color: colors.warning },
+  scoreBadgeTextLow: { color: colors.danger },
+
+  nutItem: { gap: 8, paddingVertical: 6 },
+  sourceBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+  },
+  sourceBadgePending: { backgroundColor: colors.ghostBg },
+  sourceBadgeText: { fontSize: 11, fontWeight: '700', color: colors.textSoft },
+  evRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   evToggle: { fontSize: 12, fontWeight: '700', color: colors.primary },
   citeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   evNote: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
 
-  recRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
-  recName: { fontSize: 14, fontWeight: '600', color: colors.text },
-  recNut: { fontSize: 12, color: colors.textMuted },
+  recRow: { paddingVertical: 2 },
+  recMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
+  recDriven: { fontSize: 13, color: colors.textMuted },
 
-  routineSlot: { gap: 3 },
-  routineLabel: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 0.6 },
-  routineItem: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
-
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15,31,27,0.45)' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(4, 6, 12, 0.72)' },
   modalWrap: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', padding: spacing.lg },
   modal: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: 8, maxHeight: '80%' },
   modalKicker: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 1 },

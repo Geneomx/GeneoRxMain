@@ -1,23 +1,36 @@
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Button } from '@/components/Button';
+import { ReportPickerModal } from '@/components/ReportPickerModal';
+import { useToast } from '@/components/Toast';
 import { useWizard } from '@/store/WizardContext';
+import { useMedCatalog } from '@/store/MedCatalogContext';
 import {
   buildClinicianSnapshotText,
   computeWeeklyCoachMessage,
   fmtDate,
   latestCheckin,
 } from '@/wizard/engine';
+import { shareClinicianSnapshot, downloadDoctorReport } from '@/wizard/reports';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
 import { Divider, FinePrint, HelpNote, NoteBox, Section, Tagline } from '@/screens/wizard/ui';
 import { colors, radius, spacing } from '@/theme';
 
 export const ProgressStep: React.FC = () => {
   const { state } = useWizard();
+  const { catalog } = useMedCatalog();
+  const { t, language } = useTranslation();
+  const toast = useToast();
+  const goToDashboard = useDashboardNavigation();
   const [snapOpen, setSnapOpen] = useState(false);
+  const [reportPickerOpen, setReportPickerOpen] = useState(false);
+  const [reportIndex, setReportIndex] = useState<number | undefined>();
 
-  const coach = useMemo(() => computeWeeklyCoachMessage(state), [state]);
+  const coach = useMemo(() => computeWeeklyCoachMessage(state, t), [state, language, t]);
   const last = useMemo(() => latestCheckin(state), [state]);
-  const snapshot = useMemo(() => buildClinicianSnapshotText(state), [state]);
+  const snapshot = useMemo(() => buildClinicianSnapshotText(state, t, undefined, catalog), [state, language, t, catalog]);
 
   const base = state.wellbeingBaseline;
   const deltas = last
@@ -34,38 +47,45 @@ export const ProgressStep: React.FC = () => {
     : 0;
 
   const shareSnapshot = async () => {
-    try {
-      await Share.share({ message: snapshot, title: 'GeneoRx Doctor Visit Snapshot' });
-    } catch {
-      // user cancelled
+    const ok = await shareClinicianSnapshot(state, t, { catalog, title: t('portal.share') });
+    if (ok) toast.show(t('toast.shared'));
+  };
+
+  const copySnapshot = async () => {
+    await Clipboard.setStringAsync(snapshot);
+    toast.show(t('toast.copied'));
+  };
+
+  const downloadReport = async (idx: number) => {
+    const ok = await downloadDoctorReport(state, t, idx, catalog);
+    if (ok) {
+      toast.show(t('toast.report_downloaded'));
+      goToDashboard();
     }
   };
 
   return (
     <View style={{ gap: spacing.md }}>
-      <HelpNote
-        what="See your weekly signal, what's changed since your baseline, and grab a short summary you can show your doctor."
-        why="This needs at least one check-in. The more weeks you log, the clearer the picture becomes."
-      />
+      <HelpNote what={t('step.6.sub')} why={t('checkin.sub')} />
       <Section style={styles.signal}>
-        <Text style={styles.kicker}>WEEKLY HEALTH SIGNAL</Text>
+        <Text style={styles.kicker}>{t('results.coach_title').toUpperCase()}</Text>
         <Text style={styles.head}>{coach.headline}</Text>
         {coach.bullets.map((b, i) => (
           <Text key={i} style={styles.bullet}>• {b}</Text>
         ))}
-        <NoteBox>Next best action: {coach.nextBestAction}</NoteBox>
+        <NoteBox>{t('results.next_best_action')} {coach.nextBestAction}</NoteBox>
       </Section>
 
       {deltas ? (
         <Section>
-          <Tagline title="What changed since baseline" />
+          <Tagline title={t('progress.what_changed')} />
           <View style={styles.deltaGrid}>
             {(['energy', 'mood', 'sleep', 'focus'] as const).map((k) => {
               const v = deltas[k];
               const color = v > 0 ? colors.success : v < 0 ? colors.danger : colors.textMuted;
               return (
                 <View key={k} style={styles.deltaCell}>
-                  <Text style={styles.deltaLabel}>{k}</Text>
+                  <Text style={styles.deltaLabel}>{t(`wellbeing.${k}`).replace(/\s*\([^)]*\)\s*$/, '')}</Text>
                   <Text style={[styles.deltaVal, { color }]}>{v >= 0 ? `+${v}` : v}</Text>
                 </View>
               );
@@ -73,37 +93,52 @@ export const ProgressStep: React.FC = () => {
           </View>
           <Divider />
           <View style={styles.rowBetween}>
-            <Text style={styles.metaLabel}>Improvement score</Text>
+            <Text style={styles.metaLabel}>{t('progress.symptom_score')}</Text>
             <Text style={styles.metaVal}>{improvementScore >= 0 ? `+${improvementScore}` : improvementScore}</Text>
           </View>
-          <FinePrint>Improvement score adds up how much your symptoms changed — higher (more positive) is better.</FinePrint>
+          <FinePrint>{t('progress.symptom_score_sub')}</FinePrint>
           <View style={styles.rowBetween}>
-            <Text style={styles.metaLabel}>Latest adherence</Text>
+            <Text style={styles.metaLabel}>{t('checkin.adherence')}</Text>
             <Text style={styles.metaVal}>{last?.adherencePct}%</Text>
           </View>
         </Section>
       ) : (
         <Section>
-          <Tagline title="No check-ins yet" body="Log a check-in to unlock your progress signal and clinician snapshot." />
+          <Tagline title={t('sidebar.no_checkins')} body={t('checkin.sub')} />
         </Section>
       )}
 
       <Section>
-        <Tagline title="Doctor visit snapshot" body="A 30-second summary you can share with your clinician." />
-        <Button title="View snapshot" onPress={() => setSnapOpen(true)} />
-        <Button title="Share snapshot" variant="secondary" onPress={shareSnapshot} />
+        <Tagline title={t('modal.snapshot.title')} body={t('progress.weekly_sub')} />
+        <Button title={t('progress.snapshot_btn')} onPress={() => setSnapOpen(true)} />
+        <Button title={t('portal.share')} variant="secondary" onPress={shareSnapshot} />
+        {state.checkins.length ? (
+          <Button
+            title={t('progress.download_report')}
+            variant="secondary"
+            onPress={() => {
+              setReportIndex(undefined);
+              setReportPickerOpen(true);
+            }}
+          />
+        ) : null}
       </Section>
 
       {state.checkins.length ? (
         <Section>
-          <Tagline title="Symptom timeline" body="See how your check-ins build a story over time." />
+          <Tagline title={t('progress.timeline_title')} body={t('progress.timeline_sub')} />
           {state.checkins.map((c, idx) => (
             <View key={idx} style={styles.timelineItem}>
-              <Text style={styles.tlTitle}>Check-in {idx + 1} • {fmtDate(c.dateISO)}</Text>
-              <Text style={styles.tlBody}>Adherence {c.adherencePct}%</Text>
+              <Text style={styles.tlTitle}>{t('checkin.label_n')} {idx + 1} • {fmtDate(c.dateISO)}</Text>
+              <Text style={styles.tlBody}>{t('common.adherence')} {c.adherencePct}%</Text>
               {c.symptoms.items.length ? (
-                <FinePrint>Tracked: {c.symptoms.items.map((x) => x.symptom).join(', ')}</FinePrint>
+                <FinePrint>{t('progress.tracked_symptoms')} {c.symptoms.items.map((x) => x.symptom).join(', ')}</FinePrint>
               ) : null}
+              <Button
+                title={t('progress.download_report')}
+                variant="secondary"
+                onPress={() => downloadReport(idx)}
+              />
             </View>
           ))}
         </Section>
@@ -117,12 +152,23 @@ export const ProgressStep: React.FC = () => {
               <Text style={styles.snapText}>{snapshot}</Text>
             </ScrollView>
             <View style={{ gap: 8 }}>
-              <Button title="Share" onPress={shareSnapshot} />
-              <Button title="Close" variant="secondary" onPress={() => setSnapOpen(false)} />
+              <Button title={t('modal.snapshot.copy')} onPress={copySnapshot} />
+              <Button title={t('modal.snapshot.close')} variant="secondary" onPress={() => setSnapOpen(false)} />
             </View>
           </View>
         </View>
       </Modal>
+
+      <ReportPickerModal
+        visible={reportPickerOpen}
+        preferredIndex={reportIndex}
+        onClose={() => setReportPickerOpen(false)}
+        onSuccess={goToDashboard}
+      />
+
+      <Section>
+        <Button title={t('nav.dashboard')} variant="ghost" onPress={goToDashboard} />
+      </Section>
     </View>
   );
 };

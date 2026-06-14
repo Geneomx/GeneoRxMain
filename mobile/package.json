@@ -8,10 +8,12 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "export-logo": "node scripts/export-logo.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/netinfo": "11.4.1",
     "@react-navigation/bottom-tabs": "^7.0.0",
     "@react-navigation/native": "^7.0.0",
     "@react-navigation/native-stack": "^7.0.0",
@@ -19,9 +21,13 @@
     "expo-apple-authentication": "~7.2.0",
     "expo-asset": "~12.0.0",
     "expo-auth-session": "~6.1.0",
+    "expo-build-properties": "~1.0.10",
+    "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.0",
     "expo-crypto": "~14.0.0",
+    "expo-file-system": "~19.0.23",
     "expo-secure-store": "~15.0.0",
+    "expo-sharing": "~14.0.8",
     "expo-status-bar": "~3.0.0",
     "expo-web-browser": "~14.1.0",
     "react": "19.1.0",

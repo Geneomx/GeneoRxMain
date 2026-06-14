@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Models\Medication;
 use App\Http\Controllers\Api\EmailOtpController;
 use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\Api\SocialAuthController as ApiSocialAuthController;
 use App\Http\Controllers\Api\TokenAuthController;
+use App\Http\Controllers\Api\AiSummaryController;
 use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +24,12 @@ Route::post('/auth/reset-password', [TokenAuthController::class, 'resetPassword'
 // Apple:  sends { identity_token, email?, name? } from expo-apple-authentication
 Route::post('/auth/social/google', [ApiSocialAuthController::class, 'google'])->middleware('throttle:10,1');
 Route::post('/auth/social/apple', [ApiSocialAuthController::class, 'apple'])->middleware('throttle:10,1');
+
+Route::get('/medications/catalog', function () {
+    return response()->json(['catalog' => Medication::toMedDb()]);
+});
+
+Route::post('/mobile/ai-summary', AiSummaryController::class)->middleware('throttle:10,1');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [TokenAuthController::class, 'logout']);

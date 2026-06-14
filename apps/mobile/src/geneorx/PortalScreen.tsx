@@ -22,8 +22,8 @@ import {
   addMedicationRow,
   addOrMergeCustomMed,
   aggregateEvidenceByNutrient,
-  buildCitationsRegistryForState,
   buildClinicianSnapshotText,
+  citationToLink,
   buildRoutineFromSupplements,
   claimsForSelectedMeds,
   computeContraindications,
@@ -86,7 +86,7 @@ const JOURNEY_GROUPS = [
   { title: 'Setup', subtitle: 'Tell GeneoRx what to review', steps: [0, 1, 2, 3] },
   { title: 'Insights', subtitle: 'Understand possible patterns', steps: [4] },
   { title: 'Routine', subtitle: 'Start and track weekly actions', steps: [5, 6] },
-  { title: 'Share', subtitle: 'Prepare evidence and doctor notes', steps: [7, 8] },
+  { title: 'Share', subtitle: 'Prepare evidence and doctor notes', steps: [8] },
   { title: 'Account', subtitle: 'Settings and support', steps: [9] },
 ];
 
@@ -415,7 +415,6 @@ export function PortalScreen({ onLogout, userName }: { onLogout: () => void; use
             showToast={showToast}
           />
         )}
-        {state.step === 7 && <CitationsView state={state} />}
         {state.step === 8 && <SummaryView state={state} onSnap={() => setSnapOpen(true)} onInsight={openInsightWithReveal} userName={userName} />}
         {state.step === 9 && <FeedbackView onSend={onFeedbackSend} />}
       </ScrollView>
@@ -1054,7 +1053,7 @@ function ResultsView({
                     key={c}
                     style={s.link}
                     onPress={() => {
-                      const url = c.startsWith('http') ? c : citationToUrl(c);
+                      const url = citationToUrl(c);
                       if (url) void Linking.openURL(url);
                     }}
                   >
@@ -1224,13 +1223,7 @@ function ResultsView({
 }
 
 function citationToUrl(c: string): string {
-  if (/^PMID:\d+$/i.test(c)) {
-    return `https://pubmed.ncbi.nlm.nih.gov/${c.split(':')[1]}/`;
-  }
-  if (/^PMCID:PMC\d+$/i.test(c)) {
-    return `https://pmc.ncbi.nlm.nih.gov/articles/${c.split(':')[1].toUpperCase()}/`;
-  }
-  return '';
+  return citationToLink(c);
 }
 
 function CheckinView({
@@ -1563,40 +1556,6 @@ function ProgressView({
             </Text>
           </View>
         ))}
-      </Section>
-    </View>
-  );
-}
-
-function CitationsView({ state }: { state: GeneoState }) {
-  const r = buildCitationsRegistryForState(state);
-  const cov = evidenceCoverage(state);
-  return (
-    <View>
-      <Section title="Sources">
-        <Text style={s.mut}>
-          Coverage: {cov.evidenceCount}/{cov.selectedCount}
-        </Text>
-        <Text style={s.lab}>PMID</Text>
-        {r.pmid.length === 0 ? (
-          <Text style={s.mut}>None yet.</Text>
-        ) : (
-          r.pmid.map((c) => (
-            <Text key={c} style={s.link} onPress={() => void Linking.openURL(citationToUrl(c))}>
-              {c}
-            </Text>
-          ))
-        )}
-        <Text style={[s.lab, { marginTop: 10 }]}>PMCID</Text>
-        {r.pmcid.length === 0 ? (
-          <Text style={s.mut}>None yet.</Text>
-        ) : (
-          r.pmcid.map((c) => (
-            <Text key={c} style={s.link} onPress={() => void Linking.openURL(citationToUrl(c))}>
-              {c}
-            </Text>
-          ))
-        )}
       </Section>
     </View>
   );

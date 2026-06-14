@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import { Button } from '@/components/Button';
+import { useTranslation } from '@/hooks/useTranslation';
 import { forgotPassword } from '@/api/auth';
 import { colors, spacing } from '@/theme';
 import type { AuthStackParamList } from '@/navigation/AuthStack';
@@ -22,6 +24,7 @@ type Nav = NativeStackNavigationProp<AuthStackParamList>;
 
 export const ForgotPasswordScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -29,7 +32,7 @@ export const ForgotPasswordScreen: React.FC = () => {
   async function handleSubmit() {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed.includes('@')) {
-      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      Alert.alert(t('mobile.alert.invalid_email'), t('mobile.alert.valid_email'));
       return;
     }
 
@@ -38,7 +41,7 @@ export const ForgotPasswordScreen: React.FC = () => {
       await forgotPassword(trimmed);
       setSent(true);
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Could not send reset link. Please try again.');
+      Alert.alert(t('mobile.alert.error'), err?.message ?? t('mobile.alert.try_again'));
     } finally {
       setLoading(false);
     }
@@ -59,19 +62,18 @@ export const ForgotPasswordScreen: React.FC = () => {
             </View>
           </View>
 
-          <Text style={s.title}>Check your inbox</Text>
+          <Text style={s.title}>{t('mobile.auth.inbox_title')}</Text>
           <Text style={s.sub}>
-            If <Text style={s.em}>{email.trim()}</Text> is registered, we've sent a reset link. Check your spam folder if you don't see it.
+            {t('mobile.auth.inbox_sub', { email: email.trim() })}
           </Text>
 
-          <Text style={s.hint}>The link expires in 60 minutes.</Text>
+          <Text style={s.hint}>{t('mobile.auth.link_expires')}</Text>
 
-          <Pressable
-            style={({ pressed }) => [s.btn, pressed && { opacity: 0.8 }]}
+          <Button
+            title={t('mobile.auth.back_signin')}
             onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={s.btnText}>Back to sign in</Text>
-          </Pressable>
+            style={{ width: '100%' }}
+          />
         </ScrollView>
       </SafeAreaView>
     );
@@ -96,13 +98,13 @@ export const ForgotPasswordScreen: React.FC = () => {
             </View>
           </View>
 
-          <Text style={s.title}>Forgot your password?</Text>
+          <Text style={s.title}>{t('mobile.auth.forgot_title')}</Text>
           <Text style={s.sub}>
-            Enter the email address linked to your account and we'll send you a secure reset link.
+            {t('mobile.auth.forgot_sub')}
           </Text>
 
           <View style={s.field}>
-            <Text style={s.label}>Email address</Text>
+            <Text style={s.label}>{t('mobile.auth.email')}</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -118,19 +120,19 @@ export const ForgotPasswordScreen: React.FC = () => {
             />
           </View>
 
-          <Pressable
-            style={({ pressed }) => [s.btn, (pressed || loading) && { opacity: 0.75 }]}
+          <Button
+            title={loading ? t('mobile.auth.sending') : t('mobile.auth.send_reset')}
             onPress={handleSubmit}
+            loading={loading}
             disabled={loading}
-          >
-            <Text style={s.btnText}>{loading ? 'Sending…' : 'Send reset link'}</Text>
-          </Pressable>
+            style={{ width: '100%', marginBottom: 16 }}
+          />
 
           <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
-            <Text style={s.backText}>← Back to sign in</Text>
+            <Text style={s.backText}>{t('mobile.auth.back_signin')}</Text>
           </Pressable>
 
-          <Text style={s.legal}>Link expires in 60 minutes. Educational guidance only   not medical advice.</Text>
+          <Text style={s.legal}>{t('mobile.auth.forgot_legal')}</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -147,7 +149,7 @@ const s = StyleSheet.create({
     paddingBottom: 48,
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 36, alignSelf: 'flex-start' },
-  logo: { width: 28, height: 28 },
+  logo: { height: 32, width: 124 },
   brandName: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
 
   iconWrap: { marginBottom: 24 },
@@ -169,15 +171,8 @@ const s = StyleSheet.create({
   input: {
     height: 50, paddingHorizontal: 14,
     borderWidth: 1, borderColor: colors.border, borderRadius: 12,
-    fontSize: 15.5, color: colors.text, backgroundColor: colors.background,
+    fontSize: 15.5, color: colors.text, backgroundColor: colors.surfaceAlt,
   },
-
-  btn: {
-    width: '100%', height: 52,
-    backgroundColor: colors.primary, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
-  },
-  btnText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
 
   backBtn: { padding: 8, marginBottom: 24 },
   backText: { fontSize: 14.5, color: colors.textMuted, fontWeight: '500' },

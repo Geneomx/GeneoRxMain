@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { GestureResponderEvent, Linking, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, shadow, spacing } from '@/theme';
+import { GestureResponderEvent, Linking, PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useTranslation } from '@/hooks/useTranslation';
+import { colors, radius, shadow, spacing, touchMin } from '@/theme';
 import { citationToLink } from '@/wizard/engine';
 import type { AlertLevel, Tier } from '@/wizard/engine';
 
@@ -45,13 +46,15 @@ export const HelpNote: React.FC<{
   what?: string;
   why?: string;
   children?: React.ReactNode;
-}> = ({ title = 'How this step works', what, why, children }) => {
+}> = ({ title, what, why, children }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const head = title ?? t('mobile.help.title');
   return (
     <View style={styles.help}>
-      <Pressable style={styles.helpHead} onPress={() => setOpen((o) => !o)} hitSlop={6}>
+      <Pressable style={styles.helpHead} onPress={() => setOpen((o) => !o)} hitSlop={10}>
         <Text style={styles.helpIcon}>ⓘ</Text>
-        <Text style={styles.helpTitle}>{title}</Text>
+        <Text style={styles.helpTitle}>{head}</Text>
         <Text style={styles.helpChevron}>{open ? '▾' : '▸'}</Text>
       </Pressable>
       {open ? (
@@ -112,10 +115,10 @@ export const TierPill: React.FC<{ tier: Tier }> = ({ tier }) => {
 };
 
 /* ---------- Alert box (interactions / contraindications) ---------- */
-const ALERT_COLORS: Record<AlertLevel, { bg: string; border: string; fg: string }> = {
-  High: { bg: colors.dangerBg, border: '#FECACA', fg: colors.danger },
-  Moderate: { bg: colors.warningBg, border: '#FDE68A', fg: colors.warning },
-  Low: { bg: colors.surfaceAlt, border: colors.borderSoft, fg: colors.textSoft },
+const ALERT_COLORS: Record<AlertLevel, { bg: string; border: string; fg: string; pillBg: string }> = {
+  High: { bg: colors.dangerBg, border: 'rgba(251, 113, 133, 0.35)', fg: colors.danger, pillBg: 'rgba(251, 113, 133, 0.18)' },
+  Moderate: { bg: colors.warningBg, border: 'rgba(251, 191, 36, 0.35)', fg: colors.warning, pillBg: 'rgba(251, 191, 36, 0.18)' },
+  Low: { bg: colors.surfaceAlt, border: colors.borderSoft, fg: colors.textSoft, pillBg: colors.ghostBg },
 };
 export const AlertBox: React.FC<{ title: string; level: AlertLevel; note: string; action: string }> = ({
   title,
@@ -128,7 +131,7 @@ export const AlertBox: React.FC<{ title: string; level: AlertLevel; note: string
     <View style={[styles.alert, { backgroundColor: c.bg, borderColor: c.border }]}>
       <View style={styles.alertHead}>
         <Text style={[styles.alertTitle, { color: c.fg }]}>{title}</Text>
-        <View style={[styles.pill, { backgroundColor: '#FFFFFF' }]}>
+        <View style={[styles.pill, { backgroundColor: c.pillBg, borderWidth: 1, borderColor: c.border }]}>
           <Text style={[styles.pillText, { color: c.fg }]}>{level}</Text>
         </View>
       </View>
@@ -214,6 +217,34 @@ export const ScaleRow: React.FC<{
   );
 };
 
+/* ---------- 2×2 option grid (feedback types, etc.) ---------- */
+export function OptionGrid<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { label: string; value: T }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <View style={styles.optionGrid}>
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <Pressable
+            key={o.value}
+            onPress={() => onChange(o.value)}
+            style={[styles.optionCell, active && styles.optionCellActive]}
+          >
+            <Text style={[styles.optionText, active && styles.optionTextActive]}>{o.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 /* ---------- Segmented control ---------- */
 export function Segmented<T extends string>({
   options,
@@ -224,17 +255,27 @@ export function Segmented<T extends string>({
   value: T;
   onChange: (v: T) => void;
 }) {
+  const { width } = useWindowDimensions();
+  const wrap = options.length >= 4 && width < 400;
+
   return (
-    <View style={styles.segWrap}>
+    <View style={[styles.segWrap, wrap && styles.segWrapStack]}>
       {options.map((o) => {
         const active = o.value === value;
         return (
           <Pressable
             key={o.value}
             onPress={() => onChange(o.value)}
-            style={[styles.segItem, active && styles.segItemActive]}
+            style={[styles.segItem, wrap && styles.segItemStack, active && styles.segItemActive]}
           >
-            <Text style={[styles.segText, active && styles.segTextActive]}>{o.label}</Text>
+            <Text
+              style={[styles.segText, active && styles.segTextActive]}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              {o.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -266,17 +307,17 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     ...shadow.card,
   },
-  taglineTitle: { fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
-  taglineBody: { fontSize: 13, color: colors.textMuted, lineHeight: 19 },
+  taglineTitle: { fontSize: 18, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
+  taglineBody: { fontSize: 15, color: colors.textMuted, lineHeight: 22 },
 
   help: { backgroundColor: colors.primary50, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary100 },
-  helpHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: spacing.md, paddingVertical: 11 },
+  helpHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: spacing.md, paddingVertical: 14, minHeight: touchMin - 8 },
   helpIcon: { fontSize: 14, fontWeight: '800', color: colors.primary },
-  helpTitle: { flex: 1, fontSize: 13.5, fontWeight: '700', color: colors.primaryDark },
+  helpTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.primaryDark },
   helpChevron: { fontSize: 14, color: colors.primary, fontWeight: '700' },
   helpBody: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: 6 },
-  helpWhat: { fontSize: 13, color: colors.primaryDark, lineHeight: 19 },
-  helpWhy: { fontSize: 12.5, color: colors.primaryDark, opacity: 0.85, lineHeight: 18 },
+  helpWhat: { fontSize: 15, color: colors.primaryDark, lineHeight: 22 },
+  helpWhy: { fontSize: 14, color: colors.primaryDark, opacity: 0.85, lineHeight: 21 },
   helpBullet: { fontSize: 12.5, color: colors.primaryDark, opacity: 0.9, lineHeight: 18 },
 
   accHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -285,7 +326,7 @@ const styles = StyleSheet.create({
   accBadgeText: { fontSize: 12, fontWeight: '800', color: colors.primary },
   accChevron: { fontSize: 16, color: colors.textMuted, fontWeight: '700' },
   divider: { height: 1, backgroundColor: colors.borderSoft },
-  finePrint: { fontSize: 12, color: colors.textDim, lineHeight: 17 },
+  finePrint: { fontSize: 14, color: colors.textDim, lineHeight: 20 },
 
   note: { backgroundColor: colors.primary50, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.primary100 },
   noteText: { fontSize: 13, color: colors.primaryDark, lineHeight: 19 },
@@ -309,7 +350,7 @@ const styles = StyleSheet.create({
 
   scaleWrap: { gap: 10 },
   scaleHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  scaleLabel: { fontSize: 14, fontWeight: '600', color: colors.text },
+  scaleLabel: { fontSize: 16, fontWeight: '600', color: colors.text },
   scaleValue: { fontSize: 20, fontWeight: '800', color: colors.primary },
   scaleValueMax: { fontSize: 13, fontWeight: '700', color: colors.textDim },
   sliderTrack: {
@@ -334,28 +375,56 @@ const styles = StyleSheet.create({
   },
   sliderThumb: {
     position: 'absolute',
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    marginLeft: -11,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginLeft: -14,
     backgroundColor: colors.primary,
     borderWidth: 3,
     borderColor: '#FFFFFF',
     ...shadow.raised,
   },
   sliderEnds: { flexDirection: 'row', justifyContent: 'space-between' },
-  sliderEndText: { fontSize: 11, fontWeight: '600', color: colors.textDim },
+  sliderEndText: { fontSize: 13, fontWeight: '600', color: colors.textDim },
 
-  segWrap: { flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: 3, gap: 3 },
-  segItem: { flex: 1, paddingVertical: 9, borderRadius: radius.sm, alignItems: 'center' },
-  segItemActive: { backgroundColor: colors.primary, ...shadow.card },
-  segText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  segTextActive: { color: '#FFFFFF' },
+  optionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  optionCell: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    maxWidth: '100%',
+    minHeight: 52,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    backgroundColor: colors.ghostBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionCellActive: {
+    backgroundColor: colors.primary100,
+    borderColor: colors.primary,
+  },
+  optionText: { fontSize: 16, fontWeight: '600', color: colors.textMuted, textAlign: 'center' },
+  optionTextActive: { color: colors.text, fontWeight: '800' },
+
+  segWrap: { flexDirection: 'row', backgroundColor: colors.ghostBg, borderRadius: radius.button, padding: 3, gap: 3, borderWidth: 1, borderColor: colors.borderSoft },
+  segWrapStack: { flexWrap: 'wrap' },
+  segItem: { flex: 1, paddingVertical: 12, paddingHorizontal: 6, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', minHeight: 48, minWidth: 0 },
+  segItemStack: { flexBasis: '47%', flexGrow: 1, maxWidth: '100%' },
+  segItemActive: {
+    backgroundColor: colors.primary100,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  segText: { fontSize: 15, fontWeight: '600', color: colors.textMuted, textAlign: 'center' },
+  segTextActive: { color: colors.text, fontWeight: '900' },
 
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
-  toggleLabel: { fontSize: 14, color: colors.text, fontWeight: '500', flexShrink: 1, paddingRight: 12 },
-  toggleTrack: { width: 46, height: 28, borderRadius: 14, backgroundColor: colors.border, padding: 3, justifyContent: 'center' },
+  toggleLabel: { fontSize: 16, color: colors.text, fontWeight: '600', flexShrink: 1, paddingRight: 12 },
+  toggleTrack: { width: 54, height: 32, borderRadius: 16, backgroundColor: colors.border, padding: 3, justifyContent: 'center' },
   toggleTrackOn: { backgroundColor: colors.primary },
-  toggleThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFFFFF' },
+  toggleThumb: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFFFFF' },
   toggleThumbOn: { alignSelf: 'flex-end' },
 });

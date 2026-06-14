@@ -3,8 +3,84 @@
    ===== AUTH USER =====
    ========================================================= */
 const AUTHENTICATED_USER = "{{ Auth::check() ? Auth::user()->name : 'Guest' }}";
+const AUTH_EMAIL = @json(Auth::check() ? Auth::user()->email : '');
 const IS_GUEST = @json(! Auth::check() || (session('is_web_guest') ?? false));
 const LOGIN_URL = "{{ route('login') }}";
+const ACCOUNT_SETTINGS_URL = "{{ route('account.settings') }}";
+
+/* =========================================================
+   ===== I18N (portal wizard) =====
+   ========================================================= */
+function portalLang(){
+  try {
+    const code = localStorage.getItem("geneorx_language_v1") || "en";
+    if (window.GENEORX_I18N && window.GENEORX_I18N[code]) return code;
+  } catch (e) {}
+  return "en";
+}
+function t(key, vars){
+  const lang = portalLang();
+  const pack = (window.GENEORX_I18N && window.GENEORX_I18N[lang]) || (window.GENEORX_I18N && window.GENEORX_I18N.en) || {};
+  const fallback = (window.GENEORX_I18N && window.GENEORX_I18N.en) || {};
+  let str = pack[key] || fallback[key] || key;
+  if (vars && typeof vars === "object") {
+    Object.entries(vars).forEach(([k, v])=>{
+      str = str.replaceAll(`{${k}}`, String(v ?? ""));
+    });
+  }
+  return str;
+}
+function toastT(key, vars){ showToast(t(key, vars)); }
+function alertT(key, vars){ alert(t(key, vars)); }
+function compactMetricLabel(key){
+  return t(key).replace(/\s*\([^)]*\)\s*$/, "");
+}
+function impactLabel(change){
+  const map = {
+    "Worse": "impact.worse",
+    "No change": "impact.no_change",
+    "Slightly better": "impact.slightly_better",
+    "Much better": "impact.much_better",
+    "Not present": "impact.not_present",
+  };
+  return map[change] ? t(map[change]) : String(change || "");
+}
+function tierLabel(tier){
+  const map = {
+    High: "tier.high",
+    Moderate: "tier.moderate",
+    Low: "tier.low",
+    Pending: "tier.pending",
+    Preliminary: "tier.preliminary",
+  };
+  return map[tier] ? t(map[tier]) : String(tier || "");
+}
+function successLabel(level){
+  const map = {
+    Strong: "success.strong",
+    Moderate: "success.moderate",
+    "At risk": "success.at_risk",
+  };
+  return map[level] ? t(map[level]) : String(level || "");
+}
+function doseLabel(dose){
+  return dose ? t(`dose.${dose}`) : "";
+}
+function fmtDelta(n){
+  return `${n >= 0 ? "+" : ""}${n}`;
+}
+function wellbeingSummaryText(wellbeing){
+  const wb = wellbeing || {};
+  return [
+    `${compactMetricLabel("wellbeing.energy")} ${wb.energy ?? "—"}/10`,
+    `${compactMetricLabel("wellbeing.mood")} ${wb.mood ?? "—"}/10`,
+    `${compactMetricLabel("wellbeing.sleep")} ${wb.sleep ?? "—"}/10`,
+    `${compactMetricLabel("wellbeing.focus")} ${wb.focus ?? "—"}/10`,
+  ].join(" · ");
+}
+window.addEventListener("geneorx:languagechange", ()=>{
+  if (typeof renderAll === "function") renderAll();
+});
 
 /* =========================================================
    ===== DATA =====
@@ -231,10 +307,13 @@ function dedupeCheckins(checkins){
 let state = load();
 let backendSaveTimer = null;
 
-function save(){
+let profileModalOpen = false;
+let profileModalCommit = null;
+
+function save(opts){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   scheduleBackendSave();
-  renderAll();
+  if (!opts || !opts.skipRender) renderAll();
 }
 function load(){
   try{
@@ -259,7 +338,7 @@ function resetDemo(){
   localStorage.removeItem(LEGACY_STORAGE_KEY);
   state = defaultState();
   renderAll();
-  showToast("Reset ✓");
+  toastT("toast.reset");
 }
 
 function localHasMeaningfulData(s){
@@ -340,7 +419,7 @@ async function loadFromBackend() {
       else if(localSnapshot.account?.email && !String(localSnapshot.account.email).includes('guest@')) state.account.email = localSnapshot.account.email;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       await saveToBackend();
-      showToast('Saved to your account ✓');
+      toastT("toast.saved_account");
     }
   } catch(e) {
     console.log('Backend profile load (optional):', e.message);
@@ -411,6 +490,113 @@ function fmtDate(iso){
   return d.toLocaleDateString(undefined, {year:"numeric",month:"short",day:"numeric"});
 }
 
+const WELLBEING_FIELDS = [
+  { key: "energy", label: "wellbeing.energy" },
+  { key: "mood", label: "wellbeing.mood" },
+  { key: "sleep", label: "wellbeing.sleep" },
+  { key: "focus", label: "wellbeing.focus" },
+];
+
+function renderWellbeingScoreRow(fieldKey, labelKey, inputId, value){
+  const score = clamp(parseInt(value, 10) || 0, 0, 10);
+  const pills = Array.from({ length: 11 }, (_, n) =>
+    `<button type="button" class="score-pill" data-score="${n}" aria-pressed="${n === score ? "true" : "false"}">${n}</button>`
+  ).join("");
+  return `
+    <div class="score-picker" data-field="${escapeHtml(fieldKey)}">
+      <div class="score-picker-head">
+        <label for="${escapeHtml(inputId)}">${escapeHtml(t(labelKey))}</label>
+        <span class="score-picker-value" data-score-value>${score}</span>
+      </div>
+      <div class="score-picker-track" role="group" aria-label="${escapeHtml(t(labelKey))}">
+        ${pills}
+      </div>
+      <input type="hidden" id="${escapeHtml(inputId)}" value="${score}" />
+    </div>
+  `;
+}
+
+function renderWellbeingScoreGrid(values, idPrefix){
+  const getId = (key)=>{
+    if (!idPrefix) return key;
+    return idPrefix + key.charAt(0).toUpperCase() + key.slice(1);
+  };
+  return `
+    <div class="score-picker-grid">
+      ${WELLBEING_FIELDS.map(({ key, label }) =>
+        renderWellbeingScoreRow(key, label, getId(key), values?.[key] ?? 5)
+      ).join("")}
+    </div>
+  `;
+}
+
+function wireWellbeingScorePickers(root){
+  if (!root) return;
+  root.querySelectorAll(".score-picker").forEach(picker => {
+    const hidden = picker.querySelector('input[type="hidden"]');
+    const valueEl = picker.querySelector("[data-score-value]");
+    picker.querySelectorAll(".score-pill").forEach(btn => {
+      btn.addEventListener("click", ()=>{
+        const score = clamp(parseInt(btn.dataset.score || "0", 10), 0, 10);
+        picker.querySelectorAll(".score-pill").forEach(b =>
+          b.setAttribute("aria-pressed", b === btn ? "true" : "false")
+        );
+        if (hidden) hidden.value = String(score);
+        if (valueEl) valueEl.textContent = String(score);
+      });
+    });
+  });
+}
+
+function readWellbeingScores(ids){
+  const read = (id)=> clamp(parseInt(document.getElementById(id)?.value || "0", 10), 0, 10);
+  return {
+    energy: read(ids.energy),
+    mood: read(ids.mood),
+    sleep: read(ids.sleep),
+    focus: read(ids.focus),
+  };
+}
+
+const CHECKIN_IMPACT_OPTIONS = ["Worse", "No change", "Slightly better", "Much better", "Not present"];
+const CHECKIN_IMPACT_KEYS = {
+  "Worse": "impact.worse",
+  "No change": "impact.no_change",
+  "Slightly better": "impact.slightly_better",
+  "Much better": "impact.much_better",
+  "Not present": "impact.not_present",
+};
+
+function renderImpactPicker(inputId, selected){
+  const value = CHECKIN_IMPACT_OPTIONS.includes(selected) ? selected : "No change";
+  const chips = CHECKIN_IMPACT_OPTIONS.map(x =>
+    `<button type="button" class="chip impact-chip" data-impact="${escapeHtml(x)}" aria-pressed="${x === value ? "true" : "false"}">${escapeHtml(t(CHECKIN_IMPACT_KEYS[x]))}</button>`
+  ).join("");
+  return `
+    <div class="sym-impact-picker" data-impact-picker>
+      <span class="sym-field-label">${escapeHtml(t("checkin.change"))}</span>
+      <div class="chips sym-impact-chips" role="group" aria-label="${escapeHtml(t("checkin.change"))}">${chips}</div>
+      <input type="hidden" id="${escapeHtml(inputId)}" value="${escapeHtml(value)}" />
+    </div>
+  `;
+}
+
+function wireImpactPickers(root){
+  if (!root) return;
+  root.querySelectorAll("[data-impact-picker]").forEach(picker => {
+    const hidden = picker.querySelector('input[type="hidden"]');
+    picker.querySelectorAll(".impact-chip").forEach(btn => {
+      btn.addEventListener("click", ()=>{
+        const val = btn.dataset.impact || "No change";
+        picker.querySelectorAll(".impact-chip").forEach(b =>
+          b.setAttribute("aria-pressed", b === btn ? "true" : "false")
+        );
+        if (hidden) hidden.value = val;
+      });
+    });
+  });
+}
+
 /* =========================================================
    ===== TOAST =====
    ========================================================= */
@@ -436,6 +622,10 @@ function citationToLink(token){
     const id = t.split(":")[1].toUpperCase();
     return `https://pmc.ncbi.nlm.nih.gov/articles/${id}/`;
   }
+  const doiMatch = t.match(/^DOI:\s*(10\.\S+)$/i);
+  if(doiMatch) return `https://doi.org/${doiMatch[1]}`;
+  if(/^10\.\d{4,}\/\S+$/i.test(t)) return `https://doi.org/${t}`;
+  if(/^https?:\/\/\S+$/i.test(t)) return t;
   return "";
 }
 function renderCitationChip(token){
@@ -539,11 +729,11 @@ function badgeClass(q){
 function renderEvidencePanel(nutrient, claims){
   const labs = LAB_SUGGESTIONS[nutrient] || [];
   const labHtml = labs.length
-    ? `<div class="note"><strong>Optional labs to confirm:</strong> ${escapeHtml(labs.join(", "))}</div>`
-    : `<div class="note"><strong>Optional labs to confirm:</strong> Ask your clinician based on context.</div>`;
+    ? `<div class="note"><strong>${escapeHtml(t("evidence.labs"))}</strong> ${escapeHtml(labs.join(", "))}</div>`
+    : `<div class="note"><strong>${escapeHtml(t("evidence.labs"))}</strong> ${escapeHtml(t("evidence.labs_ask"))}</div>`;
 
   if(!claims || !claims.length){
-    return `<div class="fineprint">Evidence not loaded yet for this nutrient from your selected meds.</div>${labHtml}`;
+    return `<div class="fineprint">${escapeHtml(t("evidence.not_loaded"))}</div>${labHtml}`;
   }
 
   const seen = new Set();
@@ -564,9 +754,9 @@ function renderEvidencePanel(nutrient, claims){
   const citeHtml = citations.slice(0,6).map(id => renderCitationChip(id)).join("");
 
   return `
-    <div class="fineprint">Citations (click to open):</div>
-    <div class="citeList">${citeHtml || `<div class="fineprint">No citations attached yet.</div>`}</div>
-    ${noteText ? `<div class="note"><strong>Notes:</strong> ${escapeHtml(noteText)}</div>` : ``}
+    <div class="fineprint">${escapeHtml(t("evidence.citations_click"))}</div>
+    <div class="citeList">${citeHtml || `<div class="fineprint">${escapeHtml(t("evidence.no_citations"))}</div>`}</div>
+    ${noteText ? `<div class="note"><strong>${escapeHtml(t("evidence.notes"))}</strong> ${escapeHtml(noteText)}</div>` : ``}
     ${labHtml}
   `;
 }
@@ -583,9 +773,9 @@ function evidenceCoverage(){
 function safetyFlags(){
   const p = state.profile || {};
   const flags = [];
-  if(p.pregnant) flags.push("Pregnant/breastfeeding");
-  if(p.kidneyDisease) flags.push("Kidney disease");
-  if(p.anticoagulants) flags.push("Anticoagulants/blood thinners");
+  if(p.pregnant) flags.push(t("flag.pregnant"));
+  if(p.kidneyDisease) flags.push(t("flag.kidney"));
+  if(p.anticoagulants) flags.push(t("flag.anticoag"));
   return flags;
 }
 
@@ -617,26 +807,26 @@ function computeDrugInteractions(){
   const interactions = [];
   if(ids.includes('metformin') && ids.includes('omeprazole')){
     interactions.push({
-      title:'Metformin + Omeprazole',
+      title: t('engine.interaction.metformin_omeprazole.title'),
       level:'Moderate',
-      note:'This combination may increase the chance that B12-related symptoms or magnesium-related symptoms are overlooked over time.',
-      action:'Discuss B12 / magnesium monitoring and symptom tracking with your clinician.'
+      note: t('engine.interaction.metformin_omeprazole.note'),
+      action: t('engine.interaction.metformin_omeprazole.action'),
     });
   }
   if(ids.includes('lisinopril') && ids.includes('losartan')){
     interactions.push({
-      title:'Lisinopril + Losartan',
+      title: t('engine.interaction.lisinopril_losartan.title'),
       level:'High',
-      note:'Using an ACE inhibitor and ARB together can increase monitoring needs for kidney function and potassium.',
-      action:'Review this combination with your clinician unless it was specifically prescribed and monitored.'
+      note: t('engine.interaction.lisinopril_losartan.note'),
+      action: t('engine.interaction.lisinopril_losartan.action'),
     });
   }
   if(ids.includes('amlodipine') && ids.includes('metoprolol')){
     interactions.push({
-      title:'Amlodipine + Metoprolol',
+      title: t('engine.interaction.amlodipine_metoprolol.title'),
       level:'Moderate',
-      note:'This combination may increase dizziness, low energy, or exercise intolerance in some users.',
-      action:'Track dizziness and blood pressure symptoms, especially after dose changes.'
+      note: t('engine.interaction.amlodipine_metoprolol.note'),
+      action: t('engine.interaction.amlodipine_metoprolol.action'),
     });
   }
   return interactions;
@@ -647,26 +837,26 @@ function computeContraindications(){
   const flags = [];
   if(state.profile.pregnant && (ids.includes('lisinopril') || ids.includes('losartan'))){
     flags.push({
-      title:'Pregnancy caution with ACE inhibitor / ARB therapy',
+      title: t('engine.contra.pregnancy_ace_arb.title'),
       level:'High',
-      note:'Lisinopril and losartan need clinician review if pregnancy is present or possible.',
-      action:'Contact your clinician promptly for medication review.'
+      note: t('engine.contra.pregnancy_ace_arb.note'),
+      action: t('engine.contra.pregnancy_ace_arb.action'),
     });
   }
   if(state.profile.kidneyDisease && (ids.includes('metformin') || ids.includes('lisinopril') || ids.includes('losartan'))){
     flags.push({
-      title:'Kidney disease monitoring needed',
+      title: t('engine.contra.kidney.title'),
       level:'High',
-      note:'This medication profile increases the importance of kidney function and electrolyte monitoring.',
-      action:'Do not add new supplements casually until renal status and labs are reviewed.'
+      note: t('engine.contra.kidney.note'),
+      action: t('engine.contra.kidney.action'),
     });
   }
   if(state.profile.anticoagulants && state.plan.recommendedSupplements.some(x=>String(x).toLowerCase().includes('coq10'))){
     flags.push({
-      title:'Supplement review recommended with blood thinners',
+      title: t('engine.contra.anticoag_supplement.title'),
       level:'Moderate',
-      note:'Some supplements should be reviewed more carefully when anticoagulants are part of the profile.',
-      action:'Ask your clinician or pharmacist to review supplement safety and timing.'
+      note: t('engine.contra.anticoag_supplement.note'),
+      action: t('engine.contra.anticoag_supplement.action'),
     });
   }
   return flags;
@@ -695,10 +885,10 @@ function computeMedicationSuccessPrediction(){
   score = clamp(score, 0, 100);
   const level = score >= 75 ? "Strong" : score >= 50 ? "Moderate" : "At risk";
   const reason = score >= 75
-    ? "Your current inputs suggest a better chance of staying consistent with this plan."
+    ? t('engine.prediction.reason_strong')
     : score >= 50
-      ? "Your plan may work, but symptoms, complexity, or follow-through could reduce success."
-      : "Your current symptom burden or safety complexity may make long-term success harder without closer support.";
+      ? t('engine.prediction.reason_moderate')
+      : t('engine.prediction.reason_at_risk');
   return { score, level, reason };
 }
 
@@ -707,19 +897,19 @@ function detectHealthPatterns(){
   const syms = state.symptoms.selected || [];
   const patterns = [];
   if(ids.includes('metformin') && (syms.includes('Fatigue') || syms.includes('Brain fog') || syms.includes('Tingling hands/feet'))){
-    patterns.push({ title:'Metformin + B12 pattern', confidence:'High', note:'This combination of medication and symptoms can overlap with a B12-related pattern.' });
+    patterns.push({ title: t('engine.pattern.metformin_b12.title'), confidence:'High', note: t('engine.pattern.metformin_b12.note') });
   }
   if(ids.includes('omeprazole') && (syms.includes('Muscle cramps') || syms.includes('Dizziness') || syms.includes('Fatigue'))){
-    patterns.push({ title:'PPI + magnesium pattern', confidence:'Moderate', note:'Long-term acid suppression with these symptoms can overlap with a magnesium-related pattern.' });
+    patterns.push({ title: t('engine.pattern.ppi_magnesium.title'), confidence:'Moderate', note: t('engine.pattern.ppi_magnesium.note') });
   }
   if(ids.includes('atorvastatin') && (syms.includes('Muscle aches') || syms.includes('Fatigue'))){
-    patterns.push({ title:'Statin tolerance pattern', confidence:'Moderate', note:'These symptoms can overlap with statin tolerance issues and possible CoQ10-related symptom patterns.' });
+    patterns.push({ title: t('engine.pattern.statin.title'), confidence:'Moderate', note: t('engine.pattern.statin.note') });
   }
   if(state.symptomOnlyMode && (syms.includes('Fatigue') || syms.includes('Brain fog') || syms.includes('Poor focus'))){
-    patterns.push({ title:'Symptom-only B-vitamin support pattern', confidence:'Moderate', note:'Even without medications, this symptom cluster may overlap with B-vitamin support needs.' });
+    patterns.push({ title: t('engine.pattern.symptom_bvitamin.title'), confidence:'Moderate', note: t('engine.pattern.symptom_bvitamin.note') });
   }
   if(state.symptomOnlyMode && (syms.includes('Muscle cramps') || syms.includes('Sleep changes') || syms.includes('Anxiety'))){
-    patterns.push({ title:'Symptom-only magnesium support pattern', confidence:'Moderate', note:'Even without medications, this symptom cluster may overlap with magnesium support needs.' });
+    patterns.push({ title: t('engine.pattern.symptom_magnesium.title'), confidence:'Moderate', note: t('engine.pattern.symptom_magnesium.note') });
   }
   return patterns;
 }
@@ -730,37 +920,41 @@ function computeInsightEngine(){
   const contraindications = computeContraindications();
   const prediction = computeMedicationSuccessPrediction();
   const topScore = computeNutrientScores()[0];
-  const symptomText = (state.symptoms.selected || []).slice(0,4).join(", ") || "no major symptoms logged";
+  const symptomText = (state.symptoms.selected || []).slice(0,4).join(", ") || t('engine.insight.no_symptoms');
   const medNames = state.meds.map(m => {
     const med = MED_DB.find(x=>x.id===m.medId);
     return med ? med.name : m.medId;
-  }).join(", ") || "no medications selected";
+  }).join(", ") || t('engine.insight.no_meds');
 
-  let summary = "GeneoRx needs a little more information before it can generate a strong insight.";
-  let meaning = "Add symptoms, medications, or check-ins to improve the quality of your insights.";
-  let doctorPrompt = "Ask which labs, timing changes, or medication follow-up steps make the most sense for your situation.";
+  let summary = t('engine.insight.summary_empty');
+  let meaning = t('engine.insight.meaning_empty');
+  let doctorPrompt = t('engine.insight.doctor_empty');
 
   if(patterns.length){
     const top = patterns[0];
-    summary = `Your current symptom pattern with ${medNames} may fit a ${top.title.toLowerCase()}.`;
-    meaning = top.note || "This pattern may help explain why symptoms are appearing or why your plan feels harder to follow.";
+    summary = t('engine.insight.summary_pattern', { meds: medNames, pattern: top.title.toLowerCase() });
+    meaning = top.note || t('engine.insight.meaning_default');
     doctorPrompt = interactions.length || contraindications.length
-      ? `Discuss ${top.title}, plus the interaction/caution alerts GeneoRx found, with your clinician.`
-      : `Discuss whether ${top.title} suggests labs, medication timing changes, or targeted support.`;
+      ? t('engine.insight.doctor_pattern_alerts', { pattern: top.title })
+      : t('engine.insight.doctor_pattern', { pattern: top.title });
   } else if(topScore){
-    summary = `Your symptoms (${symptomText}) may reflect a ${topScore[0]} support need based on your current entries.`;
-    meaning = `GeneoRx currently sees ${topScore[0]} as the strongest signal in your profile.`;
-    doctorPrompt = `Ask whether ${topScore[0]} testing, monitoring, or treatment adjustments would be appropriate.`;
+    summary = t('engine.insight.summary_nutrient', { symptoms: symptomText, nutrient: topScore[0] });
+    meaning = t('engine.insight.meaning_nutrient', { nutrient: topScore[0] });
+    doctorPrompt = t('engine.insight.doctor_nutrient', { nutrient: topScore[0] });
   }
 
   if(prediction.score < 50){
-    meaning += " Your medication success prediction suggests this plan may be harder to sustain without support.";
+    meaning += t('engine.insight.meaning_low_prediction');
   }
   if(interactions.length){
-    meaning += ` GeneoRx also detected ${interactions.length} interaction alert${interactions.length>1?'s':''}.`;
+    meaning += interactions.length > 1
+      ? t('engine.insight.meaning_interactions_many', { count: interactions.length })
+      : t('engine.insight.meaning_interactions_one', { count: interactions.length });
   }
   if(contraindications.length){
-    meaning += ` There ${contraindications.length===1?'is':'are'} ${contraindications.length} caution flag${contraindications.length>1?'s':''} that should be reviewed.`;
+    meaning += contraindications.length > 1
+      ? t('engine.insight.meaning_cautions_many', { count: contraindications.length })
+      : t('engine.insight.meaning_cautions_one', { count: contraindications.length });
   }
 
   return { summary, meaning, doctorPrompt, patterns, interactions, contraindications, prediction };
@@ -777,8 +971,8 @@ function computePopulationInsights(){
     trackedSymptoms: topTracked,
     checkinCount: state.checkins.length,
     message: state.checkins.length
-      ? 'Based on your check-ins so far, GeneoRx is starting to identify repeat symptom patterns over time.'
-      : 'Population-style insights will become stronger once you log check-ins over time.'
+      ? t('engine.population.with_checkins')
+      : t('engine.population.no_checkins')
   };
 }
 
@@ -806,7 +1000,7 @@ let reportPickerSelectedIndex = 0;
 
 function checkinListLabel(c, idx){
   const latest = idx === state.checkins.length - 1;
-  return `${escapeHtml(fmtDate(c.dateISO))} · Adherence <strong>${c.adherencePct}%</strong>${latest ? " · Latest" : ""}`;
+  return `${escapeHtml(fmtDate(c.dateISO))} · ${escapeHtml(t("common.adherence"))} <strong>${c.adherencePct}%</strong>${latest ? ` · ${escapeHtml(t("common.latest"))}` : ""}`;
 }
 
 function openReportPickerModal(preferredIndex){
@@ -822,8 +1016,8 @@ function openReportPickerModal(preferredIndex){
     const div = document.createElement("div");
     div.className = `item report-picker-item${idx === reportPickerSelectedIndex ? " report-picker-item--on" : ""}`;
     div.innerHTML = `
-      <div class="k">Check-in ${idx + 1}${idx === state.checkins.length - 1 ? " · Latest" : ""}</div>
-      <div class="v">${escapeHtml(fmtDate(c.dateISO))} · Adherence <strong>${c.adherencePct}%</strong></div>
+      <div class="k">${escapeHtml(t("checkin.label_n"))} ${idx + 1}${idx === state.checkins.length - 1 ? ` · ${escapeHtml(t("common.latest"))}` : ""}</div>
+      <div class="v">${escapeHtml(fmtDate(c.dateISO))} · ${escapeHtml(t("common.adherence"))} <strong>${c.adherencePct}%</strong></div>
     `;
     div.addEventListener("click", ()=>{
       reportPickerSelectedIndex = idx;
@@ -854,26 +1048,26 @@ function updateMyCheckinsAvailability(){
   btnMyCheckinsEl.disabled = !hasCheckins;
   btnMyCheckinsEl.style.opacity = hasCheckins ? "1" : "0.45";
   btnMyCheckinsEl.style.cursor = hasCheckins ? "pointer" : "not-allowed";
-  btnMyCheckinsEl.title = hasCheckins ? "View check-ins and download a report" : "Log a check-in first";
+  btnMyCheckinsEl.title = hasCheckins ? t("tooltip.my_checkins") : t("tooltip.my_checkins_disabled");
   if (pillChecksBadgeEl) {
     pillChecksBadgeEl.classList.toggle("is-disabled", !hasCheckins);
-    pillChecksBadgeEl.title = hasCheckins ? "View your check-ins" : "No check-ins yet";
+    pillChecksBadgeEl.title = hasCheckins ? t("tooltip.checkins_badge") : t("tooltip.checkins_badge_disabled");
   }
 }
 
 function renderCheckinDetailHtml(checkin){
   const wellbeing = checkin.wellbeing || {};
-  const symptoms = (checkin.symptoms?.items || []).map(x => `${x.symptom}: ${x.change || "No change"}`).join(" · ");
-  const supplements = (checkin.supplementsTaken || []).length ? checkin.supplementsTaken.join(", ") : "None logged";
-  const sideEffects = (checkin.sideEffects || []).length ? checkin.sideEffects.join(", ") : "None";
-  const notes = checkin.notes ? checkin.notes : "No notes";
+  const symptoms = (checkin.symptoms?.items || []).map(x => `${x.symptom}: ${impactLabel(x.change || "No change")}`).join(" · ");
+  const supplements = (checkin.supplementsTaken || []).length ? checkin.supplementsTaken.join(", ") : t("checkin.none_logged");
+  const sideEffects = (checkin.sideEffects || []).length ? checkin.sideEffects.join(", ") : t("common.none");
+  const notes = checkin.notes ? checkin.notes : t("checkin.no_notes");
   return `
     <div class="checkin-detail-panel">
-      <div class="checkin-detail-row"><span class="checkin-detail-k">Wellbeing</span><span class="checkin-detail-v">Energy ${wellbeing.energy ?? "—"}/10 · Mood ${wellbeing.mood ?? "—"}/10 · Sleep ${wellbeing.sleep ?? "—"}/10 · Focus ${wellbeing.focus ?? "—"}/10</span></div>
-      <div class="checkin-detail-row"><span class="checkin-detail-k">Symptoms</span><span class="checkin-detail-v">${symptoms ? escapeHtml(symptoms) : "None tracked."}</span></div>
-      <div class="checkin-detail-row"><span class="checkin-detail-k">Supplements</span><span class="checkin-detail-v">${escapeHtml(supplements)}</span></div>
-      <div class="checkin-detail-row"><span class="checkin-detail-k">Side effects</span><span class="checkin-detail-v">${escapeHtml(sideEffects)}</span></div>
-      <div class="checkin-detail-row"><span class="checkin-detail-k">Notes</span><span class="checkin-detail-v">${escapeHtml(notes)}</span></div>
+      <div class="checkin-detail-row"><span class="checkin-detail-k">${escapeHtml(t("checkin.detail.wellbeing"))}</span><span class="checkin-detail-v">${escapeHtml(wellbeingSummaryText(wellbeing))}</span></div>
+      <div class="checkin-detail-row"><span class="checkin-detail-k">${escapeHtml(t("checkin.detail.symptoms"))}</span><span class="checkin-detail-v">${symptoms ? escapeHtml(symptoms) : escapeHtml(t("checkin.none_tracked"))}</span></div>
+      <div class="checkin-detail-row"><span class="checkin-detail-k">${escapeHtml(t("checkin.detail.supplements"))}</span><span class="checkin-detail-v">${escapeHtml(supplements)}</span></div>
+      <div class="checkin-detail-row"><span class="checkin-detail-k">${escapeHtml(t("checkin.detail.side_effects"))}</span><span class="checkin-detail-v">${escapeHtml(sideEffects)}</span></div>
+      <div class="checkin-detail-row"><span class="checkin-detail-k">${escapeHtml(t("checkin.detail.notes"))}</span><span class="checkin-detail-v">${escapeHtml(notes)}</span></div>
     </div>
   `;
 }
@@ -919,7 +1113,7 @@ function closeCheckinViewModal(){
 
 function promptMyCheckins(preferredIndex){
   if (!state.checkins.length) {
-    showToast("No check-ins yet — log your first one");
+    toastT("checkin.no_checkins_toast");
     setStep(5);
     return;
   }
@@ -963,8 +1157,8 @@ function latestCheckin(){
 
 function checkinStorageNote(){
   return IS_GUEST
-    ? "Saved on this device only. Sign in to store check-ins in your account."
-    : "Saved to your account. Your report includes only your data.";
+    ? t("checkin.storage_guest")
+    : t("checkin.storage_account");
 }
 
 function wireReportDownloadButton(btn, preferredIndex){
@@ -976,33 +1170,33 @@ function renderLastCheckinCard(last, options = {}){
   const { showProgressLink = false, showDownloadReport = false } = options;
   const checkinIndex = state.checkins.findIndex(c => c === last);
   const wellbeing = last.wellbeing || {};
-  const symptoms = (last.symptoms?.items || []).map(x => `${x.symptom}: ${x.change || "No change"}`).join(" · ");
-  const supplements = (last.supplementsTaken || []).length ? last.supplementsTaken.join(", ") : "None logged";
-  const sideEffects = (last.sideEffects || []).length ? last.sideEffects.join(", ") : "None";
-  const notes = last.notes ? last.notes : "No notes";
+  const symptoms = (last.symptoms?.items || []).map(x => `${x.symptom}: ${impactLabel(x.change || "No change")}`).join(" · ");
+  const supplements = (last.supplementsTaken || []).length ? last.supplementsTaken.join(", ") : t("checkin.none_logged");
+  const sideEffects = (last.sideEffects || []).length ? last.sideEffects.join(", ") : t("common.none");
+  const notes = last.notes ? last.notes : t("checkin.no_notes");
   const actionBtns = [];
   if (showDownloadReport) {
-    actionBtns.push(`<button class="ghost" id="btnDownloadMyReport">My check-ins</button>`);
+    actionBtns.push(`<button class="ghost" id="btnDownloadMyReport">${escapeHtml(t("checkin.my_checkins_btn"))}</button>`);
   }
   if (showProgressLink) {
-    actionBtns.push(`<button class="ghost" id="btnViewProgress">View trends in Progress</button>`);
+    actionBtns.push(`<button class="ghost" id="btnViewProgress">${escapeHtml(t("checkin.view_progress"))}</button>`);
   }
 
   const card = document.createElement("div");
   card.className = "section";
   card.innerHTML = `
     <div class="tagline">
-      <strong>Your last check-in</strong><br>
-      ${escapeHtml(fmtDate(last.dateISO))} · Adherence <strong>${last.adherencePct}%</strong>
+      <strong>${escapeHtml(t("checkin.last_title"))}</strong><br>
+      ${escapeHtml(fmtDate(last.dateISO))} · ${escapeHtml(t("common.adherence"))} <strong>${last.adherencePct}%</strong>
     </div>
     <div class="fineprint" style="margin-top:8px">${escapeHtml(checkinStorageNote())}</div>
     <div style="height:10px"></div>
     <div class="list">
-      <div class="item"><div class="k">Wellbeing</div><div class="v">Energy ${wellbeing.energy ?? "—"}/10 · Mood ${wellbeing.mood ?? "—"}/10 · Sleep ${wellbeing.sleep ?? "—"}/10 · Focus ${wellbeing.focus ?? "—"}/10</div></div>
-      <div class="item"><div class="k">Symptoms</div><div class="v">${symptoms ? escapeHtml(symptoms) : "None tracked."}</div></div>
-      <div class="item"><div class="k">Supplements taken</div><div class="v">${escapeHtml(supplements)}</div></div>
-      <div class="item"><div class="k">Side effects</div><div class="v">${escapeHtml(sideEffects)}</div></div>
-      <div class="item"><div class="k">Notes</div><div class="v">${escapeHtml(notes)}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("checkin.detail.wellbeing"))}</div><div class="v">${escapeHtml(wellbeingSummaryText(wellbeing))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("checkin.detail.symptoms"))}</div><div class="v">${symptoms ? escapeHtml(symptoms) : escapeHtml(t("checkin.none_tracked"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("checkin.detail.supplements_taken"))}</div><div class="v">${escapeHtml(supplements)}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("checkin.detail.side_effects"))}</div><div class="v">${escapeHtml(sideEffects)}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("checkin.detail.notes"))}</div><div class="v">${escapeHtml(notes)}</div></div>
     </div>
     ${actionBtns.length ? `<div class="btns" style="margin-top:12px">${actionBtns.join("")}</div>` : ""}
   `;
@@ -1017,17 +1211,17 @@ function computeWeeklyCoachMessage(){
   const last = latestCheckin();
   const base = state.wellbeingBaseline || {energy:5,mood:5,sleep:5,focus:5};
   const scores = computeNutrientScores();
-  const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : " ";
+  const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : t('engine.coach.bullet_empty');
 
   if(!last){
     return {
-      headline: "Your coach is ready.",
+      headline: t('engine.coach.headline_ready'),
       bullets: [
-        "Add medications + symptoms to personalize results.",
-        "Start your plan to track real improvement over time.",
-        "Log a weekly check-in to generate your Health Signal."
+        t('engine.coach.bullet_add_meds'),
+        t('engine.coach.bullet_start_plan'),
+        t('engine.coach.bullet_log_checkin'),
       ],
-      nextBestAction: "Go to Results → Start plan."
+      nextBestAction: t('engine.coach.action_results'),
     };
   }
 
@@ -1040,23 +1234,26 @@ function computeWeeklyCoachMessage(){
   const best = items.reduce((acc,x)=> (acc===null || (x.changeScore||0)>(acc.changeScore||0)) ? x : acc, null);
   const worst = items.reduce((acc,x)=> (acc===null || (x.changeScore||0)<(acc.changeScore||0)) ? x : acc, null);
 
-  let next = "Keep the routine consistent for 7 days and log another check-in.";
-  if(last.adherencePct < 60) next = "Try one reminder and aim for 70–80% adherence this week.";
-  else if((worst?.change||"") === "Worse") next = `Adjust timing/with-food strategy and reassess ${worst.symptom} next week.`;
-  else if(dE <= 0 && dS <= 0) next = "Try hydration + protein at breakfast for 7 days, then reassess energy/sleep.";
-  else if(dE > 0 || dS > 0) next = "Nice trend keep the same plan for one more week to confirm the signal.";
+  let next = t('engine.coach.action_consistent');
+  if(last.adherencePct < 60) next = t('engine.coach.action_adherence');
+  else if((worst?.change||"") === "Worse") next = t('engine.coach.action_worse_symptom', { symptom: worst.symptom });
+  else if(dE <= 0 && dS <= 0) next = t('engine.coach.action_hydration');
+  else if(dE > 0 || dS > 0) next = t('engine.coach.action_nice_trend');
+
+  const bestValue = best?.symptom ? `${best.symptom} (${impactLabel(best.change || "No change")})` : t('engine.coach.bullet_empty');
+  const worstValue = worst?.symptom ? `${worst.symptom} (${impactLabel(worst.change || "No change")})` : t('engine.coach.bullet_empty');
 
   const bullets = [
-    `Wellbeing deltas: Energy ${dE>=0?"+":""}${dE}, Mood ${dM>=0?"+":""}${dM}, Sleep ${dS>=0?"+":""}${dS}, Focus ${dF>=0?"+":""}${dF}.`,
-    `Most improved symptom: ${best?.symptom ? `${best.symptom} (${best.change})` : " "}.`,
-    `Least improved symptom: ${worst?.symptom ? `${worst.symptom} (${worst.change})` : " "}.`,
-    `Top driver nutrient: ${topDriver}.`
+    t('engine.coach.bullet_wellbeing', { dE: fmtDelta(dE), dM: fmtDelta(dM), dS: fmtDelta(dS), dF: fmtDelta(dF) }),
+    t('engine.coach.bullet_best', { value: bestValue }),
+    t('engine.coach.bullet_worst', { value: worstValue }),
+    t('engine.coach.bullet_driver', { driver: topDriver }),
   ];
 
   const headline =
-    (dE + dS + dM + dF) > 0 ? "You’re trending in the right direction." :
-    (dE + dS + dM + dF) < 0 ? "Let’s stabilize this week." :
-    "Let’s get a clearer signal.";
+    (dE + dS + dM + dF) > 0 ? t('engine.coach.headline_trending_up') :
+    (dE + dS + dM + dF) < 0 ? t('engine.coach.headline_stabilize') :
+    t('engine.coach.headline_clearer_signal');
 
   return { headline, bullets, nextBestAction: next };
 }
@@ -1209,7 +1406,7 @@ if (reportPickerDownload) {
   reportPickerDownload.addEventListener("click", ()=>{
     downloadDoctorReport(reportPickerSelectedIndex);
     closeReportPickerModal();
-    showToast("Your report downloaded ✓");
+    toastT("toast.report_downloaded");
   });
 }
 
@@ -1222,11 +1419,10 @@ if (checkinViewBackdrop) checkinViewBackdrop.addEventListener("click", closeChec
 if (checkinViewDownload) {
   checkinViewDownload.addEventListener("click", ()=>{
     downloadDoctorReport(checkinViewSelectedIndex);
-    showToast("Your report downloaded ✓");
+    toastT("toast.report_downloaded");
   });
 }
 
-document.getElementById("btnReset").addEventListener("click", resetDemo);
 
 /* Share button — readable summary for review (not raw JSON) */
 document.getElementById("btnShare").addEventListener("click", async ()=>{
@@ -1238,7 +1434,7 @@ document.getElementById("btnShare").addEventListener("click", async ()=>{
         title: "GeneoRx review summary",
         text: snapshot,
       });
-      showToast("Shared for review ✓");
+      toastT("toast.shared");
       return;
     } catch (err) {
       if (err && err.name === "AbortError") return;
@@ -1247,7 +1443,7 @@ document.getElementById("btnShare").addEventListener("click", async ()=>{
 
   await copyToClipboard(snapshot);
   promptDownloadDoctorReport();
-  showToast("Summary copied ✓");
+  toastT("toast.summary_copied");
 });
 
 /* =========================================================
@@ -1270,7 +1466,7 @@ document.getElementById("snapClose").addEventListener("click", closeSnapshotModa
 backdrop.addEventListener("click", closeSnapshotModal);
 document.getElementById("snapCopy").addEventListener("click", async ()=>{
   await copyToClipboard(snapText.textContent);
-  showToast("Copied ✓");
+  showToast(t("common.copied"));
 });
 document.getElementById("snapPrint").addEventListener("click", ()=>{
   const w = window.open("", "_blank");
@@ -1294,7 +1490,7 @@ function showInsightModal(){
   insightSummary.innerHTML = `<strong>${escapeHtml(insight.summary)}</strong>`;
   insightMeaning.textContent = insight.meaning;
   insightDoctor.textContent = insight.doctorPrompt;
-  insightWhy.innerHTML = `${insight.patterns.length ? `Pattern: <strong>${escapeHtml(insight.patterns[0].title)}</strong><br>` : ''}${insight.interactions.length ? `Interactions: <strong>${insight.interactions.length}</strong><br>` : ''}${insight.contraindications.length ? `Cautions: <strong>${insight.contraindications.length}</strong><br>` : ''}Success prediction: <strong>${insight.prediction.score}%</strong> (${escapeHtml(insight.prediction.level)})`;
+  insightWhy.innerHTML = `${insight.patterns.length ? `${escapeHtml(t("summary.pattern"))}: <strong>${escapeHtml(insight.patterns[0].title)}</strong><br>` : ''}${insight.interactions.length ? `${escapeHtml(t("summary.interactions_field"))}: <strong>${insight.interactions.length}</strong><br>` : ''}${insight.contraindications.length ? `${escapeHtml(t("summary.contraindications_field"))}: <strong>${insight.contraindications.length}</strong><br>` : ''}${escapeHtml(t("summary.success_prediction"))}: <strong>${insight.prediction.score}%</strong> (${escapeHtml(successLabel(insight.prediction.level))})`;
   insightBackdrop.style.display = "block";
   insightModal.style.display = "block";
 }
@@ -1309,7 +1505,7 @@ function resetPatternReveal(){
   const bar = document.getElementById('revealBar');
   const foot = document.getElementById('revealFoot');
   if(bar) bar.style.width = '0%';
-  if(foot) foot.textContent = 'Preparing your GeneoRx insight…';
+  if(foot) foot.textContent = t('modal.insight.preparing');
 }
 function closePatternReveal(){
   const revealBackdrop = document.getElementById('revealBackdrop');
@@ -1329,10 +1525,10 @@ function openInsightModal(){
   revealBackdrop.style.display = 'block';
   revealModal.style.display = 'block';
   const labels = [
-    'Reviewing your current medication selections…',
-    'Checking symptom and check-in patterns…',
-    'Matching nutrient depletion evidence…',
-    'Building your GeneoRx insight…'
+    t('modal.reveal.progress1'),
+    t('modal.reveal.progress2'),
+    t('modal.reveal.progress3'),
+    t('modal.reveal.progress4'),
   ];
   let i = 0;
   function advance(){
@@ -1346,12 +1542,12 @@ function openInsightModal(){
     });
     if(i < steps.length){
       steps[i].classList.add('on');
-      if(foot) foot.textContent = labels[i] || 'Analyzing…';
+      if(foot) foot.textContent = labels[i] || t('modal.insight.analyzing');
       if(bar) bar.style.width = `${Math.round(((i+1)/steps.length)*100)}%`;
       i += 1;
       revealTimer = setTimeout(advance, 420);
     } else {
-      if(foot) foot.textContent = 'Insight ready.';
+      if(foot) foot.textContent = t('modal.insight.ready');
       revealTimer = setTimeout(()=>{
         closePatternReveal();
         showInsightModal();
@@ -1367,47 +1563,81 @@ function closeInsightModal(){
 document.getElementById("insightClose").addEventListener("click", closeInsightModal);
 insightBackdrop.addEventListener("click", closeInsightModal);
 document.getElementById("insightCopy").addEventListener("click", async ()=>{
-  const text = `GeneoRx Insight\n\nWhat GeneoRx sees: ${insightSummary.textContent}\n\nWhat this may mean: ${insightMeaning.textContent}\n\nWhat to discuss with your doctor: ${insightDoctor.textContent}\n\nWhy GeneoRx generated this insight: ${insightWhy.textContent}`;
+  const text = `${t("modal.insight.title")}\n\n${t("modal.insight.sees")}: ${insightSummary.textContent}\n\n${t("modal.insight.means")}: ${insightMeaning.textContent}\n\n${t("modal.insight.doctor")}: ${insightDoctor.textContent}\n\n${t("modal.insight.why")}: ${insightWhy.textContent}`;
   await copyToClipboard(text);
-  showToast("Copied ✓");
+  showToast(t("common.copied"));
 });
 
 /* =========================================================
    ===== TABS =====
    ========================================================= */
-const STEP_LABELS = ["Account","Medications","Symptoms","Wellbeing","Results","Check-in","Progress","Citations","Summary","Feedback"];
+const STEP_COUNT = 10;
+const HIDDEN_STEPS = new Set([7, 9]);
+const stepLabel = (i)=> t(`step.${i}`);
+
+function visibleSteps(){
+  const steps = [];
+  for (let i = 0; i < STEP_COUNT; i++){
+    if (HIDDEN_STEPS.has(i)) continue;
+    if (i === 0 && !IS_GUEST) continue;
+    steps.push(i);
+  }
+  return steps;
+}
+function normalizeStep(n){
+  const v = visibleSteps();
+  if (v.includes(n)) return n;
+  return v.find(s => s >= n) ?? v[0] ?? 1;
+}
+function nextStep(n){
+  const v = visibleSteps();
+  const i = v.indexOf(n);
+  return i >= 0 && i < v.length - 1 ? v[i + 1] : n;
+}
+function prevStep(n){
+  const v = visibleSteps();
+  const i = v.indexOf(n);
+  return i > 0 ? v[i - 1] : n;
+}
+function profileNeedsCompletion(){
+  return !state.account.consent || !String(state.profile.age || "").trim();
+}
 
 function setStep(n){
-  state.step = clamp(n, 0, STEP_LABELS.length-1);
+  state.step = normalizeStep(clamp(n, 0, STEP_COUNT - 1));
   save();
 }
 
 function renderSteps(){
-  const colors = ["c1","c2","c3","c4","c5","c6","c7","c8","c9","c10"];
   stepsEl.innerHTML = "";
-  STEP_LABELS.forEach((lbl,i)=>{
+  visibleSteps().forEach(i => {
     const s = document.createElement("div");
-    s.className = `step ${colors[i]} ${i===state.step ? "on":""}`;
-    s.textContent = lbl;
+    s.className = `step ${i===state.step ? "on":""}`;
+    s.textContent = stepLabel(i);
     s.addEventListener("click", ()=> setStep(i));
     stepsEl.appendChild(s);
   });
 }
 
 function renderPills(){
-  pillUser.textContent = state.account.email ? state.account.email : (AUTHENTICATED_USER !== "Guest" ? AUTHENTICATED_USER : "Guest");
-  pillPlan.textContent = state.plan.started ? `Started ${fmtDate(state.plan.startDate)}` : "Not started";
+  if (pillUser) {
+    pillUser.textContent = state.account.email ? state.account.email : (AUTHENTICATED_USER !== "Guest" ? AUTHENTICATED_USER : t("common.guest"));
+  }
+  pillPlan.textContent = state.plan.started ? `${t("pill.started")} ${fmtDate(state.plan.startDate)}` : t("pill.not_started");
   pillChecks.textContent = String(state.checkins.length);
 }
 
 function nextSuggestedStep(){
   const medsCount = state.meds.length;
   const symCount = state.symptoms.selected.length;
-  if (!state.account.consent) return { label: "Complete Account", step: 0 };
-  if (medsCount === 0) return { label: "Add Medications", step: 1 };
-  if (symCount === 0) return { label: "Select Symptoms", step: 2 };
-  if (!state.plan.started) return { label: "Review Results", step: 4 };
-  return { label: "Log a Check-in", step: 5 };
+  if (!state.account.consent) {
+    if (IS_GUEST) return { label: t("next.account"), step: 0 };
+    return { label: t("profile.complete"), step: 1 };
+  }
+  if (medsCount === 0) return { label: t("next.meds"), step: 1 };
+  if (symCount === 0) return { label: t("next.symptoms"), step: 2 };
+  if (!state.plan.started) return { label: t("next.results"), step: 4 };
+  return { label: t("next.checkin"), step: 5 };
 }
 
 function updateSummaryPanelMode(){
@@ -1431,23 +1661,30 @@ function renderSummaryTop(){
   summaryTop.innerHTML = `
     <div class="summaryCompact">
       <div class="summaryCompactLine">
-        <strong>${medsCount}</strong> med${medsCount === 1 ? "" : "s"} ·
-        <strong>${symCount}</strong> symptom${symCount === 1 ? "" : "s"} ·
-        Evidence <strong>${cov.evidenceCount}/${cov.selectedCount}</strong>
+        <strong>${medsCount}</strong> ${medsCount === 1 ? t("summary.med") : t("summary.meds")} ·
+        <strong>${symCount}</strong> ${symCount === 1 ? t("summary.symptom") : t("summary.symptoms")} ·
+        ${t("summary.evidence")} <strong>${cov.evidenceCount}/${cov.selectedCount}</strong>
       </div>
       <div class="summaryCompactNext fineprint">
-        Next: <strong>${escapeHtml(next.label)}</strong>
-        ${flags.length ? ` · Safety: ${escapeHtml(flags.join(", "))}` : ""}
+        ${t("summary.next")}: <strong>${escapeHtml(next.label)}</strong>
+        ${flags.length ? ` · ${t("summary.safety")}: ${escapeHtml(flags.join(", "))}` : ""}
       </div>
+      ${!IS_GUEST ? `
+        <div class="btns" style="margin-top:10px">
+          <button class="ghost mini" id="sidebarEditProfile">${escapeHtml(profileNeedsCompletion() ? t("profile.complete") : t("portal.health_profile"))}</button>
+        </div>
+      ` : ``}
       ${state.checkins.length ? `
         <div class="btns" style="margin-top:10px">
-          <button class="ghost mini" id="sidebarViewCheckin">My check-ins</button>
+          <button class="ghost mini" id="sidebarViewCheckin">${escapeHtml(t("portal.mycheckins"))}</button>
         </div>
-      ` : `<div class="fineprint" style="margin-top:8px">No check-ins yet.</div>`}
+      ` : `<div class="fineprint" style="margin-top:8px">${escapeHtml(t("sidebar.no_checkins"))}</div>`}
     </div>
   `;
   const sidebarBtn = summaryTop.querySelector("#sidebarViewCheckin");
   if (sidebarBtn) sidebarBtn.addEventListener("click", promptMyCheckins);
+  const profileBtn = summaryTop.querySelector("#sidebarEditProfile");
+  if (profileBtn) profileBtn.addEventListener("click", openProfileModal);
 }
 
 function renderSide(){
@@ -1456,12 +1693,14 @@ function renderSide(){
     return med ? med.name : m.medId;
   });
   const last = latestCheckin();
-  const lastLine = last ? `Latest: ${fmtDate(last.dateISO)} • Adherence ${last.adherencePct}%` : "No check-ins yet.";
+  const lastLine = last
+    ? `${t("sidebar.latest")}: ${fmtDate(last.dateISO)} • ${t("sidebar.adherence")} ${last.adherencePct}%`
+    : t("sidebar.no_checkins");
 
   const blocks = [
-    {k:"Medications", v: meds.length ? meds.join(", ") : "None yet."},
-    {k:"Plan", v: state.plan.started ? `Started ${fmtDate(state.plan.startDate)}` : "Not started yet."},
-    {k:"Check-ins", v: lastLine},
+    {k: t("sidebar.meds"), v: meds.length ? meds.join(", ") : t("sidebar.none_yet")},
+    {k: t("sidebar.plan"), v: state.plan.started ? `${t("pill.started")} ${fmtDate(state.plan.startDate)}` : t("sidebar.not_started")},
+    {k: t("sidebar.checkins"), v: lastLine},
   ];
 
   sideEl.innerHTML = "";
@@ -1473,21 +1712,21 @@ function renderSide(){
   });
 }
 
-function navButtons(prev=true,next=true,nextLabel="Continue"){
+function navButtons(prev=true,next=true,nextLabelKey="nav.continue"){
   const wrap = document.createElement("div");
   wrap.className = "btns";
   if(prev){
     const b = document.createElement("button");
-    b.textContent = "Back";
+    b.textContent = t("nav.back");
     b.className = "ghost";
-    b.addEventListener("click", ()=> setStep(state.step-1));
+    b.addEventListener("click", ()=> setStep(prevStep(state.step)));
     wrap.appendChild(b);
   }
   if(next){
     const b = document.createElement("button");
-    b.textContent = nextLabel;
+    b.textContent = t(nextLabelKey);
     b.className = "primary";
-    b.addEventListener("click", ()=> setStep(state.step+1));
+    b.addEventListener("click", ()=> setStep(nextStep(state.step)));
     wrap.appendChild(b);
   }
   return wrap;
@@ -1497,28 +1736,31 @@ function navButtons(prev=true,next=true,nextLabel="Continue"){
    ===== TAB RENDERERS (DIVIDED BY TAB) =====
    ========================================================= */
 
-/* ===== TAB 0: ACCOUNT ===== */
-function renderAccount(){
+/* ===== TAB 0: ACCOUNT / HEALTH PROFILE ===== */
+function mountAccountForm(parent, options = {}){
+  const { showWelcome = true, readOnlyEmail = false, inModal = false } = options;
   const flags = safetyFlags();
+  const emailVal = readOnlyEmail && AUTH_EMAIL ? AUTH_EMAIL : (state.account.email || "");
   const s1 = document.createElement("div");
-  s1.className="section";
+  s1.className = "section";
   s1.innerHTML = `
-    <div class="tagline">
-      <strong>Welcome</strong>   personalized guidance based on medications, symptoms, and outcomes.
-    </div>
-
-    <div style="height:12px"></div>
+    ${showWelcome ? `
+      <div class="tagline">
+        <strong>${escapeHtml(t("account.welcome"))}</strong> ${escapeHtml(t("account.welcome_sub"))}
+      </div>
+      <div style="height:12px"></div>
+    ` : ``}
 
     <div class="row">
       <div class="col">
-        <label>Email</label>
-        <input id="email" placeholder="name@email.com" value="${escapeHtml(state.account.email||"")}" />
+        <label>${escapeHtml(t("account.email"))}</label>
+        <input id="email" placeholder="${escapeHtml(t("account.email_placeholder"))}" value="${escapeHtml(emailVal)}" ${readOnlyEmail ? "readonly disabled" : ""} />
       </div>
       <div class="col">
-        <label>Consent</label>
+        <label>${escapeHtml(t("account.consent"))}</label>
         <select id="consent">
-          <option value="no" ${state.account.consent? "": "selected"}>Not yet</option>
-          <option value="yes" ${state.account.consent? "selected": ""}>I agree</option>
+          <option value="no" ${state.account.consent? "": "selected"}>${escapeHtml(t("common.not_yet"))}</option>
+          <option value="yes" ${state.account.consent? "selected": ""}>${escapeHtml(t("common.agree"))}</option>
         </select>
       </div>
     </div>
@@ -1527,24 +1769,24 @@ function renderAccount(){
 
     <div class="row">
       <div class="col">
-        <label>Age</label>
-        <input id="age" type="number" min="0" max="120" placeholder="e.g., 42" value="${escapeHtml(state.profile.age || "")}" />
+        <label>${escapeHtml(t("account.age"))}</label>
+        <input id="age" type="number" min="0" max="120" placeholder="${escapeHtml(t("account.age_placeholder"))}" value="${escapeHtml(state.profile.age || "")}" />
       </div>
       <div class="col">
-        <label>Gender</label>
+        <label>${escapeHtml(t("account.gender"))}</label>
         <select id="gender">
-          <option value="">Select…</option>
-          <option value="Female" ${state.profile.gender==="Female"?"selected":""}>Female</option>
-          <option value="Male" ${state.profile.gender==="Male"?"selected":""}>Male</option>
-          <option value="Non-binary" ${state.profile.gender==="Non-binary"?"selected":""}>Non-binary</option>
-          <option value="Prefer not to say" ${state.profile.gender==="Prefer not to say"?"selected":""}>Prefer not to say</option>
+          <option value="">${escapeHtml(t("common.select"))}</option>
+          <option value="Female" ${state.profile.gender==="Female"?"selected":""}>${escapeHtml(t("gender.female"))}</option>
+          <option value="Male" ${state.profile.gender==="Male"?"selected":""}>${escapeHtml(t("gender.male"))}</option>
+          <option value="Non-binary" ${state.profile.gender==="Non-binary"?"selected":""}>${escapeHtml(t("gender.non_binary"))}</option>
+          <option value="Prefer not to say" ${state.profile.gender==="Prefer not to say"?"selected":""}>${escapeHtml(t("gender.prefer_not"))}</option>
         </select>
       </div>
       <div class="col">
-        <label>Pregnant / breastfeeding</label>
+        <label>${escapeHtml(t("account.pregnant"))}</label>
         <select id="preg">
-          <option value="no" ${!state.profile.pregnant?"selected":""}>No</option>
-          <option value="yes" ${state.profile.pregnant?"selected":""}>Yes</option>
+          <option value="no" ${!state.profile.pregnant?"selected":""}>${escapeHtml(t("common.no"))}</option>
+          <option value="yes" ${state.profile.pregnant?"selected":""}>${escapeHtml(t("common.yes"))}</option>
         </select>
       </div>
     </div>
@@ -1553,52 +1795,84 @@ function renderAccount(){
 
     <div class="row">
       <div class="col">
-        <label>Safety flags (optional)</label>
-        <div class="fineprint">These trigger extra safety notes on Results.</div>
+        <label>${escapeHtml(t("account.safety_flags"))}</label>
+        <div class="fineprint">${escapeHtml(t("account.safety_flags_hint"))}</div>
         <div class="chips" style="margin-top:10px">
-          <div class="chip" id="kidneyChip" aria-pressed="${state.profile.kidneyDisease?"true":"false"}">Kidney disease</div>
-          <div class="chip" id="antiChip" aria-pressed="${state.profile.anticoagulants?"true":"false"}">Anticoagulants / blood thinners</div>
+          <div class="chip" id="kidneyChip" aria-pressed="${state.profile.kidneyDisease?"true":"false"}">${escapeHtml(t("account.chip.kidney"))}</div>
+          <div class="chip" id="antiChip" aria-pressed="${state.profile.anticoagulants?"true":"false"}">${escapeHtml(t("account.chip.anticoag"))}</div>
         </div>
       </div>
     </div>
 
     ${flags.length ? `
       <div class="banner">
-        <strong>Safety note:</strong> You selected ${escapeHtml(flags.join(", "))}.
-        Recommendations are educational and should be confirmed with a clinician.
+        <strong>${escapeHtml(t("account.banner_title"))}</strong> ${escapeHtml(t("account.banner_body", { flags: flags.join(", ") }))}
       </div>
     ` : ``}
 
     <div class="fineprint" style="margin-top:10px">
-      Prototype note: stores data in your browser (localStorage) for now.
+      ${escapeHtml(t(readOnlyEmail ? "account.saved_note" : "account.prototype_note"))}
     </div>
   `;
 
   function commit(){
-    state.account.email = s1.querySelector("#email").value.trim();
-    state.account.consent = s1.querySelector("#consent").value==="yes";
+    if (!readOnlyEmail) {
+      state.account.email = s1.querySelector("#email").value.trim();
+    } else if (AUTH_EMAIL) {
+      state.account.email = AUTH_EMAIL;
+    }
+    state.account.consent = s1.querySelector("#consent").value === "yes";
     const ageVal = parseInt(s1.querySelector("#age").value || "", 10);
     state.profile.age = Number.isFinite(ageVal) ? String(ageVal) : "";
     state.profile.gender = s1.querySelector("#gender").value || "";
-    state.profile.pregnant = s1.querySelector("#preg").value==="yes";
-    save();
+    state.profile.pregnant = s1.querySelector("#preg").value === "yes";
   }
-  ["#email","#consent","#age","#gender","#preg"].forEach(sel=>{
+
+  function persistAccountChange(){
+    commit();
+    if (inModal) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      scheduleBackendSave();
+      renderPills();
+      renderSummaryTop();
+      renderSide();
+    } else {
+      save();
+    }
+  }
+
+  ["#consent","#age","#gender","#preg"].forEach(sel=>{
     const el = s1.querySelector(sel);
-    const ev = (sel==="#email" || sel==="#age") ? "input" : "change";
-    el.addEventListener(ev, commit);
-    el.addEventListener("blur", commit);
+    const ev = sel === "#age" ? "input" : "change";
+    el.addEventListener(ev, persistAccountChange);
+    el.addEventListener("blur", persistAccountChange);
   });
+  if (!readOnlyEmail) {
+    const emailEl = s1.querySelector("#email");
+    emailEl.addEventListener("input", persistAccountChange);
+    emailEl.addEventListener("blur", persistAccountChange);
+  }
 
   s1.querySelector("#kidneyChip").addEventListener("click", ()=>{
-    state.profile.kidneyDisease = !state.profile.kidneyDisease; save(); showToast("Saved ✓");
+    state.profile.kidneyDisease = !state.profile.kidneyDisease;
+    s1.querySelector("#kidneyChip").setAttribute("aria-pressed", state.profile.kidneyDisease ? "true" : "false");
+    persistAccountChange();
+    toastT("toast.saved");
   });
   s1.querySelector("#antiChip").addEventListener("click", ()=>{
-    state.profile.anticoagulants = !state.profile.anticoagulants; save(); showToast("Saved ✓");
+    state.profile.anticoagulants = !state.profile.anticoagulants;
+    s1.querySelector("#antiChip").setAttribute("aria-pressed", state.profile.anticoagulants ? "true" : "false");
+    persistAccountChange();
+    toastT("toast.saved");
   });
 
-  mainEl.appendChild(s1);
-  mainEl.appendChild(navButtons(false,true,"Continue"));
+  parent.appendChild(s1);
+  return commit;
+}
+
+function renderAccount(){
+  mountAccountForm(mainEl, { showWelcome: true, readOnlyEmail: false });
+  mainEl.appendChild(navButtons(false, true, "nav.continue"));
 }
 
 /* ===== TAB 1: MEDICATIONS ===== */
@@ -1607,8 +1881,8 @@ function renderMeds(){
   s1.className="section";
   s1.innerHTML = `
     <div class="tagline">
-      <strong>Medications</strong><br>
-      Pick from common medications, or search + add your own if it’s not listed.
+      <strong>${escapeHtml(t("meds.title"))}</strong><br>
+      ${escapeHtml(t("meds.sub"))}
     </div>
 
     <div id="covWrap"></div>
@@ -1617,54 +1891,54 @@ function renderMeds(){
 
     <div class="medRow">
       <div class="col">
-        <label>Search medications</label>
-        <input id="medSearch" placeholder="Type to filter (e.g., metformin, semaglutide…)" />
+        <label>${escapeHtml(t("meds.search"))}</label>
+        <input id="medSearch" placeholder="${escapeHtml(t("meds.search_placeholder"))}" />
       </div>
 
       <div class="col">
-        <label>Medication list</label>
+        <label>${escapeHtml(t("meds.list"))}</label>
         <select id="medPick">
-          <option value="">Select…</option>
+          <option value="">${escapeHtml(t("common.select"))}</option>
         </select>
       </div>
 
       <div class="col">
-        <label>Dose</label>
+        <label>${escapeHtml(t("meds.dose"))}</label>
         <select id="dosePick">
-          <option value="low">Low</option>
-          <option value="medium" selected>Medium</option>
-          <option value="high">High</option>
+          <option value="low">${escapeHtml(t("dose.low"))}</option>
+          <option value="medium" selected>${escapeHtml(t("dose.medium"))}</option>
+          <option value="high">${escapeHtml(t("dose.high"))}</option>
         </select>
       </div>
 
       <div class="col">
-        <label>Duration (months)</label>
-        <input id="durPick" type="number" min="0" max="360" placeholder="e.g., 18" value="12" />
+        <label>${escapeHtml(t("meds.duration"))}</label>
+        <input id="durPick" type="number" min="0" max="360" placeholder="${escapeHtml(t("meds.duration_placeholder"))}" value="12" />
       </div>
     </div>
 
     <div class="hint">
-      Not seeing your medication? Type it below and add it as a custom medication (evidence will be “Pending” until mapped).
+      ${escapeHtml(t("meds.custom_hint"))}
     </div>
 
     <div class="row" style="margin-top:10px">
       <div class="col">
-        <label>Add custom medication</label>
-        <input id="medCustom" placeholder="Type medication name (e.g., 'Spironolactone')" />
+        <label>${escapeHtml(t("meds.add_custom"))}</label>
+        <input id="medCustom" placeholder="${escapeHtml(t("meds.custom_placeholder"))}" />
       </div>
       <div class="col" style="max-width:260px">
         <label>&nbsp;</label>
-        <button class="ghost" id="btnAddCustom" style="width:100%">Add custom + add to my list</button>
+        <button class="ghost" id="btnAddCustom" style="width:100%">${escapeHtml(t("meds.add_custom_btn"))}</button>
       </div>
     </div>
 
     <div class="btns">
-      <button class="primary" id="btnAddMed">Add medication</button>
-      <button class="ghost" id="btnNoMeds">I do not take any medications right now</button>
+      <button class="primary" id="btnAddMed">${escapeHtml(t("meds.add_btn"))}</button>
+      <button class="ghost" id="btnNoMeds">${escapeHtml(t("meds.no_meds_btn"))}</button>
     </div>
 
     <div class="fineprint" style="margin-top:10px">
-      Tip: If you do not take medications, use the symptom-only button above. GeneoRx can still suggest nutrient support from symptoms alone.
+      ${escapeHtml(t("meds.tip"))}
     </div>
   `;
   mainEl.appendChild(s1);
@@ -1685,7 +1959,7 @@ function renderMeds(){
     const f = (filterText||"").trim().toLowerCase();
     const list = sortedMedList().filter(m => !f || m.name.toLowerCase().includes(f) || m.id.toLowerCase().includes(f));
     const current = medPick.value;
-    medPick.innerHTML = `<option value="">Select…</option>` + list.map(m=>(
+    medPick.innerHTML = `<option value="">${escapeHtml(t("common.select"))}</option>` + list.map(m=>(
       `<option value="${m.id}">${escapeHtml(m.name)}</option>`
     )).join("");
     if(current && list.some(m=>m.id===current)) medPick.value = current;
@@ -1695,8 +1969,8 @@ function renderMeds(){
     const cov = evidenceCoverage();
     covWrap.innerHTML = `
       <div class="covPill">
-        Evidence coverage: <strong>${cov.evidenceCount}/${cov.selectedCount}</strong>
-        <span style="opacity:.9">(${cov.selectedCount ? "mapped meds show citations" : "add meds to see coverage"})</span>
+        ${escapeHtml(t("meds.coverage"))} <strong>${cov.evidenceCount}/${cov.selectedCount}</strong>
+        <span style="opacity:.9">(${escapeHtml(cov.selectedCount ? t("meds.coverage_mapped") : t("meds.coverage_add"))})</span>
       </div>
     `;
   }
@@ -1704,7 +1978,7 @@ function renderMeds(){
   function drawList(){
     medList.innerHTML = "";
     if(!state.meds.length){
-      medList.innerHTML = `<div class="fineprint">No medications added yet.</div>`;
+      medList.innerHTML = `<div class="fineprint">${escapeHtml(t("meds.none_yet"))}</div>`;
       drawCoverage();
       return;
     }
@@ -1714,12 +1988,12 @@ function renderMeds(){
       div.className="item";
       div.innerHTML = `
         <div class="k">${escapeHtml(med?med.name:m.medId)}</div>
-        <div class="v">Dose: <strong>${escapeHtml(m.dose)}</strong> • Duration: <strong>${escapeHtml(String(m.durationMonths||0))} months</strong></div>
-        <div class="btns"><button class="danger" data-del="${idx}">Remove</button></div>
+        <div class="v">${escapeHtml(t("meds.dose_label"))} <strong>${escapeHtml(doseLabel(m.dose))}</strong> • ${escapeHtml(t("meds.duration_label"))} <strong>${escapeHtml(String(m.durationMonths||0))} ${escapeHtml(t("meds.duration_months"))}</strong></div>
+        <div class="btns"><button class="danger" data-del="${idx}">${escapeHtml(t("meds.remove"))}</button></div>
       `;
       div.querySelector("[data-del]").addEventListener("click", ()=>{
         state.meds.splice(idx,1);
-        save(); showToast("Removed ✓");
+        save(); toastT("toast.removed");
       });
       medList.appendChild(div);
     });
@@ -1747,7 +2021,7 @@ function renderMeds(){
 
   s1.querySelector("#btnAddCustom").addEventListener("click", ()=>{
     const name = (medCustom.value||"").trim();
-    if(!name) return alert("Please type a medication name first.");
+    if(!name) return alertT("meds.alert_name");
     const id = slugifyMedicationName(name);
 
     const existing = MED_DB.find(m =>
@@ -1771,27 +2045,27 @@ function renderMeds(){
     populateSelect(medSearch.value);
     medPick.value = useId;
     medCustom.value = "";
-    save(); showToast("Added custom ✓");
+    save(); toastT("toast.custom_med_added");
   });
 
   s1.querySelector("#btnAddMed").addEventListener("click", ()=>{
     const ok = addFromPickerIfValid();
-    if(!ok) return alert("Please select a medication (or add a custom one) first.");
+    if(!ok) return alertT("meds.alert_select");
     state.symptomOnlyMode = false;
-    save(); showToast("Added ✓");
+    save(); toastT("toast.added");
   });
 
   s1.querySelector("#btnNoMeds").addEventListener("click", ()=>{
     state.meds = [];
     state.symptomOnlyMode = true;
     save();
-    showToast("Symptom-only mode enabled ✓");
+    toastT("toast.symptom_only");
   });
 
   medSearch.addEventListener("input", ()=> populateSelect(medSearch.value));
   populateSelect(""); drawList(); drawCoverage();
 
-  const nav = navButtons(true,true,"Continue");
+  const nav = navButtons(true,true,"nav.continue");
   nav.querySelector(".primary").addEventListener("click", ()=>{
     save();
     setStep(2);
@@ -1807,25 +2081,25 @@ function renderSymptoms(){
   s1.innerHTML = `
     <div class="row">
       <div class="col" style="min-width:360px">
-        <label>Select symptoms</label>
-        <div class="fineprint">Choose what you’ve noticed recently. If you do not see your symptom, type your own below.</div>
+        <label>${escapeHtml(t("symptoms.select"))}</label>
+        <div class="fineprint">${escapeHtml(t("symptoms.select_hint"))}</div>
         <div class="chips" id="chips"></div>
-        <div class="btns"><button class="ghost" id="clear">Clear</button></div>
+        <div class="btns"><button class="ghost" id="clear">${escapeHtml(t("symptoms.clear"))}</button></div>
         <div class="divider"></div>
-        <label>Add your own symptom</label>
+        <label>${escapeHtml(t("symptoms.add_custom"))}</label>
         <div class="row">
-          <div class="col"><input id="customSymptom" placeholder="Type your symptom here" /></div>
-          <div class="col" style="max-width:220px"><button class="primary" id="addCustomSymptom" style="width:100%">Add symptom</button></div>
+          <div class="col"><input id="customSymptom" placeholder="${escapeHtml(t("symptoms.custom_placeholder"))}" /></div>
+          <div class="col" style="max-width:220px"><button class="primary" id="addCustomSymptom" style="width:100%">${escapeHtml(t("symptoms.add_btn"))}</button></div>
         </div>
-        <div class="fineprint" style="margin-top:8px">Custom symptoms are saved and included in your results.</div>
+        <div class="fineprint" style="margin-top:8px">${escapeHtml(t("symptoms.custom_saved_hint"))}</div>
       </div>
 
       <div class="col" style="max-width:320px">
-        <label>Severity</label>
+        <label>${escapeHtml(t("symptoms.severity"))}</label>
         <select id="sevSel">
-          <option value="mild" ${state.symptoms.severity==="mild"?"selected":""}>Mild</option>
-          <option value="moderate" ${state.symptoms.severity==="moderate"?"selected":""}>Moderate</option>
-          <option value="severe" ${state.symptoms.severity==="severe"?"selected":""}>Severe</option>
+          <option value="mild" ${state.symptoms.severity==="mild"?"selected":""}>${escapeHtml(t("symptoms.severity.mild"))}</option>
+          <option value="moderate" ${state.symptoms.severity==="moderate"?"selected":""}>${escapeHtml(t("symptoms.severity.moderate"))}</option>
+          <option value="severe" ${state.symptoms.severity==="severe"?"selected":""}>${escapeHtml(t("symptoms.severity.severe"))}</option>
         </select>
       </div>
     </div>
@@ -1845,7 +2119,7 @@ function renderSymptoms(){
         const i = state.symptoms.selected.indexOf(sym);
         if(i>=0) state.symptoms.selected.splice(i,1);
         else state.symptoms.selected.push(sym);
-        save(); showToast("Saved ✓");
+        save(); toastT("toast.saved");
       });
       chipsEl.appendChild(c);
     });
@@ -1854,15 +2128,15 @@ function renderSymptoms(){
 
   s1.querySelector("#clear").addEventListener("click", ()=>{
     state.symptoms.selected = [];
-    save(); showToast("Cleared ✓");
+    save(); toastT("toast.cleared");
   });
 
   s1.querySelector("#addCustomSymptom").addEventListener("click", ()=>{
     const input = s1.querySelector("#customSymptom");
-    if(!addCustomSymptom(input.value)) return alert("Please type a symptom first.");
+    if(!addCustomSymptom(input.value)) return alertT("symptoms.alert_type");
     input.value = "";
     save();
-    showToast("Custom symptom added ✓");
+    toastT("toast.custom_added");
   });
 
   s1.querySelector("#customSymptom").addEventListener("keydown", (e)=>{
@@ -1872,10 +2146,10 @@ function renderSymptoms(){
     }
   });
 
-  const nav = navButtons(true,true,"Continue");
+  const nav = navButtons(true,true,"nav.continue");
   nav.querySelector(".primary").addEventListener("click", ()=>{
     state.symptoms.severity = s1.querySelector("#sevSel").value;
-    save(); showToast("Saved ✓");
+    save(); toastT("toast.saved");
     setStep(3);
   });
   mainEl.appendChild(nav);
@@ -1886,25 +2160,19 @@ function renderWellbeing(){
   const s1 = document.createElement("div");
   s1.className="section";
   s1.innerHTML = `
-    <div class="fineprint">Set a baseline so GeneoRx can clearly show improvement over time.</div>
-    <div style="height:10px"></div>
-
-    <div class="row">
-      <div class="col"><label>Energy (0–10)</label><input id="energy" type="number" min="0" max="10" value="${state.wellbeingBaseline.energy}" /></div>
-      <div class="col"><label>Mood (0–10)</label><input id="mood" type="number" min="0" max="10" value="${state.wellbeingBaseline.mood}" /></div>
-      <div class="col"><label>Sleep (0–10)</label><input id="sleep" type="number" min="0" max="10" value="${state.wellbeingBaseline.sleep}" /></div>
-      <div class="col"><label>Focus (0–10)</label><input id="focus" type="number" min="0" max="10" value="${state.wellbeingBaseline.focus}" /></div>
-    </div>
+    <div class="fineprint">${escapeHtml(t("wellbeing.baseline_hint"))}</div>
+    <div style="height:14px"></div>
+    ${renderWellbeingScoreGrid(state.wellbeingBaseline, "")}
   `;
+  wireWellbeingScorePickers(s1);
   mainEl.appendChild(s1);
 
-  const nav = navButtons(true,true,"Continue");
+  const nav = navButtons(true,true,"nav.continue");
   nav.querySelector(".primary").addEventListener("click", ()=>{
-    state.wellbeingBaseline.energy = clamp(parseInt(s1.querySelector("#energy").value||"0",10),0,10);
-    state.wellbeingBaseline.mood = clamp(parseInt(s1.querySelector("#mood").value||"0",10),0,10);
-    state.wellbeingBaseline.sleep = clamp(parseInt(s1.querySelector("#sleep").value||"0",10),0,10);
-    state.wellbeingBaseline.focus = clamp(parseInt(s1.querySelector("#focus").value||"0",10),0,10);
-    save(); showToast("Baseline saved ✓");
+    Object.assign(state.wellbeingBaseline, readWellbeingScores({
+      energy: "energy", mood: "mood", sleep: "sleep", focus: "focus",
+    }));
+    save(); toastT("toast.baseline_saved");
     setStep(4);
   });
   mainEl.appendChild(nav);
@@ -1930,15 +2198,15 @@ function renderResults(){
       <div class="coachTitle">
         <div class="spark">✦</div>
         <div>
-          <div style="font-weight:950">AI Coach</div>
-          <div class="fineprint">Personalized guidance based on your inputs + check-ins.</div>
+          <div style="font-weight:950">${escapeHtml(t("results.coach_title"))}</div>
+          <div class="fineprint">${escapeHtml(t("results.coach_sub"))}</div>
         </div>
       </div>
       <div style="height:10px"></div>
       <div class="v"><strong>${escapeHtml(coach.headline)}</strong></div>
       <div class="fineprint" style="margin-top:8px">${coach.bullets.map(x=>`• ${escapeHtml(x)}`).join("<br>")}</div>
       <div class="divider"></div>
-      <div class="v"><strong>Next best action:</strong> ${escapeHtml(coach.nextBestAction)}</div>
+      <div class="v"><strong>${escapeHtml(t("results.next_best_action"))}</strong> ${escapeHtml(coach.nextBestAction)}</div>
     </div>
   `;
   mainEl.appendChild(s0);
@@ -1947,15 +2215,14 @@ function renderResults(){
   s1.className="section";
   s1.innerHTML = `
     <div class="tagline">
-      <strong>Your Results</strong><br>
-      Nutrient signals are estimated from medications (evidence-linked) + symptoms.
-      <div class="fineprint" style="margin-top:8px">Evidence coverage: <strong>${cov.evidenceCount}/${cov.selectedCount}</strong></div>
+      <strong>${escapeHtml(t("results.title"))}</strong><br>
+      ${escapeHtml(t("results.sub"))}
+      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("results.evidence_coverage"))} <strong>${cov.evidenceCount}/${cov.selectedCount}</strong></div>
     </div>
 
     ${flags.length ? `
       <div class="banner">
-        <strong>Safety note:</strong> You selected ${escapeHtml(flags.join(", "))}.
-        Confirm supplement choices with your clinician.
+        <strong>${escapeHtml(t("results.banner_title"))}</strong> ${escapeHtml(t("results.banner_body", { flags: flags.join(", ") }))}
       </div>
     ` : ``}
   `;
@@ -1965,7 +2232,7 @@ function renderResults(){
   const contraindications = computeContraindications();
   const topSignal = scores.length ? { nutrient: scores[0][0], score: scores[0][1], tier: tierFromScore(scores[0][1]) } : null;
   const recentSymptoms = state.symptoms.selected.length ? state.symptoms.selected.slice(0,6) : [];
-  const symptomText = recentSymptoms.length ? recentSymptoms.join(', ') : 'no symptoms selected yet';
+  const symptomText = recentSymptoms.length ? recentSymptoms.join(', ') : t("results.no_symptoms_yet");
   const whyReason = topSignal
     ? `Your current pattern may reflect ${topSignal.nutrient} support needs, especially with ${symptomText}.`
     : (state.symptomOnlyMode
@@ -1982,21 +2249,21 @@ function renderResults(){
   sCore.innerHTML = `
     <div class="row">
       <div class="col">
-        <div class="tagline"><strong>Why might I feel this way?</strong><br>GeneoRx explains likely drivers from your medications, symptoms, and nutrient signals.</div>
+        <div class="tagline"><strong>${escapeHtml(t("results.why_title"))}</strong><br>${escapeHtml(t("results.why_sub"))}</div>
         <div style="height:10px"></div>
         <div class="item">
-          <div class="k">Likely explanation</div>
+          <div class="k">${escapeHtml(t("results.likely_explanation"))}</div>
           <div class="v">${escapeHtml(whyReason)}</div>
         </div>
         <div class="item">
-          <div class="k">Current inputs</div>
-          <div class="v">Symptoms: <strong>${escapeHtml(symptomText)}</strong>${topSignal ? `<br>Top signal: <strong>${escapeHtml(topSignal.nutrient)}</strong> (${topSignal.score}% • ${escapeHtml(topSignal.tier)})` : ''}</div>
+          <div class="k">${escapeHtml(t("results.current_inputs"))}</div>
+          <div class="v">${escapeHtml(t("results.symptoms_label"))} <strong>${escapeHtml(symptomText)}</strong>${topSignal ? `<br>${escapeHtml(t("results.top_signal"))} <strong>${escapeHtml(topSignal.nutrient)}</strong> (${topSignal.score}% • ${escapeHtml(tierLabel(topSignal.tier))})` : ''}</div>
         </div>
       </div>
       <div class="col">
-        <div class="tagline"><strong>What should I discuss with my doctor?</strong><br>Bring these points to your next visit so the conversation is focused and useful.</div>
+        <div class="tagline"><strong>${escapeHtml(t("results.doctor_title"))}</strong><br>${escapeHtml(t("results.doctor_sub"))}</div>
         <div style="height:10px"></div>
-        <div class="list">${doctorTopics.length ? doctorTopics.map((x,i) => `<div class="item"><div class="k">Topic ${i+1}</div><div class="v">${escapeHtml(x)}</div></div>`).join('') : `<div class="fineprint">Add symptoms, medications, or safety flags to generate clinician discussion prompts.</div>`}</div>
+        <div class="list">${doctorTopics.length ? doctorTopics.map((x,i) => `<div class="item"><div class="k">${escapeHtml(t("results.topic"))} ${i+1}</div><div class="v">${escapeHtml(x)}</div></div>`).join('') : `<div class="fineprint">${escapeHtml(t("results.doctor_empty"))}</div>`}</div>
       </div>
     </div>`;
   mainEl.appendChild(sCore);
@@ -2004,21 +2271,21 @@ function renderResults(){
   const sAction = document.createElement("div");
   sAction.className="section";
   sAction.innerHTML = `
-    <div class="tagline"><strong>What should I do today?</strong><br>GeneoRx turns your inputs into a simple daily action plan.</div>
+    <div class="tagline"><strong>${escapeHtml(t("results.action_title"))}</strong><br>${escapeHtml(t("results.action_sub"))}</div>
     <div style="height:10px"></div>
     <div class="list">
-      <div class="item"><div class="k">1. Start with one action</div><div class="v">${topSignal ? `Focus on your <strong>${escapeHtml(topSignal.nutrient)}</strong> signal first instead of trying to change everything at once.` : `Log more symptoms or medications so GeneoRx can personalize your plan.`}</div></div>
-      <div class="item"><div class="k">2. Follow your routine</div><div class="v">Use the Morning / Midday / Night routine below and keep it simple enough to repeat daily.</div></div>
-      <div class="item"><div class="k">3. Track what changes</div><div class="v">Use weekly check-ins to watch energy, mood, sleep, focus, and your main symptoms over time.</div></div>
-      <div class="item"><div class="k">4. Prepare for your clinician</div><div class="v">Use Your doctor visit Snapshot to bring a clean summary of symptoms, risks, and possible labs.</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.action1_title"))}</div><div class="v">${topSignal ? `Focus on your <strong>${escapeHtml(topSignal.nutrient)}</strong> signal first instead of trying to change everything at once.` : `Log more symptoms or medications so GeneoRx can personalize your plan.`}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.action2_title"))}</div><div class="v">${escapeHtml(t("results.action2_body"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.action3_title"))}</div><div class="v">${escapeHtml(t("results.action3_body"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.action4_title"))}</div><div class="v">${escapeHtml(t("results.action4_body"))}</div></div>
     </div>`;
   mainEl.appendChild(sAction);
 
   const sInsightBtn = document.createElement("div");
   sInsightBtn.className = "section";
   sInsightBtn.innerHTML = `
-    <div class="tagline"><strong>GeneoRx Insight</strong><br>Your AI-style summary is available in a focused popup so the Results tab stays clean.</div>
-    <div class="btns"><button class="primary" id="openInsightBtn">Reveal My GeneoRx Insight</button></div>
+    <div class="tagline"><strong>${escapeHtml(t("results.insight_title"))}</strong><br>${escapeHtml(t("results.insight_sub"))}</div>
+    <div class="btns"><button class="primary" id="openInsightBtn">${escapeHtml(t("results.insight_btn"))}</button></div>
   `;
   mainEl.appendChild(sInsightBtn);
   sInsightBtn.querySelector("#openInsightBtn").addEventListener("click", openInsightModal);
@@ -2030,31 +2297,31 @@ function renderResults(){
   const sPatterns = document.createElement("div");
   sPatterns.className = "section";
   sPatterns.innerHTML = `
-    <div class="tagline"><strong>Detected Patterns</strong><br>GeneoRx looks for medication, symptom, and timeline patterns.</div>
+    <div class="tagline"><strong>${escapeHtml(t("results.patterns_title"))}</strong><br>${escapeHtml(t("results.patterns_sub"))}</div>
     <div style="height:10px"></div>
     <div class="item">
-      <div class="k">Detected patterns</div>
+      <div class="k">${escapeHtml(t("results.patterns_detected"))}</div>
       <div class="v">${patterns.length
         ? `<strong>${escapeHtml(patterns[0].title)}</strong><br>${escapeHtml(patterns[0].note)}`
-        : 'No strong patterns detected yet. Add more medications, symptoms, or check-ins.'}</div>
+        : escapeHtml(t("results.patterns_none"))}</div>
     </div>
   `;
   mainEl.appendChild(sPatterns);
 
   const improveText = success.score >= 75
-    ? 'Stay consistent and continue monitoring to confirm progress.'
+    ? t("results.improve_high")
     : success.score >= 50
-      ? 'Improve adherence and keep tracking weekly to raise confidence.'
-      : 'Review symptoms, side effects, and possible depletion patterns with your doctor.';
+      ? t("results.improve_mid")
+      : t("results.improve_low");
   const scoreCls = success.score >= 75 ? 'scoreHigh' : (success.score >= 50 ? 'scoreMod' : 'scoreLow');
 
   const sAdvanced = document.createElement("div");
   sAdvanced.className = "section";
   sAdvanced.innerHTML = `
     <div class="metricGrid">
-      <div class="metricCard"><div class="k">Medication Success Probability</div><div style="display:flex;align-items:center;gap:12px;margin-top:8px"><div class="scoreBadge ${scoreCls}">${success.score}%</div><div><strong>${escapeHtml(success.level)}</strong><br><span class="fineprint">${escapeHtml(success.reason)}</span></div></div></div>
-      <div class="metricCard"><div class="k">Population insights</div><div class="v"><span class="fineprint">${escapeHtml(population.message)}</span><br>${population.trackedSymptoms.length ? `Frequently tracked: <strong>${escapeHtml(population.trackedSymptoms.join(', '))}</strong>` : '<span style="font-size:12px;opacity:.75">Track more check-ins to unlock trends.</span>'}</div></div>
-      <div class="metricCard"><div class="k">What may improve success</div><div class="v"><span class="fineprint">${escapeHtml(improveText)}</span></div></div>
+      <div class="metricCard"><div class="k">${escapeHtml(t("results.success_prob"))}</div><div style="display:flex;align-items:center;gap:12px;margin-top:8px"><div class="scoreBadge ${scoreCls}">${success.score}%</div><div><strong>${escapeHtml(success.level)}</strong><br><span class="fineprint">${escapeHtml(success.reason)}</span></div></div></div>
+      <div class="metricCard"><div class="k">${escapeHtml(t("results.population"))}</div><div class="v"><span class="fineprint">${escapeHtml(population.message)}</span><br>${population.trackedSymptoms.length ? `${escapeHtml(t("results.population_tracked"))} <strong>${escapeHtml(population.trackedSymptoms.join(', '))}</strong>` : `<span style="font-size:12px;opacity:.75">${escapeHtml(t("results.population_unlock"))}</span>`}</div></div>
+      <div class="metricCard"><div class="k">${escapeHtml(t("results.improve_success"))}</div><div class="v"><span class="fineprint">${escapeHtml(improveText)}</span></div></div>
     </div>
   `;
   mainEl.appendChild(sAdvanced);
@@ -2064,14 +2331,14 @@ function renderResults(){
   sSafety.innerHTML = `
     <div class="row">
       <div class="col">
-        <div class="tagline"><strong>Stronger drug interaction intelligence</strong><br>These combinations deserve closer review because they can increase side effects, lab needs, or adherence burden.</div>
+        <div class="tagline"><strong>${escapeHtml(t("results.interactions_title"))}</strong><br>${escapeHtml(t("results.interactions_sub"))}</div>
         <div style="height:10px"></div>
-        ${interactions.length ? interactions.map(x=>`<div class="alertBox ${levelClass(x.level)}"><div class="k">${escapeHtml(x.level)} priority</div><div class="v"><strong>${escapeHtml(x.title)}</strong><br>${escapeHtml(x.note)}<br><span class="fineprint">${escapeHtml(x.action)}</span></div></div>`).join('<div style="height:10px"></div>') : '<div class="fineprint">No interaction alerts triggered from your current entries.</div>'}
+        ${interactions.length ? interactions.map(x=>`<div class="alertBox ${levelClass(x.level)}"><div class="k">${escapeHtml(x.level)} ${escapeHtml(t("results.priority"))}</div><div class="v"><strong>${escapeHtml(x.title)}</strong><br>${escapeHtml(x.note)}<br><span class="fineprint">${escapeHtml(x.action)}</span></div></div>`).join('<div style="height:10px"></div>') : `<div class="fineprint">${escapeHtml(t("results.interactions_none"))}</div>`}
       </div>
       <div class="col">
-        <div class="tagline"><strong>Contraindications & cautions</strong><br>GeneoRx flags safety questions that are worth discussing with your clinician.</div>
+        <div class="tagline"><strong>${escapeHtml(t("results.contraindications_title"))}</strong><br>${escapeHtml(t("results.contraindications_sub"))}</div>
         <div style="height:10px"></div>
-        ${contraindications.length ? contraindications.map(x=>`<div class="alertBox ${levelClass(x.level)}"><div class="k">${escapeHtml(x.level)} priority</div><div class="v"><strong>${escapeHtml(x.title)}</strong><br>${escapeHtml(x.note)}<br><span class="fineprint">${escapeHtml(x.action)}</span></div></div>`).join('<div style="height:10px"></div>') : '<div class="fineprint">No contraindication alerts triggered from your current entries.</div>'}
+        ${contraindications.length ? contraindications.map(x=>`<div class="alertBox ${levelClass(x.level)}"><div class="k">${escapeHtml(x.level)} ${escapeHtml(t("results.priority"))}</div><div class="v"><strong>${escapeHtml(x.title)}</strong><br>${escapeHtml(x.note)}<br><span class="fineprint">${escapeHtml(x.action)}</span></div></div>`).join('<div style="height:10px"></div>') : `<div class="fineprint">${escapeHtml(t("results.contraindications_none"))}</div>`}
       </div>
     </div>
   `;
@@ -2082,14 +2349,14 @@ function renderResults(){
   const sRoutine = document.createElement("div");
   sRoutine.className = "section";
   sRoutine.innerHTML = `
-    <div class="tagline"><strong>My Routine</strong><br>Simple schedule to keep adherence easy.</div>
+    <div class="tagline"><strong>${escapeHtml(t("results.routine_title"))}</strong><br>${escapeHtml(t("results.routine_sub"))}</div>
     <div style="height:10px"></div>
 
     <div class="list">
-      <div class="item"><div class="k">Morning</div><div class="v">${routine.morning.length ? routine.morning.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
-      <div class="item"><div class="k">Midday</div><div class="v">${routine.midday.length ? routine.midday.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
-      <div class="item"><div class="k">Night</div><div class="v">${routine.night.length ? routine.night.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
-      <div class="item"><div class="k">Notes</div><div class="v">${routine.notes.length ? routine.notes.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.routine.morning"))}</div><div class="v">${routine.morning.length ? routine.morning.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.routine.midday"))}</div><div class="v">${routine.midday.length ? routine.midday.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.routine.night"))}</div><div class="v">${routine.night.length ? routine.night.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.routine.notes"))}</div><div class="v">${routine.notes.length ? routine.notes.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
     </div>
   `;
   mainEl.appendChild(sRoutine);
@@ -2105,21 +2372,21 @@ function renderResults(){
       for(const id of (c.citations||[])){
         const t = String(id||"").trim();
         if(!t || seen.has(t)) continue;
-        if(!/^PMID:|^PMCID:/i.test(t)) continue;
+        if(!citationToLink(t)) continue;
         seen.add(t);
         cites.push(t);
       }
     }
     const top = cites.slice(0,2);
-    if(!top.length) return `<div class="fineprint">Citations: Not loaded yet for this nutrient.</div>`;
-    return `<div class="fineprint">Citations:</div><div class="inlineCites">${top.map(x=>renderCitationChip(x)).join("")}</div>`;
+    if(!top.length) return `<div class="fineprint">${escapeHtml(t("results.citations_not_loaded"))}</div>`;
+    return `<div class="fineprint">${escapeHtml(t("results.citations_label"))}</div><div class="inlineCites">${top.map(x=>renderCitationChip(x)).join("")}</div>`;
   }
 
   const tierClass = (tier) => tier==="High" ? "tierHigh" : (tier==="Moderate" ? "tierMod" : "tierLow");
 
   let nutrientHtml = "";
   if(!scores.length){
-    nutrientHtml = `<div class="fineprint">No nutrient signals yet. Add meds and/or symptoms.</div>`;
+    nutrientHtml = `<div class="fineprint">${escapeHtml(t("results.nutrient_none"))}</div>`;
   } else {
     nutrientHtml = scores.slice(0,10).map(([n,score], idx)=>{
       const label = tierFromScore(score);
@@ -2128,13 +2395,13 @@ function renderResults(){
       const evId = `ev_${idx}`;
       const sourceBadge =
         q==="Pending"
-          ? `<div class="sourceBadge pending"><strong>Source quality:</strong> Pending</div>`
-          : `<div class="sourceBadge ${badgeClass(q)}"><strong>Source quality:</strong> ${escapeHtml(q)}</div>`;
+          ? `<div class="sourceBadge pending"><strong>${escapeHtml(t("results.source_quality"))}</strong> ${escapeHtml(tierLabel(q))}</div>`
+          : `<div class="sourceBadge ${badgeClass(q)}"><strong>${escapeHtml(t("results.source_quality"))}</strong> ${escapeHtml(tierLabel(q))}</div>`;
 
       return `
         <div class="item">
           <div class="k">${escapeHtml(n)}</div>
-          <div class="v"><strong>${escapeHtml(label)}</strong> signal (${score}%)</div>
+          <div class="v"><strong>${escapeHtml(tierLabel(label))}</strong> ${escapeHtml(t("results.signal"))} (${score}%)</div>
 
           <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
             ${sourceBadge}
@@ -2143,8 +2410,8 @@ function renderResults(){
           ${topInlineCites(n)}
 
           <div class="evrow">
-            <div class="fineprint">Transparent evidence details</div>
-            <div class="evbtn" data-evbtn="${evId}">Evidence ▾</div>
+            <div class="fineprint">${escapeHtml(t("results.transparent_evidence"))}</div>
+            <div class="evbtn" data-evbtn="${evId}">${escapeHtml(t("results.evidence_toggle"))}</div>
           </div>
           <div class="evidence" id="${evId}" style="display:none">
             ${renderEvidencePanel(n, claimsForNut)}
@@ -2160,37 +2427,37 @@ function renderResults(){
           <div class="item">
             <div class="k">${escapeHtml(r.supplement)}</div>
             <div class="v">
-              <span class="tierPill ${tierClass(r.tier)}">Tier: <strong style="color:var(--txt)">${escapeHtml(r.tier)}</strong></span>
-              <span style="color: var(--muted)"> • driven by ${escapeHtml(r.nutrient)} (${r.score}%)</span>
+              <span class="tierPill ${tierClass(r.tier)}">${escapeHtml(t("results.tier"))} <strong style="color:var(--txt)">${escapeHtml(tierLabel(r.tier))}</strong></span>
+              <span style="color: var(--muted)"> • ${escapeHtml(t("results.driven_by"))} ${escapeHtml(r.nutrient)} (${r.score}%)</span>
             </div>
           </div>
         `).join("")}
       </div>
-      <div class="fineprint" style="margin-top:10px">Educational guidance only. Confirm dosing and labs with clinician.</div>`
-    : `<div class="fineprint">No suggestions yet. Add medications and/or symptoms.</div>`;
+      <div class="fineprint" style="margin-top:10px">${escapeHtml(t("results.supplements_disclaimer"))}</div>`
+    : `<div class="fineprint">${escapeHtml(t("results.supplements_none"))}</div>`;
 
   s2.innerHTML = `
     <div class="row">
       <div class="col">
-        <div class="tagline"><strong>Nutrient signals</strong><br>Text-only nutrient signals with evidence transparency.</div>
+        <div class="tagline"><strong>${escapeHtml(t("results.nutrient_title"))}</strong><br>${escapeHtml(t("results.nutrient_sub"))}</div>
         <div style="height:10px"></div>
         <div class="list">${nutrientHtml}</div>
       </div>
 
       <div class="col">
-        <div class="tagline"><strong>Recommended supplements</strong><br>Supplements appear for High, Moderate, and Low tiers.</div>
+        <div class="tagline"><strong>${escapeHtml(t("results.supplements_title"))}</strong><br>${escapeHtml(t("results.supplements_sub"))}</div>
         <div style="height:10px"></div>
         <div class="item">${supplementsHtml}</div>
 
         <div class="divider"></div>
 
         <div class="item">
-          <div class="k">Start your plan</div>
-          <div class="fineprint">Starting saves the current supplement set so we can track outcomes.</div>
+          <div class="k">${escapeHtml(t("results.start_plan"))}</div>
+          <div class="fineprint">${escapeHtml(t("results.start_plan_hint"))}</div>
           <div style="height:10px"></div>
           <input id="startDate" type="date" />
           <div class="btns">
-            <button class="primary" id="startPlanBtn">${state.plan.started ? "Update plan" : "Start plan"}</button>
+            <button class="primary" id="startPlanBtn">${escapeHtml(state.plan.started ? t("results.update_plan_btn") : t("results.start_plan_btn"))}</button>
           </div>
         </div>
       </div>
@@ -2219,10 +2486,10 @@ function renderResults(){
     state.plan.recommendedSupplements = recNow.map(x => x.supplement);
     state.plan.routine = buildRoutineFromSupplements(state.plan.recommendedSupplements);
     save();
-    showToast("Plan saved ✓");
+    toastT("toast.plan_saved");
   });
 
-  mainEl.appendChild(navButtons(true,true,"Continue"));
+  mainEl.appendChild(navButtons(true,true,"nav.continue"));
 }
 
 /* ===== TAB 5: CHECK-IN ===== */
@@ -2246,19 +2513,19 @@ function renderCheckin(){
   s1.className="section";
   s1.innerHTML = `
     <div class="tagline">
-      <strong>${last ? "Log a new check-in" : "Weekly Check-in"}</strong><br>
-      Track symptom improvement + adherence + wellbeing so GeneoRx can show clear progress.
+      <strong>${escapeHtml(last ? t("checkin.log_new") : t("checkin.weekly_title"))}</strong><br>
+      ${escapeHtml(t("checkin.sub"))}
     </div>
 
     <div style="height:12px"></div>
 
     <div class="row">
       <div class="col">
-        <label>Check-in date</label>
+        <label>${escapeHtml(t("checkin.date"))}</label>
         <input id="ciDate" type="date" />
       </div>
       <div class="col">
-        <label>Adherence (approx %)</label>
+        <label>${escapeHtml(t("checkin.adherence"))}</label>
         <input id="ciAdh" type="number" min="0" max="100" value="${escapeHtml(String(defaultAdh))}" />
       </div>
     </div>
@@ -2272,11 +2539,11 @@ function renderCheckin(){
   const sSupp = document.createElement("div");
   sSupp.className="section";
   sSupp.innerHTML = `
-    <div class="tagline"><strong>Supplements taken</strong><br>Select what you actually took this week.</div>
+    <div class="tagline"><strong>${escapeHtml(t("checkin.supplements_title"))}</strong><br>${escapeHtml(t("checkin.supplements_sub"))}</div>
     <div class="chips" id="suppChips"></div>
     <div class="btns">
-      <button class="ghost" id="suppAll">Select all</button>
-      <button class="ghost" id="suppNone">Clear</button>
+      <button class="ghost" id="suppAll">${escapeHtml(t("checkin.select_all"))}</button>
+      <button class="ghost" id="suppNone">${escapeHtml(t("checkin.clear"))}</button>
     </div>
   `;
   mainEl.appendChild(sSupp);
@@ -2287,7 +2554,7 @@ function renderCheckin(){
   function drawSuppChips(){
     suppChips.innerHTML = "";
     if(!planSupps.length){
-      suppChips.innerHTML = `<div class="fineprint">No plan supplements saved yet. Start your plan on Results first.</div>`;
+      suppChips.innerHTML = `<div class="fineprint">${escapeHtml(t("checkin.supplements_none"))}</div>`;
       return;
     }
     planSupps.forEach(name=>{
@@ -2312,59 +2579,50 @@ function renderCheckin(){
   const sSym = document.createElement("div");
   sSym.className="section";
   sSym.innerHTML = `
-    <div class="tagline"><strong>Symptom improvement</strong><br>Rate each symptom change this week.</div>
+    <div class="tagline"><strong>${escapeHtml(t("checkin.symptom_improvement"))}</strong><br>${escapeHtml(t("checkin.symptom_improvement_sub"))}</div>
     <div class="list" id="symList"></div>
   `;
   mainEl.appendChild(sSym);
 
   const symList = sSym.querySelector("#symList");
-  const IMPACT = ["Worse","No change","Slightly better","Much better","Not present"];
   const impactValue = { "Worse":-2, "No change":0, "Slightly better":1, "Much better":2, "Not present":0 };
+  const lastSymMap = {};
+  if (last?.symptoms?.items?.length) {
+    last.symptoms.items.forEach(it => { if (it?.symptom) lastSymMap[it.symptom] = it; });
+  }
 
-  function symRow(sym, idx){
+  function symRow(sym, idx, prev){
+    const defaultChange = prev?.change && CHECKIN_IMPACT_OPTIONS.includes(prev.change) ? prev.change : "No change";
+    const defaultSev = clamp(parseInt(prev?.severityNow ?? 5, 10), 0, 10);
     const row = document.createElement("div");
-    row.className="item";
+    row.className = "item sym-checkin-item";
     row.innerHTML = `
-      <div class="k">${escapeHtml(sym)}</div>
-      <div class="row">
-        <div class="col">
-          <label>Change</label>
-          <select id="symChange_${idx}">
-            ${IMPACT.map(x=>`<option value="${x}">${x}</option>`).join("")}
-          </select>
-        </div>
-        <div class="col">
-          <label>Severity now (0–10)</label>
-          <input type="number" min="0" max="10" value="5" id="symSev_${idx}" />
-        </div>
-      </div>
+      <div class="sym-checkin-name">${escapeHtml(sym)}</div>
+      ${renderImpactPicker(`symChange_${idx}`, defaultChange)}
+      ${renderWellbeingScoreRow("severity", "checkin.severity_now", `symSev_${idx}`, defaultSev)}
     `;
+    wireImpactPickers(row);
+    wireWellbeingScorePickers(row);
     return row;
   }
 
   const symBase = baseSymptoms.slice(0,10);
-  symBase.forEach((sym, idx)=> symList.appendChild(symRow(sym, idx)));
+  symBase.forEach((sym, idx)=> symList.appendChild(symRow(sym, idx, lastSymMap[sym])));
 
   /* wellbeing */
   const sWell = document.createElement("div");
   sWell.className="section";
   sWell.innerHTML = `
-    <div class="tagline"><strong>Wellbeing this week</strong><br>These values power the “Health Signal”.</div>
-    <div style="height:10px"></div>
-
+    <div class="tagline"><strong>${escapeHtml(t("checkin.wellbeing_title"))}</strong><br>${escapeHtml(t("checkin.wellbeing_sub"))}</div>
+    <div style="height:14px"></div>
+    ${renderWellbeingScoreGrid(defaultWell, "ci")}
+    <div style="height:14px"></div>
     <div class="row">
-      <div class="col"><label>Energy (0–10)</label><input id="ciEnergy" type="number" min="0" max="10" value="${escapeHtml(String(defaultWell.energy ?? 5))}" /></div>
-      <div class="col"><label>Mood (0–10)</label><input id="ciMood" type="number" min="0" max="10" value="${escapeHtml(String(defaultWell.mood ?? 5))}" /></div>
-      <div class="col"><label>Sleep (0–10)</label><input id="ciSleep" type="number" min="0" max="10" value="${escapeHtml(String(defaultWell.sleep ?? 5))}" /></div>
-      <div class="col"><label>Focus (0–10)</label><input id="ciFocus" type="number" min="0" max="10" value="${escapeHtml(String(defaultWell.focus ?? 5))}" /></div>
-    </div>
-
-    <div style="height:10px"></div>
-    <div class="row">
-      <div class="col"><label>Side effects (optional)</label><input id="ciSide" placeholder="e.g., nausea, headache, constipation" /></div>
-      <div class="col"><label>Notes (optional)</label><input id="ciNotes" placeholder="Stress, travel, diet changes, illness..." /></div>
+      <div class="col"><label>${escapeHtml(t("checkin.side_effects"))}</label><input id="ciSide" placeholder="${escapeHtml(t("checkin.side_effects_placeholder"))}" /></div>
+      <div class="col"><label>${escapeHtml(t("checkin.notes"))}</label><input id="ciNotes" placeholder="${escapeHtml(t("checkin.notes_placeholder"))}" /></div>
     </div>
   `;
+  wireWellbeingScorePickers(sWell);
   mainEl.appendChild(sWell);
 
   /* save */
@@ -2372,8 +2630,8 @@ function renderCheckin(){
   sSave.className="section";
   sSave.innerHTML = `
     <div class="btns">
-      <button class="primary" id="ciSave">Save check-in</button>
-      <button class="danger" id="ciDeleteLast">Delete last check-in</button>
+      <button class="primary" id="ciSave">${escapeHtml(t("checkin.save"))}</button>
+      <button class="danger" id="ciDeleteLast">${escapeHtml(t("checkin.delete_last"))}</button>
     </div>
   `;
   mainEl.appendChild(sSave);
@@ -2389,12 +2647,9 @@ function renderCheckin(){
       items.push({ symptom: sym, change, changeScore: impactValue[change] ?? 0, severityNow: sevNow });
     });
 
-    const wellbeing = {
-      energy: clamp(parseInt(document.getElementById("ciEnergy").value || "0", 10), 0, 10),
-      mood: clamp(parseInt(document.getElementById("ciMood").value || "0", 10), 0, 10),
-      sleep: clamp(parseInt(document.getElementById("ciSleep").value || "0", 10), 0, 10),
-      focus: clamp(parseInt(document.getElementById("ciFocus").value || "0", 10), 0, 10),
-    };
+    const wellbeing = readWellbeingScores({
+      energy: "ciEnergy", mood: "ciMood", sleep: "ciSleep", focus: "ciFocus",
+    });
 
     const sideEffects = (document.getElementById("ciSide").value || "").split(",").map(s=>s.trim()).filter(Boolean);
     const notes = (document.getElementById("ciNotes").value || "").trim();
@@ -2403,17 +2658,19 @@ function renderCheckin(){
     state.checkins.push({ dateISO, adherencePct, supplementsTaken:[...taken], wellbeing, symptoms:{items, improvementScore}, sideEffects, notes });
     state.checkins = dedupeCheckins(state.checkins);
     save();
-    showToast(IS_GUEST ? "Check-in saved on this device ✓" : "Check-in saved to your account ✓");
+    toastT(IS_GUEST ? "toast.checkin_guest" : "toast.checkin_saved");
     setStep(6);
+    if (IS_GUEST) pendingSaveAccountAfterFeedback = true;
+    openFeedbackModal();
   });
 
   sSave.querySelector("#ciDeleteLast").addEventListener("click", ()=>{
-    if(!state.checkins.length) return alert("No check-ins to delete.");
+    if(!state.checkins.length) return alertT("checkin.no_delete_alert");
     state.checkins.pop();
-    save(); showToast("Deleted ✓");
+    save(); toastT("toast.deleted");
   });
 
-  mainEl.appendChild(navButtons(true,true,"Continue"));
+  mainEl.appendChild(navButtons(true,true,"nav.continue"));
 }
 
 /* ===== TAB 6: PROGRESS (SNAPSHOT BUTTON LIVES HERE ✅) ===== */
@@ -2426,11 +2683,11 @@ function renderProgress(){
 
   if(!last){
     s1.innerHTML = `
-      <div class="tagline"><strong>Progress</strong><br>No check-ins yet. Log your first check-in to see trends.</div>
-      <div class="btns"><button class="primary" onclick="setStep(5)">Go to Check-in</button></div>
+      <div class="tagline"><strong>${escapeHtml(t("progress.title"))}</strong><br>${escapeHtml(t("progress.no_checkins"))}</div>
+      <div class="btns"><button class="primary" onclick="setStep(5)">${escapeHtml(t("progress.go_checkin"))}</button></div>
     `;
     mainEl.appendChild(s1);
-    mainEl.appendChild(navButtons(true,true,"Continue"));
+    mainEl.appendChild(navButtons(true,true,"nav.continue"));
     return;
   }
 
@@ -2460,8 +2717,8 @@ function renderProgress(){
       <div class="coachTitle">
         <div class="spark">✦</div>
         <div>
-          <div style="font-weight:950">Weekly Health Signal</div>
-          <div class="fineprint">This answers: “Is what I’m doing actually helping?”</div>
+          <div style="font-weight:950">${escapeHtml(t("progress.weekly_signal"))}</div>
+          <div class="fineprint">${escapeHtml(t("progress.weekly_sub"))}</div>
         </div>
       </div>
 
@@ -2474,9 +2731,8 @@ function renderProgress(){
       <div class="divider"></div>
 
       <div class="btns">
-        <!-- ✅ HERE IT IS -->
-        <button class="primary" id="btnSnapshot">Generate Your doctor visit Snapshot</button>
-        <button class="ghost" id="btnAnother">Add another check-in</button>
+        <button class="primary" id="btnSnapshot">${escapeHtml(t("progress.snapshot_btn"))}</button>
+        <button class="ghost" id="btnAnother">${escapeHtml(t("progress.add_another"))}</button>
       </div>
     </div>
 
@@ -2484,32 +2740,32 @@ function renderProgress(){
 
     <div class="list">
       <div class="item">
-        <div class="k">What changed (latest check-in)</div>
+        <div class="k">${escapeHtml(t("progress.what_changed"))}</div>
         <div class="v">
-          Most improved: <strong>${escapeHtml(best?.symptom || " ")}</strong> (${escapeHtml(best?.change || " ")})<br>
-          Least improved: <strong>${escapeHtml(worst?.symptom || " ")}</strong> (${escapeHtml(worst?.change || " ")})<br>
-          Top driver nutrient: <strong>${escapeHtml(topDriver)}</strong>
+          ${escapeHtml(t("progress.most_improved"))} <strong>${escapeHtml(best?.symptom || " ")}</strong> (${escapeHtml(impactLabel(best?.change || ""))})<br>
+          ${escapeHtml(t("progress.least_improved"))} <strong>${escapeHtml(worst?.symptom || " ")}</strong> (${escapeHtml(impactLabel(worst?.change || ""))})<br>
+          ${escapeHtml(t("progress.top_driver"))} <strong>${escapeHtml(topDriver)}</strong>
         </div>
       </div>
 
       <div class="item">
-        <div class="k">Wellbeing change (latest - baseline)</div>
+        <div class="k">${escapeHtml(t("progress.wellbeing_change"))}</div>
         <div class="v">
-          Energy: <strong>${dEnergy>=0?"+":""}${dEnergy}</strong> •
-          Mood: <strong>${dMood>=0?"+":""}${dMood}</strong> •
-          Sleep: <strong>${dSleep>=0?"+":""}${dSleep}</strong> •
-          Focus: <strong>${dFocus>=0?"+":""}${dFocus}</strong>
+          ${escapeHtml(compactMetricLabel("wellbeing.energy"))}: <strong>${dEnergy>=0?"+":""}${dEnergy}</strong> •
+          ${escapeHtml(compactMetricLabel("wellbeing.mood"))}: <strong>${dMood>=0?"+":""}${dMood}</strong> •
+          ${escapeHtml(compactMetricLabel("wellbeing.sleep"))}: <strong>${dSleep>=0?"+":""}${dSleep}</strong> •
+          ${escapeHtml(compactMetricLabel("wellbeing.focus"))}: <strong>${dFocus>=0?"+":""}${dFocus}</strong>
         </div>
       </div>
 
       <div class="item">
-        <div class="k">Symptom improvement score</div>
-        <div class="v"><strong>${symScore}</strong> (sum of symptom change ratings)</div>
+        <div class="k">${escapeHtml(t("progress.symptom_score"))}</div>
+        <div class="v"><strong>${symScore}</strong> ${escapeHtml(t("progress.symptom_score_sub"))}</div>
       </div>
 
       <div class="item">
-        <div class="k">Adherence</div>
-        <div class="v"><strong>${last.adherencePct}%</strong> of recommended supplements taken</div>
+        <div class="k">${escapeHtml(t("progress.adherence"))}</div>
+        <div class="v"><strong>${last.adherencePct}%</strong> ${escapeHtml(t("progress.adherence_sub"))}</div>
       </div>
     </div>
   `;
@@ -2520,17 +2776,17 @@ function renderProgress(){
 
   const timeline = document.createElement("div");
   timeline.className = "section";
-  const checkinTimeline = state.checkins.map((c,idx)=>`<div class="item"><div class="k">Check-in ${idx+1} • ${escapeHtml(fmtDate(c.dateISO))}</div><div class="v">Adherence <strong>${c.adherencePct}%</strong>${c.symptoms?.items?.length ? `<br>Symptoms tracked: ${escapeHtml(c.symptoms.items.map(x=>x.symptom).join(', '))}` : ''}</div></div>`).join('');
+  const checkinTimeline = state.checkins.map((c,idx)=>`<div class="item"><div class="k">${escapeHtml(t("checkin.label_n"))} ${idx+1} • ${escapeHtml(fmtDate(c.dateISO))}</div><div class="v">${escapeHtml(t("common.adherence"))} <strong>${c.adherencePct}%</strong>${c.symptoms?.items?.length ? `<br>${escapeHtml(t("progress.symptoms_tracked"))} ${escapeHtml(c.symptoms.items.map(x=>x.symptom).join(', '))}` : ''}</div></div>`).join('');
   timeline.innerHTML = `
-    <div class="tagline"><strong>Symptom timeline</strong><br>See how your check-ins build a story over time.</div>
+    <div class="tagline"><strong>${escapeHtml(t("progress.timeline_title"))}</strong><br>${escapeHtml(t("progress.timeline_sub"))}</div>
     <div style="height:10px"></div>
-    <div class="list">${checkinTimeline || '<div class="fineprint">No timeline yet.</div>'}</div>
-    <div class="btns"><button class="primary" id="btnExportReport">Download doctor report</button></div>
+    <div class="list">${checkinTimeline || `<div class="fineprint">${escapeHtml(t("progress.timeline_none"))}</div>`}</div>
+    <div class="btns"><button class="primary" id="btnExportReport">${escapeHtml(t("progress.download_report"))}</button></div>
   `;
   mainEl.appendChild(timeline);
   document.getElementById("btnExportReport").addEventListener("click", ()=> promptDownloadDoctorReport());
 
-  mainEl.appendChild(navButtons(true,true,"Continue"));
+  mainEl.appendChild(navButtons(true,true,"nav.continue"));
 }
 
 /* ===== TAB 7: CITATIONS ===== */
@@ -2563,23 +2819,28 @@ function renderCitations(){
   s1.className="section";
   s1.innerHTML = `
     <div class="tagline">
-      <strong>Citations Registry</strong><br>
-      Click PMID/PMCID to open.
-      <div class="fineprint" style="margin-top:8px">Coverage: <strong>${cov.evidenceCount}/${cov.selectedCount}</strong></div>
+      <strong>${escapeHtml(t("citations.title"))}</strong><br>
+      ${escapeHtml(t("citations.sub"))}
+      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("citations.coverage"))} <strong>${cov.evidenceCount}/${cov.selectedCount}</strong></div>
     </div>
 
     <div class="divider"></div>
 
-    <div class="k">PMID (${reg.pmid.length})</div>
-    <div class="inlineCites">${reg.pmid.map(renderCitationChip).join("") || `<div class="fineprint">None yet.</div>`}</div>
+    <div class="k">${escapeHtml(t("citations.pmid"))} (${reg.pmid.length})</div>
+    <div class="inlineCites">${reg.pmid.map(renderCitationChip).join("") || `<div class="fineprint">${escapeHtml(t("citations.none"))}</div>`}</div>
 
     <div class="divider"></div>
 
-    <div class="k">PMCID (${reg.pmcid.length})</div>
-    <div class="inlineCites">${reg.pmcid.map(renderCitationChip).join("") || `<div class="fineprint">None yet.</div>`}</div>
+    <div class="k">${escapeHtml(t("citations.pmcid"))} (${reg.pmcid.length})</div>
+    <div class="inlineCites">${reg.pmcid.map(renderCitationChip).join("") || `<div class="fineprint">${escapeHtml(t("citations.none"))}</div>`}</div>
+
+    <div class="divider"></div>
+
+    <div class="k">${escapeHtml(t("citations.links"))} (${reg.other.length})</div>
+    <div class="inlineCites">${reg.other.map(renderCitationChip).join("") || `<div class="fineprint">${escapeHtml(t("citations.none"))}</div>`}</div>
   `;
   mainEl.appendChild(s1);
-  mainEl.appendChild(navButtons(true,true,"Continue"));
+  mainEl.appendChild(navButtons(true,true,"nav.continue"));
 }
 
 
@@ -2598,7 +2859,7 @@ function renderSummaryTab(){
   const contraindications = computeContraindications();
   const planLine = state.plan.started
     ? `Started ${fmtDate(state.plan.startDate)}${state.plan.recommendedSupplements.length ? ` · ${state.plan.recommendedSupplements.join(", ")}` : ""}`
-    : "Not started yet.";
+    : t("summary.not_started");
 
   const s1 = document.createElement("div");
   s1.className = "section";
@@ -2612,87 +2873,100 @@ function renderSummaryTab(){
 
   s1.innerHTML = `
     <div class="summarySimpleHero">
-      <div class="summarySimpleHeroTitle">Your session</div>
-      <div class="summarySimpleHeroMeta">${escapeHtml(state.profile.age || "—")} yrs · ${escapeHtml(state.profile.gender || "—")}</div>
+      <div class="summarySimpleHeroTitle">${escapeHtml(t("summary.session"))}</div>
+      <div class="summarySimpleHeroMeta">${escapeHtml(state.profile.age || "—")} ${escapeHtml(t("summary.yrs"))} · ${escapeHtml(state.profile.gender || "—")}</div>
     </div>
     <div style="height:12px"></div>
     <div class="summarySimpleGrid">
-      <div class="item"><div class="k">Medications</div><div class="v">${meds.length ? escapeHtml(meds.join(", ")) : "None added."}</div></div>
-      <div class="item"><div class="k">Symptoms</div><div class="v">${state.symptoms.selected.length ? escapeHtml(state.symptoms.selected.join(", ")) : "None selected."}</div></div>
-      <div class="item"><div class="k">Plan</div><div class="v">${escapeHtml(planLine)}</div></div>
-      ${last ? "" : `<div class="item"><div class="k">Latest check-in</div><div class="v">None yet.</div></div>`}
+      <div class="item"><div class="k">${escapeHtml(t("summary.medications"))}</div><div class="v">${meds.length ? escapeHtml(meds.join(", ")) : escapeHtml(t("summary.none_added"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.symptoms_field"))}</div><div class="v">${state.symptoms.selected.length ? escapeHtml(state.symptoms.selected.join(", ")) : escapeHtml(t("summary.none_selected"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.plan_field"))}</div><div class="v">${escapeHtml(planLine)}</div></div>
+      ${last ? "" : `<div class="item"><div class="k">${escapeHtml(t("summary.latest_checkin"))}</div><div class="v">${escapeHtml(t("summary.none_yet"))}</div></div>`}
     </div>
-    ${flags.length ? `<div class="note" style="margin-top:12px">Safety flags: ${escapeHtml(flags.join(", "))}</div>` : ""}
+    ${flags.length ? `<div class="note" style="margin-top:12px">${escapeHtml(t("summary.safety_flags_label"))} ${escapeHtml(flags.join(", "))}</div>` : ""}
     <details class="summaryDetails">
-      <summary>Clinical details</summary>
+      <summary>${escapeHtml(t("summary.clinical_details"))}</summary>
       <div class="list">
-        <div class="item"><div class="k">Success prediction</div><div class="v"><strong>${success.score}%</strong> · ${escapeHtml(success.level)}<br>${escapeHtml(success.reason)}</div></div>
-        <div class="item"><div class="k">Pattern</div><div class="v">${patterns.length ? `<strong>${escapeHtml(patterns[0].title)}</strong><br>${escapeHtml(patterns[0].note)}` : "No strong pattern yet."}</div></div>
-        <div class="item"><div class="k">Interactions</div><div class="v">${interactions.length ? escapeHtml(interactions.map(x=>x.title).join(", ")) : "None flagged."}</div></div>
-        <div class="item"><div class="k">Contraindications</div><div class="v">${contraindications.length ? escapeHtml(contraindications.map(x=>x.title).join(", ")) : "None flagged."}</div></div>
-        <div class="item"><div class="k">Insight</div><div class="v"><strong>${escapeHtml(insight.summary)}</strong><br>${escapeHtml(insight.meaning)}</div></div>
+        <div class="item"><div class="k">${escapeHtml(t("summary.success_prediction"))}</div><div class="v"><strong>${success.score}%</strong> · ${escapeHtml(success.level)}<br>${escapeHtml(success.reason)}</div></div>
+        <div class="item"><div class="k">${escapeHtml(t("summary.pattern"))}</div><div class="v">${patterns.length ? `<strong>${escapeHtml(patterns[0].title)}</strong><br>${escapeHtml(patterns[0].note)}` : escapeHtml(t("summary.no_pattern"))}</div></div>
+        <div class="item"><div class="k">${escapeHtml(t("summary.interactions_field"))}</div><div class="v">${interactions.length ? escapeHtml(interactions.map(x=>x.title).join(", ")) : escapeHtml(t("summary.none_flagged"))}</div></div>
+        <div class="item"><div class="k">${escapeHtml(t("summary.contraindications_field"))}</div><div class="v">${contraindications.length ? escapeHtml(contraindications.map(x=>x.title).join(", ")) : escapeHtml(t("summary.none_flagged"))}</div></div>
+        <div class="item"><div class="k">${escapeHtml(t("summary.insight_field"))}</div><div class="v"><strong>${escapeHtml(insight.summary)}</strong><br>${escapeHtml(insight.meaning)}</div></div>
       </div>
     </details>
     <div class="btns" style="margin-top:14px">
-      <button class="primary" id="summaryShareBtn">Share for review</button>
+      <button class="primary" id="summaryShareBtn">${escapeHtml(t("summary.share_btn"))}</button>
     </div>
   `;
   s1.querySelector("#summaryShareBtn").addEventListener("click", ()=>{
     document.getElementById("btnShare").click();
   });
 
+  if (IS_GUEST && localHasMeaningfulData(state)) {
+    const cta = document.createElement("div");
+    cta.className = "save-account-cta";
+    cta.innerHTML = `
+      <div class="save-account-cta-title">${escapeHtml(t("save_account.summary_title"))}</div>
+      <div class="fineprint">${escapeHtml(t("save_account.summary_sub"))}</div>
+      <div class="btns" style="margin-top:12px">
+        <button class="primary" type="button" id="summarySaveAccountBtn">${escapeHtml(t("save_account.summary_btn"))}</button>
+      </div>
+    `;
+    cta.querySelector("#summarySaveAccountBtn").addEventListener("click", ()=> openSaveAccountModal(1));
+    s1.appendChild(cta);
+  }
+
   mainEl.appendChild(s1);
-  mainEl.appendChild(navButtons(true,true,"Continue"));
+  mainEl.appendChild(navButtons(true,true,"nav.continue"));
 }
 
-/* ===== TAB 9: FEEDBACK ===== */
-function renderFeedback(){
+/* ===== FEEDBACK (modal) ===== */
+function mountFeedbackForm(parent){
   const s1 = document.createElement("div");
-  s1.className="section";
+  s1.className = "section";
   s1.innerHTML = `
-    <div class="tagline">
-      <strong>Your feedback is valuable</strong><br>
-      Send questions or improvement ideas to GeneoRx.
-    </div>
-
-    <div style="height:12px"></div>
-
     <div class="row">
       <div class="col">
-        <label>Feedback type</label>
+        <label>${escapeHtml(t("feedback.type"))}</label>
         <select id="fbType">
-          <option value="Bug">Bug / something not working</option>
-          <option value="Suggestion">Suggestion / improvement</option>
-          <option value="Question">Question</option>
-          <option value="Other">Other</option>
+          <option value="Bug">${escapeHtml(t("feedback.type.bug"))}</option>
+          <option value="Suggestion">${escapeHtml(t("feedback.type.suggestion"))}</option>
+          <option value="Question">${escapeHtml(t("feedback.type.question"))}</option>
+          <option value="Other">${escapeHtml(t("feedback.type.other"))}</option>
         </select>
       </div>
       <div class="col">
-        <label>Can we contact you?</label>
+        <label>${escapeHtml(t("feedback.contact"))}</label>
         <select id="fbContact">
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
+          <option value="yes">${escapeHtml(t("common.yes"))}</option>
+          <option value="no">${escapeHtml(t("common.no"))}</option>
         </select>
       </div>
     </div>
 
     <div style="height:12px"></div>
-    <label>Message</label>
-    <textarea id="fbMsg" placeholder="Tell us what you liked, what was confusing, and what you want next..."></textarea>
+    <label>${escapeHtml(t("feedback.message"))}</label>
+    <textarea id="fbMsg" placeholder="${escapeHtml(t("feedback.message_placeholder"))}"></textarea>
 
     <div class="btns">
-      <button class="primary" id="fbSend">Send email to info@geneorx.com</button>
+      <button class="primary" id="fbSend">${escapeHtml(t("feedback.send"))}</button>
     </div>
   `;
-  mainEl.appendChild(s1);
+  parent.appendChild(s1);
 
   s1.querySelector("#fbSend").addEventListener("click", ()=>{
     const type = s1.querySelector("#fbType").value;
     const canContact = s1.querySelector("#fbContact").value === "yes";
     const message = (s1.querySelector("#fbMsg").value || "").trim();
-    const email = state.account.email || "anonymous";
+    if (!message) {
+      closeFeedbackModal();
+      return;
+    }
+    const email = state.account.email || AUTH_EMAIL || "anonymous";
     state.feedback.push({ dateISO: new Date().toISOString(), type, message, canContact, email });
-    save(); showToast("Saved ✓");
+    save();
+    closeFeedbackModal();
+    toastT("toast.saved");
 
     const subj = encodeURIComponent(`GeneoRx Portal Feedback (${type})`);
     const body = encodeURIComponent(
@@ -2700,30 +2974,179 @@ function renderFeedback(){
     );
     window.location.href = `mailto:info@geneorx.com?subject=${subj}&body=${body}`;
   });
+}
 
-  mainEl.appendChild(navButtons(true,false,""));
+const profileBackdrop = document.getElementById("profileBackdrop");
+const profileModal = document.getElementById("profileModal");
+const profileModalBody = document.getElementById("profileModalBody");
+const feedbackBackdrop = document.getElementById("feedbackBackdrop");
+const feedbackModal = document.getElementById("feedbackModal");
+const feedbackModalBody = document.getElementById("feedbackModalBody");
+const saveAccountBackdrop = document.getElementById("saveAccountBackdrop");
+const saveAccountModal = document.getElementById("saveAccountModal");
+const saveAccountStepAsk = document.getElementById("saveAccountStepAsk");
+const saveAccountStepForm = document.getElementById("saveAccountStepForm");
+const saveAccountTitle = document.getElementById("saveAccountTitle");
+const saveAccountSub = document.getElementById("saveAccountSub");
+const SAVE_ACCOUNT_PROMPT_KEY = "geneorx_save_account_prompted";
+let pendingSaveAccountAfterFeedback = false;
+
+function shouldOfferSaveAccount(){
+  if (!IS_GUEST) return false;
+  if (!localHasMeaningfulData(state)) return false;
+  try {
+    if (sessionStorage.getItem(SAVE_ACCOUNT_PROMPT_KEY) === "1") return false;
+  } catch (e) {}
+  return true;
+}
+function markSaveAccountPrompted(){
+  try { sessionStorage.setItem(SAVE_ACCOUNT_PROMPT_KEY, "1"); } catch (e) {}
+}
+function prefillSaveAccountForm(){
+  const emailEl = document.getElementById("saveAccountEmail");
+  const phoneEl = document.getElementById("saveAccountPhone");
+  if (emailEl) {
+    const email = (state.account.email || "").trim();
+    if (email && !email.includes("guest@")) emailEl.value = email;
+  }
+  if (phoneEl && state.profile.phone) phoneEl.value = state.profile.phone;
+}
+function showSaveAccountStep(step){
+  if (saveAccountStepAsk) saveAccountStepAsk.style.display = step === 1 ? "block" : "none";
+  if (saveAccountStepForm) saveAccountStepForm.style.display = step === 2 ? "block" : "none";
+  if (saveAccountTitle) {
+    saveAccountTitle.textContent = step === 2 ? t("save_account.form_title") : t("save_account.title");
+  }
+  if (saveAccountSub) {
+    saveAccountSub.textContent = step === 2 ? t("save_account.device_note") : t("save_account.sub");
+    saveAccountSub.style.display = step === 2 ? "none" : "block";
+  }
+}
+function openSaveAccountModal(step){
+  if (!saveAccountModal || !IS_GUEST) return;
+  showSaveAccountStep(step || 1);
+  if ((step || 1) === 2) prefillSaveAccountForm();
+  if (saveAccountBackdrop) saveAccountBackdrop.style.display = "block";
+  saveAccountModal.style.display = "block";
+}
+function closeSaveAccountModal(){
+  if (saveAccountBackdrop) saveAccountBackdrop.style.display = "none";
+  if (saveAccountModal) saveAccountModal.style.display = "none";
+  showSaveAccountStep(1);
+}
+function maybePromptSaveAccount(){
+  if (!shouldOfferSaveAccount()) return;
+  markSaveAccountPrompted();
+  openSaveAccountModal(1);
+}
+
+function openProfileModal(){
+  if (!profileModalBody) return;
+  profileModalBody.innerHTML = "";
+  profileModalCommit = mountAccountForm(profileModalBody, { showWelcome: false, readOnlyEmail: !IS_GUEST, inModal: true });
+  profileModalOpen = true;
+  if (profileBackdrop) profileBackdrop.style.display = "block";
+  if (profileModal) profileModal.style.display = "block";
+}
+function closeProfileModal(){
+  profileModalOpen = false;
+  profileModalCommit = null;
+  if (profileBackdrop) profileBackdrop.style.display = "none";
+  if (profileModal) profileModal.style.display = "none";
+}
+function openFeedbackModal(){
+  if (!feedbackModalBody) return;
+  feedbackModalBody.innerHTML = "";
+  mountFeedbackForm(feedbackModalBody);
+  if (feedbackBackdrop) feedbackBackdrop.style.display = "block";
+  if (feedbackModal) feedbackModal.style.display = "block";
+}
+function closeFeedbackModal(){
+  if (feedbackBackdrop) feedbackBackdrop.style.display = "none";
+  if (feedbackModal) feedbackModal.style.display = "none";
+  if (pendingSaveAccountAfterFeedback) {
+    pendingSaveAccountAfterFeedback = false;
+    window.setTimeout(maybePromptSaveAccount, 350);
+  }
+}
+
+document.getElementById("profileModalClose")?.addEventListener("click", closeProfileModal);
+profileBackdrop?.addEventListener("click", closeProfileModal);
+document.getElementById("profileModalSave")?.addEventListener("click", ()=>{
+  if (profileModalCommit) profileModalCommit();
+  if (AUTH_EMAIL) state.account.email = AUTH_EMAIL;
+  closeProfileModal();
+  save();
+  toastT("profile.saved");
+});
+document.getElementById("feedbackModalSkip")?.addEventListener("click", closeFeedbackModal);
+feedbackBackdrop?.addEventListener("click", closeFeedbackModal);
+
+document.getElementById("saveAccountClose")?.addEventListener("click", closeSaveAccountModal);
+document.getElementById("saveAccountNotNow")?.addEventListener("click", closeSaveAccountModal);
+saveAccountBackdrop?.addEventListener("click", closeSaveAccountModal);
+document.getElementById("saveAccountYes")?.addEventListener("click", ()=>{
+  showSaveAccountStep(2);
+  prefillSaveAccountForm();
+});
+document.getElementById("saveAccountBack")?.addEventListener("click", ()=> showSaveAccountStep(1));
+document.getElementById("saveAccountForm")?.addEventListener("submit", (e)=>{
+  const pw = document.getElementById("saveAccountPassword")?.value || "";
+  const pw2 = document.getElementById("saveAccountPasswordConfirm")?.value || "";
+  if (pw !== pw2) {
+    e.preventDefault();
+    showToast(t("save_account.password_mismatch"));
+    return;
+  }
+  save({ skipRender: true });
+});
+document.getElementById("guestBarSaveAccount")?.addEventListener("click", ()=> openSaveAccountModal(1));
+
+const portalProfileTrigger = document.getElementById("portalProfileTrigger");
+const portalProfilePanel = document.getElementById("portalProfilePanel");
+if (portalProfileTrigger && portalProfilePanel) {
+  portalProfileTrigger.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    const open = portalProfilePanel.hidden;
+    portalProfilePanel.hidden = !open;
+    portalProfileTrigger.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  document.addEventListener("click", ()=>{
+    portalProfilePanel.hidden = true;
+    portalProfileTrigger.setAttribute("aria-expanded", "false");
+  });
+  portalProfilePanel.addEventListener("click", (e)=> e.stopPropagation());
+}
+document.getElementById("btnHealthProfile")?.addEventListener("click", ()=>{
+  if (portalProfilePanel) portalProfilePanel.hidden = true;
+  openProfileModal();
+});
+
+function prepareLoggedInSession(){
+  if (IS_GUEST) return;
+  if (AUTH_EMAIL) state.account.email = AUTH_EMAIL;
+  if (state.step === 0 || HIDDEN_STEPS.has(state.step)) {
+    state.step = normalizeStep(state.step === 0 ? 1 : state.step);
+  }
+}
+
+function maybePromptProfile(){
+  if (IS_GUEST || !profileNeedsCompletion()) return;
+  try {
+    if (sessionStorage.getItem("geneorx_profile_prompted") === "1") return;
+    sessionStorage.setItem("geneorx_profile_prompted", "1");
+  } catch (e) {}
+  openProfileModal();
 }
 
 /* =========================================================
    ===== MAIN RENDER SWITCH =====
    ========================================================= */
 function renderMain(){
+  state.step = normalizeStep(state.step);
   mainEl.innerHTML = "";
-  mainTitle.textContent = STEP_LABELS[state.step];
-
-  const subMap = {
-    "Account":"Set basics + consent + safety flags.",
-    "Medications":"Pick from list or search + add a custom medication.",
-    "Symptoms":"Pick symptoms and severity.",
-    "Wellbeing":"Set baseline for tracking improvement.",
-    "Results":"Nutrient signals + recommendations + evidence.",
-    "Check-in":"Log symptom improvement + adherence + wellbeing.",
-    "Progress":"Weekly health signal + snapshot for clinician.",
-    "Citations":"All sources referenced in this session.",
-    "Summary":"Your overall GeneoRx dashboard view.",
-    "Feedback":"Send questions and feedback to GeneoRx."
-  };
-  mainSub.textContent = subMap[STEP_LABELS[state.step]] || "";
+  mainTitle.textContent = stepLabel(state.step);
+  mainSub.textContent = t(`step.${state.step}.sub`);
 
   if(state.step===0) return renderAccount();
   if(state.step===1) return renderMeds();
@@ -2732,12 +3155,11 @@ function renderMain(){
   if(state.step===4) return renderResults();
   if(state.step===5) return renderCheckin();
   if(state.step===6) return renderProgress();
-  if(state.step===7) return renderCitations();
   if(state.step===8) return renderSummaryTab();
-  if(state.step===9) return renderFeedback();
 }
 
 function renderAll(){
+  if (profileModalOpen) return;
   updateSummaryPanelMode();
   updateMyCheckinsAvailability();
   renderSteps();
@@ -2746,10 +3168,22 @@ function renderAll(){
   renderSide();
   renderContactBox();
   renderMain();
+  const checkinModal = document.getElementById("checkinViewModal");
+  if (checkinModal && checkinModal.style.display === "block") {
+    renderCheckinViewModalContent();
+  }
+}
+function bootPortal(){
+  prepareLoggedInSession();
+  renderAll();
+  maybePromptProfile();
+  if (IS_GUEST && state.step === 8 && shouldOfferSaveAccount()) {
+    window.setTimeout(maybePromptSaveAccount, 500);
+  }
 }
 if (IS_GUEST) {
-  renderAll();
+  bootPortal();
 } else {
-  loadFromBackend().then(() => renderAll()).catch(() => renderAll());
+  loadFromBackend().then(() => bootPortal()).catch(() => bootPortal());
 }
 </script>

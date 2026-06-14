@@ -6,10 +6,13 @@ import {
   GENERIC_SYMPTOMS,
   SUPPLEMENT_MAP,
   LAB_SUGGESTIONS,
+  type MedEntry,
   type MedClaim,
   type SourceQuality,
 } from '@/content/wizardData';
 import type { Dose, Routine, Severity, WizardCheckin, WizardState } from '@/wizard/types';
+
+export type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
 
 export type Tier = 'High' | 'Moderate' | 'Low';
 export type AlertLevel = 'High' | 'Moderate' | 'Low';
@@ -32,6 +35,10 @@ export function citationToLink(token: string): string {
   const t = String(token || '').trim();
   if (/^PMID:\d+$/i.test(t)) return `https://pubmed.ncbi.nlm.nih.gov/${t.split(':')[1]}/`;
   if (/^PMCID:PMC\d+$/i.test(t)) return `https://pmc.ncbi.nlm.nih.gov/articles/${t.split(':')[1].toUpperCase()}/`;
+  const doiPrefixed = t.match(/^DOI:\s*(10\.\S+)$/i);
+  if (doiPrefixed) return `https://doi.org/${doiPrefixed[1]}`;
+  if (/^10\.\d{4,}\/\S+$/i.test(t)) return `https://doi.org/${t}`;
+  if (/^https?:\/\/\S+$/i.test(t)) return t;
   return '';
 }
 
@@ -203,12 +210,12 @@ export function buildCitationsRegistry(s: WizardState): { all: string[]; pmid: s
 }
 
 /* ---------- safety ---------- */
-export function safetyFlags(s: WizardState): string[] {
+export function safetyFlags(s: WizardState, t: TranslateFn): string[] {
   const p = s.profile || {};
   const flags: string[] = [];
-  if (p.pregnant) flags.push('Pregnant/breastfeeding');
-  if (p.kidneyDisease) flags.push('Kidney disease');
-  if (p.anticoagulants) flags.push('Anticoagulants/blood thinners');
+  if (p.pregnant) flags.push(t('flag.pregnant'));
+  if (p.kidneyDisease) flags.push(t('flag.kidney'));
+  if (p.anticoagulants) flags.push(t('flag.anticoag'));
   return flags;
 }
 
@@ -227,6 +234,30 @@ export function getSymptomUniverse(s: WizardState): string[] {
   return uniq([...(base || []), ...((s.symptoms && s.symptoms.custom) || [])]).slice(0, 40);
 }
 
+export function impactLabel(change: string, t: TranslateFn): string {
+  const map: Record<string, string> = {
+    Worse: 'impact.worse',
+    'No change': 'impact.no_change',
+    'Slightly better': 'impact.slightly_better',
+    'Much better': 'impact.much_better',
+    'Not present': 'impact.not_present',
+  };
+  return map[change] ? t(map[change]) : String(change || '');
+}
+
+export function successLabel(level: string, t: TranslateFn): string {
+  const map: Record<string, string> = {
+    Strong: 'success.strong',
+    Moderate: 'success.moderate',
+    'At risk': 'success.at_risk',
+  };
+  return map[level] ? t(map[level]) : String(level || '');
+}
+
+function fmtDelta(n: number): string {
+  return `${n >= 0 ? '+' : ''}${n}`;
+}
+
 /* ---------- interactions / contraindications ---------- */
 export interface AlertItem {
   title: string;
@@ -235,61 +266,61 @@ export interface AlertItem {
   action: string;
 }
 
-export function computeDrugInteractions(s: WizardState): AlertItem[] {
+export function computeDrugInteractions(s: WizardState, t: TranslateFn): AlertItem[] {
   const ids = s.meds.map((m) => m.medId);
   const out: AlertItem[] = [];
   if (ids.includes('metformin') && ids.includes('omeprazole')) {
     out.push({
-      title: 'Metformin + Omeprazole',
+      title: t('engine.interaction.metformin_omeprazole.title'),
       level: 'Moderate',
-      note: 'This combination may increase the chance that B12-related symptoms or magnesium-related symptoms are overlooked over time.',
-      action: 'Discuss B12 / magnesium monitoring and symptom tracking with your clinician.',
+      note: t('engine.interaction.metformin_omeprazole.note'),
+      action: t('engine.interaction.metformin_omeprazole.action'),
     });
   }
   if (ids.includes('lisinopril') && ids.includes('losartan')) {
     out.push({
-      title: 'Lisinopril + Losartan',
+      title: t('engine.interaction.lisinopril_losartan.title'),
       level: 'High',
-      note: 'Using an ACE inhibitor and ARB together can increase monitoring needs for kidney function and potassium.',
-      action: 'Review this combination with your clinician unless it was specifically prescribed and monitored.',
+      note: t('engine.interaction.lisinopril_losartan.note'),
+      action: t('engine.interaction.lisinopril_losartan.action'),
     });
   }
   if (ids.includes('amlodipine') && ids.includes('metoprolol')) {
     out.push({
-      title: 'Amlodipine + Metoprolol',
+      title: t('engine.interaction.amlodipine_metoprolol.title'),
       level: 'Moderate',
-      note: 'This combination may increase dizziness, low energy, or exercise intolerance in some users.',
-      action: 'Track dizziness and blood pressure symptoms, especially after dose changes.',
+      note: t('engine.interaction.amlodipine_metoprolol.note'),
+      action: t('engine.interaction.amlodipine_metoprolol.action'),
     });
   }
   return out;
 }
 
-export function computeContraindications(s: WizardState): AlertItem[] {
+export function computeContraindications(s: WizardState, t: TranslateFn): AlertItem[] {
   const ids = s.meds.map((m) => m.medId);
   const flags: AlertItem[] = [];
   if (s.profile.pregnant && (ids.includes('lisinopril') || ids.includes('losartan'))) {
     flags.push({
-      title: 'Pregnancy caution with ACE inhibitor / ARB therapy',
+      title: t('engine.contra.pregnancy_ace_arb.title'),
       level: 'High',
-      note: 'Lisinopril and losartan need clinician review if pregnancy is present or possible.',
-      action: 'Contact your clinician promptly for medication review.',
+      note: t('engine.contra.pregnancy_ace_arb.note'),
+      action: t('engine.contra.pregnancy_ace_arb.action'),
     });
   }
   if (s.profile.kidneyDisease && (ids.includes('metformin') || ids.includes('lisinopril') || ids.includes('losartan'))) {
     flags.push({
-      title: 'Kidney disease monitoring needed',
+      title: t('engine.contra.kidney.title'),
       level: 'High',
-      note: 'This medication profile increases the importance of kidney function and electrolyte monitoring.',
-      action: 'Do not add new supplements casually until renal status and labs are reviewed.',
+      note: t('engine.contra.kidney.note'),
+      action: t('engine.contra.kidney.action'),
     });
   }
   if (s.profile.anticoagulants && s.plan.recommendedSupplements.some((x) => String(x).toLowerCase().includes('coq10'))) {
     flags.push({
-      title: 'Supplement review recommended with blood thinners',
+      title: t('engine.contra.anticoag_supplement.title'),
       level: 'Moderate',
-      note: 'Some supplements should be reviewed more carefully when anticoagulants are part of the profile.',
-      action: 'Ask your clinician or pharmacist to review supplement safety and timing.',
+      note: t('engine.contra.anticoag_supplement.note'),
+      action: t('engine.contra.anticoag_supplement.action'),
     });
   }
   return flags;
@@ -302,14 +333,14 @@ export interface SuccessPrediction {
   reason: string;
 }
 
-export function computeMedicationSuccessPrediction(s: WizardState): SuccessPrediction {
+export function computeMedicationSuccessPrediction(s: WizardState, t: TranslateFn): SuccessPrediction {
   let score = 50;
   if (s.plan.started) score += 10;
   if (s.checkins.length >= 2) score += 10;
   if (s.symptoms.severity === 'severe') score -= 15;
   if (s.symptoms.selected.length >= 4) score -= 10;
-  score -= computeDrugInteractions(s).length * 8;
-  score -= computeContraindications(s).length * 10;
+  score -= computeDrugInteractions(s, t).length * 8;
+  score -= computeContraindications(s, t).length * 10;
   const last = latestCheckin(s);
   if (last) {
     if (last.adherencePct >= 80) score += 15;
@@ -319,10 +350,10 @@ export function computeMedicationSuccessPrediction(s: WizardState): SuccessPredi
   const level: SuccessPrediction['level'] = score >= 75 ? 'Strong' : score >= 50 ? 'Moderate' : 'At risk';
   const reason =
     score >= 75
-      ? 'Your current inputs suggest a better chance of staying consistent with this plan.'
+      ? t('engine.prediction.reason_strong')
       : score >= 50
-        ? 'Your plan may work, but symptoms, complexity, or follow-through could reduce success.'
-        : 'Your current symptom burden or safety complexity may make long-term success harder without closer support.';
+        ? t('engine.prediction.reason_moderate')
+        : t('engine.prediction.reason_at_risk');
   return { score, level, reason };
 }
 
@@ -332,24 +363,24 @@ export interface HealthPattern {
   note: string;
 }
 
-export function detectHealthPatterns(s: WizardState): HealthPattern[] {
+export function detectHealthPatterns(s: WizardState, t: TranslateFn): HealthPattern[] {
   const ids = s.meds.map((m) => m.medId);
   const syms = s.symptoms.selected || [];
   const patterns: HealthPattern[] = [];
   if (ids.includes('metformin') && (syms.includes('Fatigue') || syms.includes('Brain fog') || syms.includes('Tingling hands/feet'))) {
-    patterns.push({ title: 'Metformin + B12 pattern', confidence: 'High', note: 'This combination of medication and symptoms can overlap with a B12-related pattern.' });
+    patterns.push({ title: t('engine.pattern.metformin_b12.title'), confidence: 'High', note: t('engine.pattern.metformin_b12.note') });
   }
   if (ids.includes('omeprazole') && (syms.includes('Muscle cramps') || syms.includes('Dizziness') || syms.includes('Fatigue'))) {
-    patterns.push({ title: 'PPI + magnesium pattern', confidence: 'Moderate', note: 'Long-term acid suppression with these symptoms can overlap with a magnesium-related pattern.' });
+    patterns.push({ title: t('engine.pattern.ppi_magnesium.title'), confidence: 'Moderate', note: t('engine.pattern.ppi_magnesium.note') });
   }
   if (ids.includes('atorvastatin') && (syms.includes('Muscle aches') || syms.includes('Fatigue'))) {
-    patterns.push({ title: 'Statin tolerance pattern', confidence: 'Moderate', note: 'These symptoms can overlap with statin tolerance issues and possible CoQ10-related symptom patterns.' });
+    patterns.push({ title: t('engine.pattern.statin.title'), confidence: 'Moderate', note: t('engine.pattern.statin.note') });
   }
   if (s.symptomOnlyMode && (syms.includes('Fatigue') || syms.includes('Brain fog') || syms.includes('Poor focus'))) {
-    patterns.push({ title: 'Symptom-only B-vitamin support pattern', confidence: 'Moderate', note: 'Even without medications, this symptom cluster may overlap with B-vitamin support needs.' });
+    patterns.push({ title: t('engine.pattern.symptom_bvitamin.title'), confidence: 'Moderate', note: t('engine.pattern.symptom_bvitamin.note') });
   }
   if (s.symptomOnlyMode && (syms.includes('Muscle cramps') || syms.includes('Sleep changes') || syms.includes('Anxiety'))) {
-    patterns.push({ title: 'Symptom-only magnesium support pattern', confidence: 'Moderate', note: 'Even without medications, this symptom cluster may overlap with magnesium support needs.' });
+    patterns.push({ title: t('engine.pattern.symptom_magnesium.title'), confidence: 'Moderate', note: t('engine.pattern.symptom_magnesium.note') });
   }
   return patterns;
 }
@@ -364,47 +395,51 @@ export interface InsightResult {
   prediction: SuccessPrediction;
 }
 
-export function computeInsightEngine(s: WizardState): InsightResult {
-  const patterns = detectHealthPatterns(s);
-  const interactions = computeDrugInteractions(s);
-  const contraindications = computeContraindications(s);
-  const prediction = computeMedicationSuccessPrediction(s);
+export function computeInsightEngine(s: WizardState, t: TranslateFn): InsightResult {
+  const patterns = detectHealthPatterns(s, t);
+  const interactions = computeDrugInteractions(s, t);
+  const contraindications = computeContraindications(s, t);
+  const prediction = computeMedicationSuccessPrediction(s, t);
   const topScore = computeNutrientScores(s)[0];
-  const symptomText = (s.symptoms.selected || []).slice(0, 4).join(', ') || 'no major symptoms logged';
+  const symptomText = (s.symptoms.selected || []).slice(0, 4).join(', ') || t('engine.insight.no_symptoms');
   const medNames =
     s.meds
       .map((m) => {
         const med = MED_DB.find((x) => x.id === m.medId);
         return med ? med.name : m.medId;
       })
-      .join(', ') || 'no medications selected';
+      .join(', ') || t('engine.insight.no_meds');
 
-  let summary = 'GeneoRx needs a little more information before it can generate a strong insight.';
-  let meaning = 'Add symptoms, medications, or check-ins to improve the quality of your insights.';
-  let doctorPrompt = 'Ask which labs, timing changes, or medication follow-up steps make the most sense for your situation.';
+  let summary = t('engine.insight.summary_empty');
+  let meaning = t('engine.insight.meaning_empty');
+  let doctorPrompt = t('engine.insight.doctor_empty');
 
   if (patterns.length) {
     const top = patterns[0];
-    summary = `Your current symptom pattern with ${medNames} may fit a ${top.title.toLowerCase()}.`;
-    meaning = top.note || 'This pattern may help explain why symptoms are appearing or why your plan feels harder to follow.';
+    summary = t('engine.insight.summary_pattern', { meds: medNames, pattern: top.title.toLowerCase() });
+    meaning = top.note || t('engine.insight.meaning_default');
     doctorPrompt =
       interactions.length || contraindications.length
-        ? `Discuss ${top.title}, plus the interaction/caution alerts GeneoRx found, with your clinician.`
-        : `Discuss whether ${top.title} suggests labs, medication timing changes, or targeted support.`;
+        ? t('engine.insight.doctor_pattern_alerts', { pattern: top.title })
+        : t('engine.insight.doctor_pattern', { pattern: top.title });
   } else if (topScore) {
-    summary = `Your symptoms (${symptomText}) may reflect a ${topScore[0]} support need based on your current entries.`;
-    meaning = `GeneoRx currently sees ${topScore[0]} as the strongest signal in your profile.`;
-    doctorPrompt = `Ask whether ${topScore[0]} testing, monitoring, or treatment adjustments would be appropriate.`;
+    summary = t('engine.insight.summary_nutrient', { symptoms: symptomText, nutrient: topScore[0] });
+    meaning = t('engine.insight.meaning_nutrient', { nutrient: topScore[0] });
+    doctorPrompt = t('engine.insight.doctor_nutrient', { nutrient: topScore[0] });
   }
 
   if (prediction.score < 50) {
-    meaning += ' Your medication success prediction suggests this plan may be harder to sustain without support.';
+    meaning += t('engine.insight.meaning_low_prediction');
   }
   if (interactions.length) {
-    meaning += ` GeneoRx also detected ${interactions.length} interaction alert${interactions.length > 1 ? 's' : ''}.`;
+    meaning += interactions.length > 1
+      ? t('engine.insight.meaning_interactions_many', { count: interactions.length })
+      : t('engine.insight.meaning_interactions_one', { count: interactions.length });
   }
   if (contraindications.length) {
-    meaning += ` There ${contraindications.length === 1 ? 'is' : 'are'} ${contraindications.length} caution flag${contraindications.length > 1 ? 's' : ''} that should be reviewed.`;
+    meaning += contraindications.length > 1
+      ? t('engine.insight.meaning_cautions_many', { count: contraindications.length })
+      : t('engine.insight.meaning_cautions_one', { count: contraindications.length });
   }
 
   return { summary, meaning, doctorPrompt, patterns, interactions, contraindications, prediction };
@@ -417,7 +452,7 @@ export interface PopulationInsights {
   message: string;
 }
 
-export function computePopulationInsights(s: WizardState): PopulationInsights {
+export function computePopulationInsights(s: WizardState, t: TranslateFn): PopulationInsights {
   const syms = s.symptoms.selected || [];
   const items = (s.checkins || []).flatMap((c) => c.symptoms?.items || []);
   const counts: Record<string, number> = {};
@@ -432,9 +467,7 @@ export function computePopulationInsights(s: WizardState): PopulationInsights {
     topSymptoms: syms.slice(0, 3),
     trackedSymptoms: topTracked,
     checkinCount: s.checkins.length,
-    message: s.checkins.length
-      ? 'Based on your check-ins so far, GeneoRx is starting to identify repeat symptom patterns over time.'
-      : 'Population-style insights will become stronger once you log check-ins over time.',
+    message: s.checkins.length ? t('engine.population.with_checkins') : t('engine.population.no_checkins'),
   };
 }
 
@@ -470,21 +503,21 @@ export interface CoachMessage {
   nextBestAction: string;
 }
 
-export function computeWeeklyCoachMessage(s: WizardState): CoachMessage {
+export function computeWeeklyCoachMessage(s: WizardState, t: TranslateFn): CoachMessage {
   const last = latestCheckin(s);
   const base = s.wellbeingBaseline || { energy: 5, mood: 5, sleep: 5, focus: 5 };
   const scores = computeNutrientScores(s);
-  const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : '—';
+  const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : t('engine.coach.bullet_empty');
 
   if (!last) {
     return {
-      headline: 'Your coach is ready.',
+      headline: t('engine.coach.headline_ready'),
       bullets: [
-        'Add medications + symptoms to personalize results.',
-        'Start your plan to track real improvement over time.',
-        'Log a weekly check-in to generate your Health Signal.',
+        t('engine.coach.bullet_add_meds'),
+        t('engine.coach.bullet_start_plan'),
+        t('engine.coach.bullet_log_checkin'),
       ],
-      nextBestAction: 'Go to Results → Start plan.',
+      nextBestAction: t('engine.coach.action_results'),
     };
   }
 
@@ -497,49 +530,106 @@ export function computeWeeklyCoachMessage(s: WizardState): CoachMessage {
   const best = items.reduce<CheckinItemAcc>((acc, x) => (acc === null || (x.changeScore || 0) > (acc.changeScore || 0) ? x : acc), null);
   const worst = items.reduce<CheckinItemAcc>((acc, x) => (acc === null || (x.changeScore || 0) < (acc.changeScore || 0) ? x : acc), null);
 
-  let next = 'Keep the routine consistent for 7 days and log another check-in.';
-  if (last.adherencePct < 60) next = 'Try one reminder and aim for 70–80% adherence this week.';
-  else if ((worst?.change || '') === 'Worse') next = `Adjust timing/with-food strategy and reassess ${worst?.symptom} next week.`;
-  else if (dE <= 0 && dS <= 0) next = 'Try hydration + protein at breakfast for 7 days, then reassess energy/sleep.';
-  else if (dE > 0 || dS > 0) next = 'Nice trend — keep the same plan for one more week to confirm the signal.';
+  let next = t('engine.coach.action_consistent');
+  if (last.adherencePct < 60) next = t('engine.coach.action_adherence');
+  else if ((worst?.change || '') === 'Worse') next = t('engine.coach.action_worse_symptom', { symptom: worst?.symptom ?? '' });
+  else if (dE <= 0 && dS <= 0) next = t('engine.coach.action_hydration');
+  else if (dE > 0 || dS > 0) next = t('engine.coach.action_nice_trend');
+
+  const bestValue = best?.symptom ? `${best.symptom} (${impactLabel(best.change || 'No change', t)})` : t('engine.coach.bullet_empty');
+  const worstValue = worst?.symptom ? `${worst.symptom} (${impactLabel(worst.change || 'No change', t)})` : t('engine.coach.bullet_empty');
 
   const bullets = [
-    `Wellbeing deltas: Energy ${dE >= 0 ? '+' : ''}${dE}, Mood ${dM >= 0 ? '+' : ''}${dM}, Sleep ${dS >= 0 ? '+' : ''}${dS}, Focus ${dF >= 0 ? '+' : ''}${dF}.`,
-    `Most improved symptom: ${best?.symptom ? `${best.symptom} (${best.change})` : '—'}.`,
-    `Least improved symptom: ${worst?.symptom ? `${worst.symptom} (${worst.change})` : '—'}.`,
-    `Top driver nutrient: ${topDriver}.`,
+    t('engine.coach.bullet_wellbeing', { dE: fmtDelta(dE), dM: fmtDelta(dM), dS: fmtDelta(dS), dF: fmtDelta(dF) }),
+    t('engine.coach.bullet_best', { value: bestValue }),
+    t('engine.coach.bullet_worst', { value: worstValue }),
+    t('engine.coach.bullet_driver', { driver: topDriver }),
   ];
 
   const headline =
-    dE + dS + dM + dF > 0 ? 'You’re trending in the right direction.' : dE + dS + dM + dF < 0 ? 'Let’s stabilize this week.' : 'Let’s get a clearer signal.';
+    dE + dS + dM + dF > 0
+      ? t('engine.coach.headline_trending_up')
+      : dE + dS + dM + dF < 0
+        ? t('engine.coach.headline_stabilize')
+        : t('engine.coach.headline_clearer_signal');
 
   return { headline, bullets, nextBestAction: next };
 }
 
 type CheckinItemAcc = WizardCheckin['symptoms']['items'][number] | null;
 
+function resolveMedName(medId: string, catalog?: MedEntry[]): string {
+  const db = catalog?.length ? catalog : MED_DB;
+  const med = db.find((x) => x.id === medId);
+  return med ? med.name : medId.replace(/^custom[:_]/, '').replace(/-/g, ' ');
+}
+
 /* ---------- clinician snapshot ---------- */
-export function buildClinicianSnapshotText(s: WizardState): string {
-  const flags = safetyFlags(s);
+export function buildClinicianSnapshotText(
+  s: WizardState,
+  t: TranslateFn,
+  checkinIndex?: number,
+  catalog?: MedEntry[],
+): string {
+  const flags = safetyFlags(s, t);
   const meds = s.meds.map((m) => {
-    const med = MED_DB.find((x) => x.id === m.medId);
-    const nm = med ? med.name : m.medId;
-    return `- ${nm} • dose: ${m.dose} • duration: ${m.durationMonths || 0} months`;
+    const nm = resolveMedName(m.medId, catalog);
+    const dose = m.dose === 'med' ? 'medium' : m.dose;
+    return `- ${nm} • dose: ${dose} • duration: ${m.durationMonths || 0} months`;
   });
 
-  const last = latestCheckin(s);
+  let checkin = null;
+  let resolvedIndex: number | null = null;
+  if (s.checkins.length) {
+    let idx =
+      typeof checkinIndex === 'number' && checkinIndex >= 0 && checkinIndex < s.checkins.length
+        ? checkinIndex
+        : s.checkins.length - 1;
+    resolvedIndex = idx;
+    checkin = s.checkins[idx];
+  }
+
+  const base = s.wellbeingBaseline || { energy: 5, mood: 5, sleep: 5, focus: 5 };
   const scores = computeNutrientScores(s);
   const top = scores.slice(0, 6).map(([n, sc]) => `- ${n}: ${tierFromScore(sc)} signal (${sc}%)`);
-  const interactions = computeDrugInteractions(s).map((x) => `- ${x.title} (${x.level})`);
-  const contraindications = computeContraindications(s).map((x) => `- ${x.title} (${x.level})`);
-  const success = computeMedicationSuccessPrediction(s);
-  const patterns = detectHealthPatterns(s).map((x) => `- ${x.title} (${x.confidence})`);
+  const interactions = computeDrugInteractions(s, t).map((x) => `- ${x.title} (${x.level})`);
+  const contraindications = computeContraindications(s, t).map((x) => `- ${x.title} (${x.level})`);
+  const success = computeMedicationSuccessPrediction(s, t);
+  const patterns = detectHealthPatterns(s, t).map((x) => `- ${x.title} (${x.confidence})`);
 
   const supp = s.plan.recommendedSupplements || [];
-  const adh = last ? `${last.adherencePct}%` : '—';
+  const adh = checkin ? `${checkin.adherencePct}%` : '—';
   const labs = uniq(scores.slice(0, 5).flatMap(([n]) => LAB_SUGGESTIONS[n] || [])).slice(0, 8);
   const symptoms = s.symptoms.selected.length ? s.symptoms.selected.join(', ') : 'None selected';
-  const lastDate = last ? fmtDate(last.dateISO) : '—';
+  const lastDate = checkin ? fmtDate(checkin.dateISO) : '—';
+
+  const checkinLines: string[] = [];
+  if (checkin) {
+    const wb = checkin.wellbeing || base;
+    const dE = (wb.energy ?? 0) - base.energy;
+    const dM = (wb.mood ?? 0) - base.mood;
+    const dS = (wb.sleep ?? 0) - base.sleep;
+    const dF = (wb.focus ?? 0) - base.focus;
+    const symItems = (checkin.symptoms?.items || []).map(
+      (x) => `- ${x.symptom}: ${x.change || 'No change'}`,
+    );
+    const sideEffects = Array.isArray(checkin.sideEffects)
+      ? checkin.sideEffects
+      : checkin.sideEffects
+        ? [checkin.sideEffects]
+        : [];
+    checkinLines.push(
+      `Selected check-in: Check-in ${(resolvedIndex ?? 0) + 1} · ${lastDate}`,
+      `Adherence: ${adh}`,
+      `Wellbeing: Energy ${wb.energy ?? '—'}/10 · Mood ${wb.mood ?? '—'}/10 · Sleep ${wb.sleep ?? '—'}/10 · Focus ${wb.focus ?? '—'}/10`,
+      `Change vs baseline: Energy ${dE >= 0 ? '+' : ''}${dE}, Mood ${dM >= 0 ? '+' : ''}${dM}, Sleep ${dS >= 0 ? '+' : ''}${dS}, Focus ${dF >= 0 ? '+' : ''}${dF}`,
+      'Symptom changes this check-in:',
+      symItems.length ? symItems.join('\n') : '- None tracked',
+      `Supplements taken: ${(checkin.supplementsTaken || []).length ? checkin.supplementsTaken.join(', ') : 'None logged'}`,
+      `Side effects: ${sideEffects.length ? sideEffects.join(', ') : 'None'}`,
+      `Notes: ${checkin.notes || 'None'}`,
+    );
+  }
 
   return [
     'GENEORX — YOUR DOCTOR VISIT SNAPSHOT',
@@ -568,12 +658,12 @@ export function buildClinicianSnapshotText(s: WizardState): string {
     '',
     'Current protocol (supplement support):',
     supp.length ? supp.map((x) => `- ${x}`).join('\n') : '- Not started / none saved',
-    `Adherence (latest check-in): ${adh}`,
     '',
+    ...(checkinLines.length
+      ? ['Check-in details:', ...checkinLines, '']
+      : [`Adherence (latest check-in): ${adh}`, '', `Latest check-in date: ${lastDate}`, '']),
     'Optional labs to consider (clinical context needed):',
     labs.length ? labs.map((x) => `- ${x}`).join('\n') : '- —',
-    '',
-    `Latest check-in date: ${lastDate}`,
     '',
     'Note: Educational guidance with evidence transparency; confirm labs, dosing, and interactions with your clinician.',
   ].join('\n');

@@ -1,94 +1,61 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
   Easing,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ABOUT_CARDS } from '@/content/homeContent';
+import { translate } from '@/content/siteTranslations';
+import { useLanguage } from '@/store/LanguageContext';
+import { Button } from '@/components/Button';
 import { colors, spacing } from '@/theme';
-
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 const STORAGE_KEY = '@geneorx_onboarding_seen';
 
-interface Card {
-  num: string;
-  tag: string;
-  title: string;
-  body?: string;
-  bullets?: { strong?: string; rest: string }[];
-  accent?: boolean;
-  icon: string;
+const SLIDE_ACCENTS = ['#28E1FF', '#A78BFA', '#FF4FD8', '#34D399'] as const;
+
+function getSlideCopy(index: number, lang: string) {
+  const bullets =
+    index === 1
+      ? [0, 1, 2].map((bi) => translate(`slide.1.b${bi}`, lang))
+      : index === 2
+        ? [0, 1, 2, 3].map((bi) => translate(`slide.2.b${bi}`, lang))
+        : [];
+
+  return {
+    tag: translate(`slide.${index}.tag`, lang),
+    title: translate(`slide.${index}.title`, lang),
+    body:
+      index === 1
+        ? translate('slide.1.p0', lang)
+        : index === 0 || index === 3
+          ? translate(`slide.${index}.p0`, lang)
+          : '',
+    bullets,
+    extra: index === 1 ? translate('slide.1.p1', lang) : '',
+  };
 }
 
-const CARDS: Card[] = [
-  {
-    num: '01',
-    tag: 'Overview',
-    title: 'What is GeneoRx?',
-    body:
-      'GeneoRx is your personal medication intelligence platform — connecting medications, symptoms, and nutrient levels to help you understand what is really going on in your body.',
-    icon: '💊',
-  },
-  {
-    num: '02',
-    tag: 'How it works',
-    title: 'How does it work?',
-    body: 'GeneoRx analyzes three things together:',
-    bullets: [
-      { rest: 'Your medications and dosages' },
-      { rest: 'Your symptoms over time' },
-      { rest: 'Known drug-nutrient interactions' },
-    ],
-    icon: '⚙️',
-  },
-  {
-    num: '03',
-    tag: 'Benefits',
-    title: 'How does it help you?',
-    bullets: [
-      { strong: 'Explains symptoms', rest: ' — possible links to medications or nutrient imbalances' },
-      { strong: 'Finds root causes', rest: ' — what may be driving fatigue or brain fog' },
-      { strong: 'Tracks progress', rest: ' — monitors changes over time' },
-      { strong: 'Prepares you', rest: ' — a concise summary for doctor visits' },
-    ],
-    icon: '✨',
-  },
-  {
-    num: '04',
-    tag: 'In short',
-    title: 'The big picture.',
-    body:
-      'GeneoRx helps you connect the dots between your medications, symptoms, and nutrition — so you can make smarter, more informed health decisions.',
-    accent: true,
-    icon: '🎯',
-  },
-];
-
 interface Props {
-  /** Called after user dismisses the modal */
   onDone?: () => void;
-  /** Force show (ignore AsyncStorage) — useful for previewing */
   forceShow?: boolean;
 }
 
 export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) => {
+  const { language } = useLanguage();
+  const lang = language.code;
   const [visible, setVisible] = useState(false);
-  const [step, setStep] = useState(0);
 
-  // Animations
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(60)).current;
   const sheetOpacity = useRef(new Animated.Value(0)).current;
-  const cardSlide = useRef(new Animated.Value(0)).current;
-  const cardOpacity = useRef(new Animated.Value(1)).current;
 
-  /* ---- Check AsyncStorage on mount ---- */
   useEffect(() => {
     (async () => {
       if (forceShow) {
@@ -100,7 +67,6 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
     })();
   }, [forceShow]);
 
-  /* ---- Entrance animation when visible flips true ---- */
   useEffect(() => {
     if (!visible) return;
     Animated.parallel([
@@ -121,42 +87,8 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
         useNativeDriver: true,
       }),
     ]).start();
-  }, [visible]);
+  }, [visible, backdropOpacity, sheetTranslateY, sheetOpacity]);
 
-  /* ---- Card transition ---- */
-  const animateCardOut = (cb: () => void) => {
-    Animated.parallel([
-      Animated.timing(cardSlide, {
-        toValue: -30,
-        duration: 180,
-        easing: Easing.in(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(cardOpacity, {
-        toValue: 0,
-        duration: 160,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      cb();
-      cardSlide.setValue(40);
-      Animated.parallel([
-        Animated.spring(cardSlide, {
-          toValue: 0,
-          tension: 80,
-          friction: 12,
-          useNativeDriver: true,
-        }),
-        Animated.timing(cardOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
-  };
-
-  /* ---- Dismiss animation ---- */
   const dismiss = async () => {
     await AsyncStorage.setItem(STORAGE_KEY, 'true');
     Animated.parallel([
@@ -182,27 +114,12 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
     });
   };
 
-  const handleNext = () => {
-    if (step < CARDS.length - 1) {
-      animateCardOut(() => setStep((s) => s + 1));
-    } else {
-      dismiss();
-    }
-  };
-
-  const handleSkip = () => dismiss();
-
   if (!visible) return null;
-
-  const card = CARDS[step];
-  const isLast = step === CARDS.length - 1;
 
   return (
     <Modal transparent animationType="none" statusBarTranslucent>
-      {/* Backdrop */}
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
 
-      {/* Sheet */}
       <View style={styles.sheetContainer}>
         <Animated.View
           style={[
@@ -213,10 +130,8 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
             },
           ]}
         >
-          {/* Handle bar */}
           <View style={styles.handle} />
 
-          {/* Header row */}
           <View style={styles.headerRow}>
             <View style={styles.brandPill}>
               <View style={styles.brandDot}>
@@ -224,102 +139,52 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
               </View>
               <Text style={styles.brandPillText}>GeneoRx</Text>
             </View>
-
-            <Pressable onPress={handleSkip} style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.5 }]}>
-              <Text style={styles.skipText}>Skip</Text>
+            <Pressable onPress={dismiss} style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.5 }]}>
+              <Text style={styles.skipText}>{translate('mobile.onboarding.skip', lang)}</Text>
             </Pressable>
           </View>
 
-          {/* Progress dots */}
-          <View style={styles.dotsRow}>
-            {CARDS.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  i === step && styles.dotActive,
-                  i < step && styles.dotDone,
-                ]}
-              />
-            ))}
-          </View>
+          <Text style={styles.introTitle}>{translate('hero.eyebrow', lang)}</Text>
+          <Text style={styles.introSub}>{translate('cta.sub', lang)}</Text>
 
-          {/* Card content */}
-          <Animated.View
-            style={[
-              styles.card,
-              card.accent && styles.cardAccent,
-              { opacity: cardOpacity, transform: [{ translateY: cardSlide }] },
-            ]}
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
           >
-            {/* Icon + num */}
-            <View style={styles.cardTopRow}>
-              <View style={[styles.iconBubble, card.accent && styles.iconBubbleAccent]}>
-                <Text style={styles.iconEmoji}>{card.icon}</Text>
-              </View>
-              <Text style={[styles.cardNum, card.accent && styles.cardNumAccent]}>
-                {card.num} / {CARDS.length}
-              </Text>
-            </View>
+            {ABOUT_CARDS.map((card, i) => {
+              const accent = SLIDE_ACCENTS[i] ?? SLIDE_ACCENTS[0];
+              const copy = getSlideCopy(i, lang);
+              const isLast = i === ABOUT_CARDS.length - 1;
+              return (
+                <View key={card.num} style={styles.section}>
+                  <Text style={[styles.sectionKicker, { color: accent }]}>
+                    {card.num} · {copy.tag}
+                  </Text>
+                  <Text style={styles.sectionTitle}>{copy.title}</Text>
+                  {copy.body ? <Text style={styles.sectionBody}>{copy.body}</Text> : null}
+                  {copy.bullets.length > 0 && (
+                    <View style={styles.bulletList}>
+                      {copy.bullets.map((b, bi) => (
+                        <View key={bi} style={styles.bulletRow}>
+                          <Text style={[styles.bulletMark, { color: accent }]}>·</Text>
+                          <Text style={styles.bulletText}>{b}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  {copy.extra ? <Text style={styles.sectionExtra}>{copy.extra}</Text> : null}
+                  {!isLast ? <View style={styles.sectionRule} /> : null}
+                </View>
+              );
+            })}
+          </ScrollView>
 
-            {/* Tag */}
-            <View style={[styles.tag, card.accent && styles.tagAccent]}>
-              <Text style={[styles.tagText, card.accent && styles.tagTextAccent]}>
-                {card.tag}
-              </Text>
-            </View>
-
-            {/* Title */}
-            <Text style={[styles.cardTitle, card.accent && styles.cardTitleAccent]}>
-              {card.title}
-            </Text>
-
-            {/* Body */}
-            {card.body && (
-              <Text style={[styles.cardBody, card.accent && styles.cardBodyAccent]}>
-                {card.body}
-              </Text>
-            )}
-
-            {/* Bullets */}
-            {card.bullets && (
-              <View style={styles.bulletList}>
-                {card.bullets.map((b, idx) => (
-                  <View key={idx} style={styles.bulletRow}>
-                    <View style={[styles.bulletDot, card.accent && styles.bulletDotAccent]} />
-                    <Text style={[styles.bulletText, card.accent && styles.bulletTextAccent]}>
-                      {b.strong && (
-                        <Text style={[styles.bulletStrong, card.accent && styles.bulletStrongAccent]}>
-                          {b.strong}
-                        </Text>
-                      )}
-                      {b.rest}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </Animated.View>
-
-          {/* Step counter */}
-          <Text style={styles.stepCounter}>
-            {step + 1} of {CARDS.length}
-          </Text>
-
-          {/* CTA Button */}
-          <Pressable
-            style={({ pressed }) => [styles.ctaBtn, pressed && styles.ctaBtnPressed]}
-            onPress={handleNext}
-          >
-            <Text style={styles.ctaBtnText}>
-              {isLast ? 'Get Started →' : 'Next →'}
-            </Text>
-          </Pressable>
-
-          {/* Swipe hint */}
-          {step === 0 && (
-            <Text style={styles.swipeHint}>Tap Next to continue</Text>
-          )}
+          <Button
+            title={translate('mobile.onboarding.get_started', lang)}
+            onPress={dismiss}
+            style={styles.ctaBtn}
+          />
         </Animated.View>
       </View>
     </Modal>
@@ -329,28 +194,23 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 31, 27, 0.55)',
+    backgroundColor: 'rgba(4, 6, 12, 0.72)',
   },
 
   sheetContainer: {
     flex: 1,
     justifyContent: 'flex-end',
     paddingHorizontal: spacing.md,
-    paddingBottom: 28,
+    paddingBottom: 20,
   },
 
   sheet: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundAlt,
     borderRadius: 24,
     paddingHorizontal: spacing.lg,
     paddingTop: 12,
     paddingBottom: spacing.lg,
-    shadowColor: '#0F1F1B',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 16,
-    maxHeight: SCREEN_H * 0.88,
+    maxHeight: '92%',
   },
 
   handle: {
@@ -359,216 +219,77 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: colors.borderSoft,
     alignSelf: 'center',
-    marginBottom: 18,
+    marginBottom: 14,
   },
 
-  /* Header */
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    marginBottom: 12,
   },
   brandPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    paddingLeft: 5,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: colors.backgroundAlt,
+    gap: 8,
   },
   brandDot: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.buttonPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  brandDotText: { fontSize: 9, fontWeight: '800', color: '#fff' },
-  brandPillText: { fontSize: 13, fontWeight: '700', color: colors.text },
+  brandDotText: { fontSize: 9, fontWeight: '800', color: colors.buttonText },
+  brandPillText: { fontSize: 15, fontWeight: '800', color: colors.text },
 
-  skipBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  skipText: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: colors.textMuted,
-  },
+  skipBtn: { paddingHorizontal: 10, paddingVertical: 6 },
+  skipText: { fontSize: 13.5, fontWeight: '600', color: colors.textMuted },
 
-  /* Progress dots */
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 18,
-  },
-  dot: {
-    height: 4,
-    flex: 1,
-    borderRadius: 2,
-    backgroundColor: colors.borderSoft,
-  },
-  dotActive: {
-    backgroundColor: colors.primary,
-  },
-  dotDone: {
-    backgroundColor: colors.primaryLight,
-  },
-
-  /* Card */
-  card: {
-    backgroundColor: colors.backgroundAlt,
-    borderRadius: 18,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    marginBottom: 16,
-    minHeight: 200,
-  },
-  cardAccent: {
-    backgroundColor: '#053D33',
-    borderColor: '#053D33',
-  },
-
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  iconBubble: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.primary100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBubbleAccent: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  iconEmoji: { fontSize: 22 },
-
-  cardNum: {
+  introTitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 0.3,
-  },
-  cardNumAccent: { color: 'rgba(255,255,255,0.5)' },
-
-  /* Tag */
-  tag: {
-    alignSelf: 'flex-start',
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: colors.primary50,
-    marginBottom: 10,
-  },
-  tagAccent: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primaryDark,
-    letterSpacing: 0.8,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
+    marginBottom: 4,
   },
-  tagTextAccent: { color: 'rgba(255,255,255,0.8)' },
+  introSub: {
+    fontSize: 14,
+    color: colors.textMuted,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
 
-  cardTitle: {
-    fontSize: 22,
+  scroll: { flexGrow: 0, maxHeight: 420 },
+  scrollContent: { gap: 4, paddingBottom: 4 },
+
+  section: { gap: 5, paddingVertical: 4 },
+  sectionKicker: { fontSize: 11, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase' },
+  sectionTitle: {
+    fontSize: 17,
     fontWeight: '800',
     color: colors.text,
-    letterSpacing: -0.4,
-    lineHeight: 28,
-    marginBottom: 10,
-  },
-  cardTitleAccent: { color: '#FFFFFF' },
-
-  cardBody: {
-    fontSize: 15,
-    color: colors.textSoft,
+    letterSpacing: -0.3,
     lineHeight: 22,
   },
-  cardBodyAccent: { color: 'rgba(255,255,255,0.82)' },
-
-  /* Bullets */
-  bulletList: { marginTop: 6, gap: 10 },
-  bulletRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  bulletDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-    marginTop: 7,
-    flexShrink: 0,
-  },
-  bulletDotAccent: {
-    backgroundColor: colors.primaryLight,
-  },
-  bulletText: {
-    flex: 1,
-    fontSize: 14.5,
-    color: colors.textSoft,
-    lineHeight: 21,
-  },
-  bulletTextAccent: { color: 'rgba(255,255,255,0.82)' },
-  bulletStrong: {
-    fontWeight: '700',
-    color: colors.text,
-  },
-  bulletStrongAccent: { color: '#FFFFFF' },
-
-  /* Step counter */
-  stepCounter: {
-    fontSize: 12,
+  sectionBody: { fontSize: 14, color: colors.textSoft, lineHeight: 20 },
+  sectionExtra: {
+    fontSize: 13,
     color: colors.textMuted,
-    textAlign: 'center',
-    marginBottom: 10,
-    fontWeight: '600',
+    lineHeight: 19,
+    fontStyle: 'italic',
   },
+  sectionRule: {
+    height: 1,
+    backgroundColor: colors.borderSoft,
+    marginTop: 12,
+  },
+  bulletList: { gap: 6 },
+  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  bulletMark: { fontSize: 18, fontWeight: '900', lineHeight: 20, width: 10 },
+  bulletText: { flex: 1, fontSize: 13.5, color: colors.textSoft, lineHeight: 19 },
 
-  /* CTA */
-  ctaBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  ctaBtnPressed: {
-    backgroundColor: colors.primaryDark,
-    shadowOpacity: 0.15,
-  },
-  ctaBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
-  },
-
-  swipeHint: {
-    fontSize: 12,
-    color: colors.textDim,
-    textAlign: 'center',
-    marginTop: 10,
-    marginBottom: 2,
-  },
+  ctaBtn: { marginTop: 14 },
 });

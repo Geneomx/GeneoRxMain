@@ -33,4 +33,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       projectId: config.extra?.eas?.projectId,
     },
   },
+
+  plugins: [
+    ...(Array.isArray(config.plugins) ? config.plugins : []),
+    [
+      'expo-build-properties',
+      {
+        android: { minSdkVersion: 24 },
+        ios: { deploymentTarget: '15.1' },
+      },
+    ],
+  ],
 });

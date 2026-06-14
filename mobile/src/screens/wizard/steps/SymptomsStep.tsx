@@ -1,24 +1,30 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Chip } from '@/components/Chip';
 import { useWizard } from '@/store/WizardContext';
 import { getSymptomUniverse } from '@/wizard/engine';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { Severity } from '@/wizard/types';
 import { FinePrint, HelpNote, Section, Segmented, Tagline } from '@/screens/wizard/ui';
-import { colors, radius, spacing } from '@/theme';
-
-const SEV_OPTS: { label: string; value: Severity }[] = [
-  { label: 'Mild', value: 'mild' },
-  { label: 'Moderate', value: 'moderate' },
-  { label: 'Severe', value: 'severe' },
-];
+import { spacing } from '@/theme';
 
 export const SymptomsStep: React.FC = () => {
   const { state, update } = useWizard();
+  const { t } = useTranslation();
   const [custom, setCustom] = useState('');
   const universe = getSymptomUniverse(state);
   const selected = new Set(state.symptoms.selected);
+
+  const sevOpts = useMemo(
+    () => [
+      { label: t('symptoms.severity.mild'), value: 'mild' as Severity },
+      { label: t('symptoms.severity.moderate'), value: 'moderate' as Severity },
+      { label: t('symptoms.severity.severe'), value: 'severe' as Severity },
+    ],
+    [t],
+  );
 
   const toggle = (sym: string) =>
     update((d) => {
@@ -40,39 +46,37 @@ export const SymptomsStep: React.FC = () => {
 
   return (
     <View style={{ gap: spacing.md }}>
-      <HelpNote
-        what="Tap any symptoms you've noticed, add your own if it's missing, then set how much they affect your day."
-        why="Symptoms help GeneoRx connect what you feel to possible nutrient gaps from your medicines."
-      />
+      <HelpNote what={t('step.2.sub')} why={t('symptoms.select_hint')} />
       <Section>
-        <Tagline title="What are you experiencing?" body={state.meds.length ? 'Suggestions are tailored to your medications.' : 'Pick any symptoms that apply.'} />
+        <Tagline title={t('symptoms.select')} body={t('symptoms.select_hint')} />
         <View style={styles.chips}>
           {universe.map((sym) => (
             <Chip key={sym} label={sym} selected={selected.has(sym)} onPress={() => toggle(sym)} />
           ))}
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end' }}>
-          <View style={{ flex: 1 }}>
-            <Input label="Add a custom symptom" placeholder="Type a symptom" value={custom} onChangeText={setCustom} />
-          </View>
-          <Pressable style={styles.addBtn} onPress={addCustom}>
-            <Text style={styles.addBtnText}>Add</Text>
-          </Pressable>
-        </View>
-        <FinePrint>{state.symptoms.selected.length} selected.</FinePrint>
+        <Input
+          label={t('symptoms.add_custom')}
+          placeholder={t('symptoms.custom_placeholder')}
+          value={custom}
+          onChangeText={setCustom}
+          onSubmitEditing={addCustom}
+          returnKeyType="done"
+        />
+        <Button title={t('symptoms.add_btn')} onPress={addCustom} />
+        <FinePrint>
+          {state.symptoms.selected.length} {t('symptoms.custom_saved_hint')}
+        </FinePrint>
       </Section>
 
       <Section>
-        <Tagline title="Overall severity" body="Roughly how much do these symptoms affect your day?" />
-        <Segmented value={state.symptoms.severity} onChange={(v) => update((d) => { d.symptoms.severity = v; })} options={SEV_OPTS} />
+        <Tagline title={t('symptoms.severity')} body={t('step.2.sub')} />
+        <Segmented value={state.symptoms.severity} onChange={(v) => update((d) => { d.symptoms.severity = v; })} options={sevOpts} />
       </Section>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  addBtn: { backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: spacing.md, height: 44, alignItems: 'center', justifyContent: 'center' },
-  addBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
 });

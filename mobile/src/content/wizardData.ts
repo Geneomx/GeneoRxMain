@@ -122,3 +122,34 @@ export const STEP_SUBS: Record<string, string> = {
   Summary: 'Your overall GeneoRx dashboard view.',
   Feedback: 'Send questions and feedback to GeneoRx.',
 };
+
+/** Steps hidden from the tray — mirrors the website portal. */
+export const HIDDEN_STEPS = new Set([7, 9]);
+
+export function visibleSteps(isGuest: boolean): number[] {
+  const steps: number[] = [];
+  for (let i = 0; i < STEP_LABELS.length; i++) {
+    if (HIDDEN_STEPS.has(i)) continue;
+    if (i === 0 && !isGuest) continue;
+    steps.push(i);
+  }
+  return steps;
+}
+
+export function normalizeStep(n: number, isGuest: boolean): number {
+  const v = visibleSteps(isGuest);
+  if (v.includes(n)) return n;
+  return v.find((s) => s >= n) ?? v[0] ?? 1;
+}
+
+export function nextVisibleStep(n: number, isGuest: boolean): number {
+  const v = visibleSteps(isGuest);
+  const i = v.indexOf(n);
+  return i >= 0 && i < v.length - 1 ? v[i + 1] : n;
+}
+
+export function prevVisibleStep(n: number, isGuest: boolean): number {
+  const v = visibleSteps(isGuest);
+  const i = v.indexOf(n);
+  return i > 0 ? v[i - 1] : n;
+}

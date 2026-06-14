@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path, Polygon, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useProfile } from '@/store/ProfileContext';
 import { useAuth } from '@/auth/AuthContext';
 import { useWizard } from '@/store/WizardContext';
@@ -18,48 +19,44 @@ import {
   computeNutrientScores,
   recommendSupplements,
 } from '@/wizard/engine';
-import { MED_DB, STEP_LABELS } from '@/content/wizardData';
+import { useTranslation } from '@/hooks/useTranslation';
+import { STEP_LABELS } from '@/content/wizardData';
+import { useMedCatalog, findMedName } from '@/store/MedCatalogContext';
+import { Button } from '@/components/Button';
 import { Loader } from '@/components/Loader';
-import { colors, spacing } from '@/theme';
-
-const RESULTS_STEP = STEP_LABELS.indexOf('Results');
-
-const medName = (id: string): string => {
-  const m = MED_DB.find((x) => x.id === id);
-  return m ? m.name : id.replace(/^custom:/, '').replace(/-/g, ' ');
-};
-
-const medSchedule = (dose: string, durationMonths: number): string => {
-  const parts: string[] = [];
-  if (dose) parts.push(dose);
-  if (durationMonths) parts.push(`${durationMonths} mo${durationMonths > 1 ? 's' : ''}`);
-  return parts.length ? parts.join(' · ') : 'No dose details';
-};
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { ReportPickerModal } from '@/components/ReportPickerModal';
+import { useToast } from '@/components/Toast';
+import { shareClinicianSnapshot } from '@/wizard/reports';
 import type { AppTabsParamList } from '@/navigation/AppTabs';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { colors, layout, portalCard, radius, spacing, touchMin } from '@/theme';
 
 type Props = BottomTabScreenProps<AppTabsParamList, 'Home'>;
 
-const MED_PALETTES = [
-  { bg: '#FFF0EE', dot: '#FF6B5B' },
-  { bg: '#EEF0FF', dot: '#6B7FFF' },
-  { bg: '#F0FFF4', dot: '#4CAF7D' },
-  { bg: '#FFF8EE', dot: '#FF9940' },
-  { bg: '#F5EEFF', dot: '#9B6BFF' },
-];
+const RESULTS_STEP = STEP_LABELS.indexOf('Results');
+
+const medSchedule = (
+  dose: string,
+  durationMonths: number,
+  noDetails: string,
+  monthLabel: string,
+  monthsLabel: string,
+): string => {
+  const parts: string[] = [];
+  if (dose) parts.push(dose);
+  if (durationMonths) {
+    parts.push(`${durationMonths} ${durationMonths > 1 ? monthsLabel : monthLabel}`);
+  }
+  return parts.length ? parts.join(' · ') : noDetails;
+};
 
 type QuickActionKey = 'Guided' | 'Treatments' | 'CheckIns' | 'Insights';
-const QUICK_ACTIONS: {
-  key: QuickActionKey;
-  label: string;
-  sub: string;
-  bg: string;
-  fg: string;
-}[] = [
-  { key: 'Guided', label: 'Guided setup', sub: 'Step-by-step plan', bg: '#ECF6F3', fg: '#0E7C66' },
-  { key: 'Treatments', label: 'Medications', sub: 'View & add meds', bg: '#FFF0EE', fg: '#FF6B5B' },
-  { key: 'CheckIns', label: 'Check-in', sub: 'Log how you feel', bg: '#EEF0FF', fg: '#6B7FFF' },
-  { key: 'Insights', label: 'Insights', sub: 'Patterns & signals', bg: '#FFF8EE', fg: '#FF9940' },
+
+const QUICK_ACTION_KEYS: { key: QuickActionKey; labelKey: string; subKey: string }[] = [
+  { key: 'Guided', labelKey: 'mobile.home.quick.guided', subKey: 'mobile.home.quick.guided_sub' },
+  { key: 'Treatments', labelKey: 'mobile.home.quick.meds', subKey: 'mobile.home.quick.meds_sub' },
+  { key: 'CheckIns', labelKey: 'mobile.home.quick.checkin', subKey: 'mobile.home.quick.checkin_sub' },
+  { key: 'Insights', labelKey: 'mobile.home.quick.insights', subKey: 'mobile.home.quick.insights_sub' },
 ];
 
 const QuickIcon: React.FC<{ name: QuickActionKey; color: string }> = ({ name, color }) => {
@@ -94,14 +91,11 @@ const QuickIcon: React.FC<{ name: QuickActionKey; color: string }> = ({ name, co
   }
 };
 
-const MedIcon: React.FC<{ index: number }> = ({ index }) => {
-  const p = MED_PALETTES[index % MED_PALETTES.length];
-  return (
-    <View style={[styles.medIcon, { backgroundColor: p.bg }]}>
-      <View style={[styles.medIconDot, { backgroundColor: p.dot }]} />
-    </View>
-  );
-};
+const MedIcon: React.FC = () => (
+  <View style={styles.medIcon}>
+    <View style={styles.medIconDot} />
+  </View>
+);
 
 const CheckCircle: React.FC<{ checked: boolean }> = ({ checked }) => (
   <View style={[styles.check, checked && styles.checkDone]}>
@@ -113,27 +107,36 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { data, loading, refresh } = useProfile();
   const { user } = useAuth();
   const { state: wizState, hydrated: wizHydrated, setStep: setWizStep } = useWizard();
+  const { catalog } = useMedCatalog();
   const { checked, toggle } = useDailyDoses();
+  const { t, language } = useTranslation();
+  const toast = useToast();
+  const { page, scrollBottom, isCompact } = useResponsiveLayout();
+  const [reportPickerOpen, setReportPickerOpen] = useState(false);
 
   const wizardResults = useMemo(() => {
     const hasInputs = wizState.meds.length > 0 || wizState.symptoms.selected.length > 0;
     if (!hasInputs) return null;
     const scores = computeNutrientScores(wizState);
     const recs = recommendSupplements(scores);
-    const success = computeMedicationSuccessPrediction(wizState);
+    const success = computeMedicationSuccessPrediction(wizState, t);
     return {
       planStarted: wizState.plan.started,
       topRecs: recs.slice(0, 3).map((r) => r.supplement),
       recCount: recs.length,
       success,
     };
-  }, [wizState]);
+  }, [wizState, language, t]);
 
   const openWizardResults = () => {
     setWizStep(RESULTS_STEP);
     navigation.navigate('Guided');
   };
 
+  async function handleShare() {
+    const ok = await shareClinicianSnapshot(wizState, t, { catalog, title: t('portal.share') });
+    if (ok) toast.show(t('toast.shared'));
+  }
 
   if (loading && !data) return <Loader />;
 
@@ -147,422 +150,423 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const greeting = (() => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good morning,';
-    if (h < 18) return 'Good afternoon,';
-    return 'Good evening,';
+    if (h < 12) return t('mobile.home.greeting_morning');
+    if (h < 18) return t('mobile.home.greeting_afternoon');
+    return t('mobile.home.greeting_evening');
   })();
+
+  const quickActions = QUICK_ACTION_KEYS.map((a) => ({
+    ...a,
+    label: t(a.labelKey),
+    sub: t(a.subKey),
+  }));
+
+  const startSteps = [
+    { n: '1', t: t('mobile.home.step_meds') },
+    { n: '2', t: t('mobile.home.step_symptoms') },
+    { n: '3', t: t('mobile.home.step_results') },
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: scrollBottom }]}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#FFFFFF" />
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* ── HERO BANNER ── */}
-        <View style={styles.hero}>
-          <View style={styles.heroCircle1} />
-          <View style={styles.heroCircle2} />
-          <View style={styles.heroTopRow}>
-            <View style={styles.heroIntro}>
-              <Text style={styles.heroGreeting}>{greeting}</Text>
-              <Text style={styles.heroName}>{nameToShow} 👋</Text>
-            </View>
-          </View>
-          {firstRun ? (
-            <Text style={styles.heroHint}>
-              Welcome to GeneoRx. Let's set up your health profile — it only takes a minute.
+        <View style={[styles.page, page]}>
+          {/* Greeting */}
+          <View style={styles.greetingCard}>
+            <Text style={styles.heroGreeting}>{greeting}</Text>
+            <Text style={styles.heroName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>
+              {nameToShow}
             </Text>
-          ) : (
-            <View style={styles.heroStats}>
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatNum}>{checkedCount}/{meds.length || '—'}</Text>
-                <Text style={styles.heroStatLabel}>Today's doses</Text>
-              </View>
-              <View style={styles.heroStatDivider} />
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatNum}>{adherence !== null ? `${adherence}%` : '—'}</Text>
-                <Text style={styles.heroStatLabel}>Weekly adherence</Text>
-              </View>
-              <View style={styles.heroStatDivider} />
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatNum}>{checkins.length > 0 ? checkins.length : '0'}</Text>
-                <Text style={styles.heroStatLabel}>Check-ins</Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* ── GUIDED RESULTS (surfaced from the wizard) ── */}
-        {wizHydrated && wizardResults ? (
-          <>
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionLabel}>YOUR GENEORX PLAN</Text>
-            </View>
-            <TouchableOpacity style={styles.resultsCard} activeOpacity={0.88} onPress={openWizardResults}>
-              <View style={styles.resultsCircle} />
-              <Text style={styles.resultsKicker}>
-                {wizardResults.planStarted ? 'PLAN ACTIVE' : 'RESULTS READY'}
-              </Text>
-              <Text style={styles.resultsTitle}>
-                {wizardResults.success.score}% success signal · {wizardResults.success.level}
-              </Text>
-              {wizardResults.topRecs.length > 0 ? (
-                <Text style={styles.resultsBody}>
-                  Top support: {wizardResults.topRecs.join(', ')}
-                  {wizardResults.recCount > wizardResults.topRecs.length
-                    ? ` +${wizardResults.recCount - wizardResults.topRecs.length} more`
-                    : ''}
-                </Text>
-              ) : (
-                <Text style={styles.resultsBody}>
-                  Open your results to see nutrient signals, evidence, and a routine.
-                </Text>
-              )}
-              <Text style={styles.resultsLink}>View full results →</Text>
-            </TouchableOpacity>
-          </>
-        ) : null}
-
-        {firstRun ? (
-          /* ── FIRST RUN: one clear path ── */
-          <View style={styles.startCard}>
-            <Text style={styles.startKicker}>START HERE</Text>
-            <Text style={styles.startTitle}>Set up your health profile</Text>
-            <Text style={styles.startBody}>
-              The Guided setup walks you through it step by step — then you'll get personalized,
-              evidence-backed insights.
-            </Text>
-
-            <View style={styles.startSteps}>
-              {[
-                { n: '1', t: 'Add your medications' },
-                { n: '2', t: 'Pick your symptoms' },
-                { n: '3', t: 'See your results & plan' },
-              ].map((s) => (
-                <View key={s.n} style={styles.startStepRow}>
-                  <View style={styles.startStepNum}><Text style={styles.startStepNumText}>{s.n}</Text></View>
-                  <Text style={styles.startStepText}>{s.t}</Text>
+            {firstRun ? (
+              <Text style={styles.heroHint}>{t('mobile.home.welcome_hint')}</Text>
+            ) : (
+              <View style={styles.statsRow}>
+                <View style={styles.stat}>
+                  <Text style={styles.statNum}>{checkedCount}/{meds.length || '—'}</Text>
+                  <Text style={styles.statLabel}>{t('mobile.home.todays_doses')}</Text>
                 </View>
-              ))}
-            </View>
-
-            <TouchableOpacity style={styles.startBtn} onPress={() => navigation.navigate('Guided')} activeOpacity={0.85}>
-              <Text style={styles.startBtnText}>Start Guided setup →</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.startBtnGhost} onPress={() => navigation.navigate('Treatments')} activeOpacity={0.7}>
-              <Text style={styles.startBtnGhostText}>Or add medications manually</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            {/* ── QUICK ACTIONS ── */}
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
-            </View>
-            <View style={styles.quickGrid}>
-              {QUICK_ACTIONS.map((a) => (
-                <TouchableOpacity
-                  key={a.key}
-                  style={styles.quickTile}
-                  activeOpacity={0.85}
-                  onPress={() => navigation.navigate(a.key)}
-                >
-                  <View style={[styles.quickIcon, { backgroundColor: a.bg }]}>
-                    <QuickIcon name={a.key} color={a.fg} />
-                  </View>
-                  <Text style={styles.quickLabel}>{a.label}</Text>
-                  <Text style={styles.quickSub}>{a.sub}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* ── TODAY'S MEDICATIONS ── */}
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionLabel}>TODAY'S MEDICATIONS</Text>
-            </View>
-
-            <View style={styles.card}>
-              {meds.length === 0 ? (
-                <TouchableOpacity style={styles.emptyState} onPress={() => navigation.navigate('Treatments')} activeOpacity={0.7}>
-                  <Text style={styles.emptyTitle}>No medications added yet</Text>
-                  <Text style={styles.emptySub}>Tap to add your medications →</Text>
-                </TouchableOpacity>
-              ) : (
-                meds.map((med, i) => (
-                  <React.Fragment key={`med-${i}`}>
-                    <TouchableOpacity style={styles.medRow} onPress={() => toggle(med.medId)} activeOpacity={0.7}>
-                      <MedIcon index={i} />
-                      <View style={styles.medInfo}>
-                        <Text style={styles.medName}>{medName(med.medId)}</Text>
-                        <Text style={styles.medMeta}>{medSchedule(med.dose, med.durationMonths)}</Text>
-                      </View>
-                      <CheckCircle checked={!!checked[med.medId]} />
-                    </TouchableOpacity>
-                    {i < meds.length - 1 && <View style={styles.divider} />}
-                  </React.Fragment>
-                ))
-              )}
-            </View>
-
-            {/* ── LATEST INSIGHT ── */}
-            {checkins.length > 0 && (
-              <>
-                <View style={styles.sectionRow}>
-                  <Text style={styles.sectionLabel}>LATEST INSIGHT</Text>
+                <View style={styles.statDivider} />
+                <View style={styles.stat}>
+                  <Text style={styles.statNum}>{adherence !== null ? `${adherence}%` : '—'}</Text>
+                  <Text style={styles.statLabel}>{t('mobile.home.weekly_adherence')}</Text>
                 </View>
-                <TouchableOpacity style={styles.insightCard} activeOpacity={0.88} onPress={() => navigation.navigate('Insights')}>
-                  <View style={styles.insightCircle1} />
-                  <View style={styles.insightCircle2} />
-                  <View style={styles.insightTags}>
-                    <View style={styles.tagSignal}>
-                      <Text style={styles.tagSignalText}>{lastCheckin?.notes ? 'Your note' : 'Latest check-in'}</Text>
-                    </View>
-                    {meds[0] && (
-                      <View style={styles.tagMed}><Text style={styles.tagMedText}>{medName(meds[0].medId)}</Text></View>
-                    )}
-                  </View>
-                  <Text style={styles.insightTitle}>
-                    {lastCheckin?.notes ? lastCheckin.notes : 'Review your health patterns'}
-                  </Text>
-                  <Text style={styles.insightBody}>
-                    {adherence !== null
-                      ? `Your last check-in shows ${adherence}% adherence. Keep tracking to uncover meaningful patterns.`
-                      : 'Log more check-ins to get personalized insights connecting your medications and symptoms.'}
-                  </Text>
-                  <Text style={styles.insightLink}>View full insight →</Text>
-                </TouchableOpacity>
-              </>
+                <View style={styles.statDivider} />
+                <View style={styles.stat}>
+                  <Text style={styles.statNum}>{checkins.length}</Text>
+                  <Text style={styles.statLabel}>{t('mobile.home.checkins')}</Text>
+                </View>
+              </View>
             )}
+          </View>
 
-            {/* Nudge: tracked meds but never checked in → point to Guided */}
-            {meds.length > 0 && checkins.length === 0 && (
-              <TouchableOpacity style={styles.nudge} onPress={() => navigation.navigate('Guided')} activeOpacity={0.85}>
-                <Text style={styles.nudgeTitle}>Next: get your personalized insights</Text>
-                <Text style={styles.nudgeBody}>Run the Guided setup to see nutrient signals, evidence, and a plan →</Text>
+          {/* Plan summary */}
+          {wizHydrated && wizardResults ? (
+            <View style={styles.block}>
+              <Text style={styles.sectionLabel}>{t('mobile.home.your_plan')}</Text>
+              <TouchableOpacity style={styles.planCard} activeOpacity={0.88} onPress={openWizardResults}>
+                <View style={styles.planAccent} />
+                <View style={styles.planBody}>
+                  <Text style={styles.planKicker}>
+                    {wizardResults.planStarted ? t('mobile.home.plan_active') : t('mobile.home.results_ready')}
+                  </Text>
+                  <Text style={styles.planTitle}>
+                    {t('mobile.home.success_signal', {
+                      score: wizardResults.success.score,
+                      level: wizardResults.success.level,
+                    })}
+                  </Text>
+                  {wizardResults.topRecs.length > 0 ? (
+                    <Text style={styles.planBodyText}>
+                      {t('mobile.home.top_support', { items: wizardResults.topRecs.join(', ') })}
+                      {wizardResults.recCount > wizardResults.topRecs.length
+                        ? ` ${t('mobile.home.more_recs', { count: wizardResults.recCount - wizardResults.topRecs.length })}`
+                        : ''}
+                    </Text>
+                  ) : (
+                    <Text style={styles.planBodyText}>{t('mobile.home.open_results')}</Text>
+                  )}
+                  <Text style={styles.planLink}>{t('mobile.home.view_results')}</Text>
+                </View>
               </TouchableOpacity>
-            )}
-          </>
-        )}
+            </View>
+          ) : null}
 
-        <Text style={styles.legal}>Educational guidance only · not medical advice</Text>
+          {firstRun ? (
+            <View style={styles.block}>
+              <View style={styles.startCard}>
+                <Text style={styles.startKicker}>{t('mobile.home.start_here')}</Text>
+                <Text style={styles.startTitle}>{t('mobile.home.setup_title')}</Text>
+                <Text style={styles.startBody}>{t('mobile.home.setup_body')}</Text>
+                <View style={styles.startSteps}>
+                  {startSteps.map((s) => (
+                    <View key={s.n} style={styles.startStepRow}>
+                      <View style={styles.startStepNum}>
+                        <Text style={styles.startStepNumText}>{s.n}</Text>
+                      </View>
+                      <Text style={styles.startStepText}>{s.t}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Button title={t('mobile.home.start_guided')} onPress={() => navigation.navigate('Guided')} />
+                <Button
+                  title={t('mobile.home.add_meds_manual')}
+                  variant="ghost"
+                  onPress={() => navigation.navigate('Treatments')}
+                />
+              </View>
+            </View>
+          ) : (
+            <>
+              <View style={styles.block}>
+                <Text style={styles.sectionLabel}>{t('mobile.home.quick_actions')}</Text>
+                <View style={styles.quickGrid}>
+                  {quickActions.map((a) => (
+                    <TouchableOpacity
+                      key={a.key}
+                      style={[styles.quickTile, isCompact && styles.quickTileFull]}
+                      activeOpacity={0.85}
+                      onPress={() => navigation.navigate(a.key)}
+                    >
+                      <View style={styles.quickIcon}>
+                        <QuickIcon name={a.key} color={colors.primary} />
+                      </View>
+                      <Text style={styles.quickLabel}>{a.label}</Text>
+                      <Text style={styles.quickSub}>{a.sub}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.block}>
+                <Text style={styles.sectionLabel}>{t('mobile.home.todays_meds')}</Text>
+                <View style={styles.card}>
+                  {meds.length === 0 ? (
+                    <TouchableOpacity
+                      style={styles.emptyState}
+                      onPress={() => navigation.navigate('Treatments')}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.emptyTitle}>{t('mobile.home.no_meds')}</Text>
+                      <Text style={styles.emptySub}>{t('mobile.home.tap_add_meds')}</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    meds.map((med, i) => (
+                      <React.Fragment key={`med-${i}`}>
+                        <TouchableOpacity
+                          style={styles.medRow}
+                          onPress={() => toggle(med.medId)}
+                          activeOpacity={0.7}
+                        >
+                          <MedIcon />
+                          <View style={styles.medInfo}>
+                            <Text style={styles.medName}>{findMedName(catalog, med.medId)}</Text>
+                            <Text style={styles.medMeta}>
+                              {medSchedule(
+                                med.dose,
+                                med.durationMonths,
+                                t('mobile.home.no_dose_details'),
+                                t('mobile.home.months'),
+                                t('mobile.home.months_plural'),
+                              )}
+                            </Text>
+                          </View>
+                          <CheckCircle checked={!!checked[med.medId]} />
+                        </TouchableOpacity>
+                        {i < meds.length - 1 ? <View style={styles.divider} /> : null}
+                      </React.Fragment>
+                    ))
+                  )}
+                </View>
+              </View>
+
+              {checkins.length > 0 ? (
+                <View style={styles.block}>
+                  <Text style={styles.sectionLabel}>{t('mobile.home.latest_insight')}</Text>
+                  <TouchableOpacity
+                    style={styles.insightCard}
+                    activeOpacity={0.88}
+                    onPress={() => navigation.navigate('Insights')}
+                  >
+                    <View style={styles.insightTags}>
+                      <View style={styles.tag}>
+                        <Text style={styles.tagText}>
+                          {lastCheckin?.notes ? t('mobile.home.your_note') : t('mobile.home.latest_checkin')}
+                        </Text>
+                      </View>
+                      {meds[0] ? (
+                        <View style={[styles.tag, styles.tagMuted]}>
+                          <Text style={[styles.tagText, styles.tagTextMuted]}>
+                            {findMedName(catalog, meds[0].medId)}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={styles.insightTitle}>
+                      {lastCheckin?.notes ? lastCheckin.notes : t('mobile.home.review_patterns')}
+                    </Text>
+                    <Text style={styles.insightBody}>
+                      {adherence !== null
+                        ? t('mobile.home.adherence_insight', { pct: adherence })
+                        : t('mobile.home.log_more')}
+                    </Text>
+                    <Text style={styles.insightLink}>{t('mobile.home.view_insight')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {meds.length > 0 && checkins.length === 0 ? (
+                <TouchableOpacity
+                  style={styles.nudge}
+                  onPress={() => navigation.navigate('Guided')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.nudgeTitle}>{t('mobile.home.nudge_title')}</Text>
+                  <Text style={styles.nudgeBody}>{t('mobile.home.nudge_body')}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </>
+          )}
+
+          {wizHydrated && wizState.checkins.length > 0 ? (
+            <View style={styles.shareRow}>
+              <Button title={t('mobile.home.share')} variant="secondary" onPress={handleShare} style={styles.shareBtn} />
+              <Button
+                title={t('mobile.home.download_report')}
+                variant="secondary"
+                onPress={() => setReportPickerOpen(true)}
+                style={styles.shareBtn}
+              />
+            </View>
+          ) : null}
+
+          <Text style={styles.legal}>{t('mobile.legal')}</Text>
+        </View>
       </ScrollView>
+
+      <ReportPickerModal visible={reportPickerOpen} onClose={() => setReportPickerOpen(false)} />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#EDF2F0' },
-  content: { paddingBottom: 32 },
+  safe: { flex: 1, backgroundColor: colors.background },
+  content: { alignItems: 'center' },
+  page: { width: '100%', maxWidth: layout.contentMaxWidth, paddingTop: spacing.md, gap: spacing.md },
 
-  /* HERO */
-  hero: {
-    backgroundColor: '#0A4A38',
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
-    borderRadius: 20,
-    padding: 22,
-    paddingBottom: 24,
+  greetingCard: {
+    ...portalCard,
+    marginHorizontal: 0,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  heroGreeting: { fontSize: 15, color: colors.textMuted, fontWeight: '600' },
+  heroName: { fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.4 },
+  heroHint: { fontSize: 16, color: colors.textSoft, lineHeight: 24, marginTop: 4 },
+
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, paddingTop: spacing.sm },
+  stat: { flex: 1, alignItems: 'center', gap: 4 },
+  statNum: { fontSize: 22, fontWeight: '800', color: colors.primary },
+  statLabel: { fontSize: 13, color: colors.textMuted, fontWeight: '600', textAlign: 'center' },
+  statDivider: { width: 1, height: 36, backgroundColor: colors.borderSoft },
+
+  block: { gap: spacing.sm },
+  sectionLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.textSoft,
+    paddingHorizontal: 0,
+  },
+
+  planCard: {
+    ...portalCard,
+    marginHorizontal: 0,
+    flexDirection: 'row',
     overflow: 'hidden',
+    padding: 0,
   },
-  heroCircle1: {
-    position: 'absolute', right: -30, top: -30,
-    width: 130, height: 130, borderRadius: 65,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  heroCircle2: {
-    position: 'absolute', right: 30, bottom: -40,
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  heroTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  heroIntro: { flex: 1 },
-  heroGreeting: { fontSize: 14, color: 'rgba(255,255,255,0.72)', fontWeight: '500', marginBottom: 3 },
-  heroName: { fontSize: 28, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.5, marginBottom: 20 },
-  heroHint: { fontSize: 14.5, color: 'rgba(255,255,255,0.82)', fontWeight: '500', lineHeight: 21, marginBottom: 2 },
-  heroStats: { flexDirection: 'row', alignItems: 'center' },
-  heroStat: { flex: 1, alignItems: 'center' },
-  heroStatNum: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.4 },
-  heroStatLabel: { fontSize: 11, color: 'rgba(255,255,255,0.62)', fontWeight: '500', marginTop: 4, textAlign: 'center' },
-  heroStatDivider: { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.18)' },
+  planAccent: { width: 4, backgroundColor: colors.primary },
+  planBody: { flex: 1, padding: spacing.lg, gap: 6 },
+  planKicker: { fontSize: 12, fontWeight: '800', color: colors.primary, letterSpacing: 0.6 },
+  planTitle: { fontSize: 18, fontWeight: '800', color: colors.text, lineHeight: 24 },
+  planBodyText: { fontSize: 15, color: colors.textSoft, lineHeight: 22 },
+  planLink: { fontSize: 14, fontWeight: '700', color: colors.primary, marginTop: 4 },
 
-  /* SECTION */
-  sectionRow: { paddingHorizontal: spacing.lg, marginTop: 22, marginBottom: 10 },
-  sectionLabel: { fontSize: 11.5, fontWeight: '700', color: colors.textMuted, letterSpacing: 1 },
-
-  /* QUICK ACTIONS */
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.lg, gap: 12 },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   quickTile: {
+    ...portalCard,
     flexBasis: '47%',
     flexGrow: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#0F1F1B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    padding: spacing.md,
+    minHeight: touchMin + 36,
+    gap: 4,
+    minWidth: 0,
   },
+  quickTileFull: { flexBasis: '100%' },
   quickIcon: {
-    width: 44, height: 44, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 10,
-  },
-  quickLabel: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 },
-  quickSub: { fontSize: 12.5, color: colors.textMuted },
-
-  /* CARD */
-  card: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: spacing.lg,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#0F1F1B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-
-  /* MED ROW */
-  medRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
-  },
-  medIcon: {
-    width: 44, height: 44, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  medIconDot: { width: 20, height: 20, borderRadius: 10 },
-  medInfo: { flex: 1 },
-  medName: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2, textTransform: 'capitalize' },
-  medMeta: { fontSize: 13, color: colors.textMuted },
-  divider: { height: 1, backgroundColor: '#F2F5F4', marginLeft: 72 },
-
-  /* CHECK */
-  check: {
-    width: 28, height: 28, borderRadius: 14,
-    borderWidth: 1.5, borderColor: '#D5DDD9',
-    backgroundColor: '#FAFAFA',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  checkDone: { backgroundColor: colors.primary50, borderColor: colors.primary },
-  checkMark: { fontSize: 13, fontWeight: '700', color: colors.primary },
-
-  /* EMPTY */
-  emptyState: { padding: 28, alignItems: 'center' },
-  emptyTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 5 },
-  emptySub: { fontSize: 13, color: colors.primaryDark, fontWeight: '600' },
-
-  /* INSIGHT CARD */
-  insightCard: {
-    backgroundColor: '#0A4A38',
-    marginHorizontal: spacing.lg,
-    borderRadius: 16,
-    padding: 20,
-    overflow: 'hidden',
-    shadowColor: '#0A4A38',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  insightCircle1: {
-    position: 'absolute', right: -20, top: -20,
-    width: 110, height: 110, borderRadius: 55,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  insightCircle2: {
-    position: 'absolute', right: 40, bottom: -30,
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  insightTags: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  tagSignal: {
-    backgroundColor: 'rgba(255,255,255,0.16)', paddingVertical: 4,
-    paddingHorizontal: 10, borderRadius: 999,
-  },
-  tagSignalText: { fontSize: 11.5, fontWeight: '700', color: '#FFFFFF' },
-  tagMed: {
-    backgroundColor: 'rgba(255,255,255,0.10)', paddingVertical: 4,
-    paddingHorizontal: 10, borderRadius: 999,
-  },
-  tagMedText: { fontSize: 11.5, fontWeight: '600', color: 'rgba(255,255,255,0.82)' },
-  insightTitle: {
-    fontSize: 19, fontWeight: '800', color: '#FFFFFF',
-    letterSpacing: -0.3, lineHeight: 24, marginBottom: 8,
-  },
-  insightBody: {
-    fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 21, marginBottom: 14,
-  },
-  insightLink: { fontSize: 13.5, fontWeight: '700', color: 'rgba(255,255,255,0.62)' },
-
-  /* GUIDED RESULTS CARD */
-  resultsCard: {
-    backgroundColor: '#0A4A38',
-    marginHorizontal: spacing.lg,
-    borderRadius: 16,
-    padding: 20,
-    overflow: 'hidden',
-    shadowColor: '#0A4A38',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  resultsCircle: {
-    position: 'absolute', right: -24, top: -24,
-    width: 110, height: 110, borderRadius: 55,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  resultsKicker: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: 1, marginBottom: 8 },
-  resultsTitle: { fontSize: 19, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3, lineHeight: 24, marginBottom: 8 },
-  resultsBody: { fontSize: 14, color: 'rgba(255,255,255,0.78)', lineHeight: 21, marginBottom: 14 },
-  resultsLink: { fontSize: 13.5, fontWeight: '700', color: 'rgba(255,255,255,0.7)' },
-
-  /* START HERE (first run) */
-  startCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: spacing.lg,
-    marginTop: 18,
-    borderRadius: 18,
-    padding: spacing.lg,
-    shadowColor: '#0F1F1B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  startKicker: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 1.2, marginBottom: 6 },
-  startTitle: { fontSize: 21, fontWeight: '800', color: colors.text, letterSpacing: -0.4, marginBottom: 6 },
-  startBody: { fontSize: 14, color: colors.textMuted, lineHeight: 21, marginBottom: 16 },
-  startSteps: { gap: 12, marginBottom: 20 },
-  startStepRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  startStepNum: {
-    width: 26, height: 26, borderRadius: 13, backgroundColor: colors.primary50,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  startStepNumText: { fontSize: 13, fontWeight: '800', color: colors.primary },
-  startStepText: { fontSize: 14.5, fontWeight: '600', color: colors.text },
-  startBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  startBtnText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
-  startBtnGhost: { paddingVertical: 12, alignItems: 'center' },
-  startBtnGhostText: { fontSize: 13.5, fontWeight: '700', color: colors.textMuted },
-
-  /* NUDGE */
-  nudge: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
     backgroundColor: colors.primary50,
-    marginHorizontal: spacing.lg,
-    marginTop: 18,
-    borderRadius: 16,
-    padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.primary100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
-  nudgeTitle: { fontSize: 15.5, fontWeight: '800', color: colors.primaryDark, marginBottom: 4, letterSpacing: -0.2 },
-  nudgeBody: { fontSize: 13.5, color: colors.primaryDark, lineHeight: 20, opacity: 0.85 },
+  quickLabel: { fontSize: 16, fontWeight: '700', color: colors.text },
+  quickSub: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
 
-  legal: { fontSize: 11.5, color: colors.textMuted, textAlign: 'center', marginTop: 24, paddingHorizontal: spacing.lg },
+  card: { ...portalCard, marginHorizontal: 0, overflow: 'hidden', padding: 0 },
+
+  medRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    gap: 12,
+    minHeight: touchMin,
+  },
+  medIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary50,
+    borderWidth: 1,
+    borderColor: colors.primary100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medIconDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.primary },
+  medInfo: { flex: 1 },
+  medName: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 2 },
+  medMeta: { fontSize: 14, color: colors.textMuted },
+  divider: { height: 1, backgroundColor: colors.borderSoft, marginLeft: 72 },
+
+  check: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.backgroundAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkDone: { backgroundColor: colors.primary50, borderColor: colors.primary },
+  checkMark: { fontSize: 14, fontWeight: '800', color: colors.primary },
+
+  emptyState: { padding: spacing.xl, alignItems: 'center', gap: 6 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  emptySub: { fontSize: 14, color: colors.primary, fontWeight: '600' },
+
+  insightCard: { ...portalCard, marginHorizontal: 0, padding: spacing.lg, gap: 8 },
+  insightTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: {
+    backgroundColor: colors.primary50,
+    borderWidth: 1,
+    borderColor: colors.primary100,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+  },
+  tagMuted: { backgroundColor: colors.ghostBg, borderColor: colors.borderSoft },
+  tagText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  tagTextMuted: { color: colors.textSoft },
+  insightTitle: { fontSize: 18, fontWeight: '800', color: colors.text, lineHeight: 24 },
+  insightBody: { fontSize: 15, color: colors.textSoft, lineHeight: 22 },
+  insightLink: { fontSize: 14, fontWeight: '700', color: colors.primary, marginTop: 4 },
+
+  startCard: { ...portalCard, marginHorizontal: 0, padding: spacing.lg, gap: spacing.sm },
+  startKicker: { fontSize: 12, fontWeight: '800', color: colors.primary, letterSpacing: 0.6 },
+  startTitle: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  startBody: { fontSize: 16, color: colors.textSoft, lineHeight: 24 },
+  startSteps: { gap: 12, marginVertical: spacing.sm },
+  startStepRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  startStepNum: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary50,
+    borderWidth: 1,
+    borderColor: colors.primary100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startStepNumText: { fontSize: 14, fontWeight: '800', color: colors.primary },
+  startStepText: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.text },
+
+  nudge: {
+    ...portalCard,
+    marginHorizontal: 0,
+    padding: spacing.lg,
+    borderColor: colors.primary100,
+    backgroundColor: colors.primary50,
+    gap: 4,
+  },
+  nudgeTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
+  nudgeBody: { fontSize: 15, color: colors.textSoft, lineHeight: 22 },
+
+  shareRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  shareBtn: { flex: 1, minWidth: 120 },
+
+  legal: {
+    fontSize: 13,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginTop: spacing.md,
+  },
 });
