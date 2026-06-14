@@ -13,10 +13,15 @@
 
   <div class="top portal-top">
     <div class="brand portal-brand">
-      @include('partials.geneorx-brand', ['size' => 44, 'showName' => false, 'href' => route('home'), 'class' => 'brand-logo-link'])
-      <div>
-        <h1 data-i18n="portal.short_title">GeneoRx Portal</h1>
-      </div>
+      @include('partials.geneorx-brand', [
+        'variant' => 'full',
+        'size' => 44,
+        'fullHeight' => 34,
+        'subtitle' => 'Portal',
+        'subtitleI18n' => 'portal.badge',
+        'href' => route('home'),
+        'class' => 'brand-logo-link',
+      ])
     </div>
     <div class="status portal-status">
       @include('partials.language-selector')

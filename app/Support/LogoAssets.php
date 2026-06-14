@@ -23,4 +23,17 @@ class LogoAssets
     {
         return self::url(is_file(public_path('logo-mark.png')) ? 'logo-mark.png' : 'logo.svg');
     }
+
+    public static function full(): string
+    {
+        if (is_file(public_path('logo.png'))) {
+            return self::url('logo.png');
+        }
+
+        if (is_file(public_path('logo-full.svg'))) {
+            return self::url('logo-full.svg');
+        }
+
+        return self::mark();
+    }
 }

@@ -262,6 +262,7 @@ $en = [
 
     // Portal chrome
     'portal.short_title' => 'GeneoRx Portal',
+    'portal.badge' => 'Portal',
     'portal.profile' => 'Profile',
     'portal.health_profile' => 'Health profile',
     'portal.account_settings' => 'Account settings',
@@ -895,6 +896,7 @@ return [
         'common.reset' => 'Restablecer',
         'common.close' => 'Cerrar',
         'portal.short_title' => 'Portal GeneoRx',
+        'portal.badge' => 'Portal',
         'portal.profile' => 'Perfil',
         'portal.health_profile' => 'Perfil de salud',
         'portal.account_settings' => 'Configuración de cuenta',

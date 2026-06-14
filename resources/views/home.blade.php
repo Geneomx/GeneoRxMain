@@ -182,6 +182,25 @@
     font-weight: 800;
     letter-spacing: -0.3px;
   }
+  .geneorx-brand--full { gap: 0; }
+  .geneorx-brand-full {
+    display: block;
+    width: auto;
+    max-width: min(220px, 52vw);
+    object-fit: contain;
+  }
+  .geneorx-brand-subtitle {
+    margin-left: 12px;
+    padding-left: 12px;
+    border-left: 1px solid rgba(255, 255, 255, 0.14);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+    white-space: nowrap;
+  }
+  .nav-brand-wrap .geneorx-brand-full { max-width: 180px; }
   .nav-links {
     display: flex;
     align-items: center;
@@ -1715,7 +1734,7 @@
 
     <div class="nav-inner">
       <div class="nav-brand-wrap">
-        @include('partials.geneorx-brand', ['size' => 36, 'href' => route('home')])
+        @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 36, 'fullHeight' => 30, 'showName' => false, 'href' => route('home')])
       </div>
 
       <div class="nav-cta">
@@ -1800,7 +1819,7 @@
     <div class="footer-top">
       <div class="footer-brand-area">
         <div class="footer-brand">
-          @include('partials.geneorx-brand', ['size' => 30, 'href' => route('home')])
+          @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 30, 'fullHeight' => 26, 'showName' => false, 'href' => route('home')])
         </div>
         <p class="footer-tagline">
           Personal medication intelligence. Helping you connect the dots between medications, symptoms, and nutrition.

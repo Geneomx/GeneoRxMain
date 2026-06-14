@@ -8,7 +8,7 @@
       <div class="intro-panel-accent" id="introPanelAccent" aria-hidden="true"></div>
 
       <header class="intro-header">
-        @include('partials.geneorx-brand', ['size' => 32, 'href' => route('home')])
+        @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 32, 'fullHeight' => 28, 'showName' => false, 'href' => route('home')])
         <button type="button" class="intro-skip" id="introSkip">Skip tour</button>
       </header>
 

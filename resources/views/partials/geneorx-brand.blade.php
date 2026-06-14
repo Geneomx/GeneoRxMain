@@ -1,15 +1,29 @@
 @php
+  $variant = $variant ?? 'mark';
   $size = $size ?? 36;
-  $showName = $showName ?? true;
+  $showName = $showName ?? ($variant === 'mark');
   $href = $href ?? route('home');
   $markSize = max(28, (int) round($size * 0.92));
   $radius = max(10, (int) round($size * 0.32));
+  $fullHeight = $fullHeight ?? max(28, (int) round($size * 0.72));
 @endphp
-<a href="{{ $href }}" class="geneorx-brand {{ $class ?? '' }}" @isset($style) style="{{ $style }}" @endisset>
-  <span class="geneorx-brandmark" style="width:{{ $size }}px;height:{{ $size }}px;border-radius:{{ $radius }}px">
-    <img src="{{ \App\Support\LogoAssets::mark() }}" alt="GeneoRx" width="{{ $markSize }}" height="{{ $markSize }}">
-  </span>
-  @if($showName)
-    <span class="geneorx-brand-name">{{ $name ?? 'GeneoRx' }}</span>
+<a href="{{ $href }}" class="geneorx-brand geneorx-brand--{{ $variant }} {{ $class ?? '' }}" @isset($style) style="{{ $style }}" @endisset>
+  @if($variant === 'full')
+    <img
+      src="{{ \App\Support\LogoAssets::full() }}"
+      alt="GeneoRx"
+      class="geneorx-brand-full"
+      height="{{ $fullHeight }}"
+    >
+    @if(!empty($subtitle))
+      <span class="geneorx-brand-subtitle" @if(!empty($subtitleI18n)) data-i18n="{{ $subtitleI18n }}" @endif>{{ $subtitle }}</span>
+    @endif
+  @else
+    <span class="geneorx-brandmark" style="width:{{ $size }}px;height:{{ $size }}px;border-radius:{{ $radius }}px">
+      <img src="{{ \App\Support\LogoAssets::mark() }}" alt="GeneoRx" width="{{ $markSize }}" height="{{ $markSize }}">
+    </span>
+    @if($showName)
+      <span class="geneorx-brand-name">{{ $name ?? 'GeneoRx' }}</span>
+    @endif
   @endif
 </a>

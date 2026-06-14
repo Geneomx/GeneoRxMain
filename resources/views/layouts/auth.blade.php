@@ -72,6 +72,24 @@
       font-weight: 800;
       letter-spacing: -0.2px;
     }
+    .geneorx-brand--full { gap: 0; }
+    .geneorx-brand-full {
+      display: block;
+      width: auto;
+      max-width: 200px;
+      object-fit: contain;
+    }
+    .geneorx-brand-subtitle {
+      margin-left: 12px;
+      padding-left: 12px;
+      border-left: 1px solid rgba(255, 255, 255, 0.14);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
 
     .auth-top {
       max-width: 1180px;
@@ -294,7 +312,7 @@
 </head>
 <body>
   <header class="auth-top">
-    @include('partials.geneorx-brand', ['size' => 36])
+    @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 36, 'fullHeight' => 32, 'showName' => false])
     <div class="auth-top-actions">
       @include('partials.language-selector')
       <a href="{{ route('home') }}" class="auth-top-link" data-i18n="auth.back">Back to home</a>
