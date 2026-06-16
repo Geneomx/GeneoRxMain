@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{{ $pageTitle }} · GeneoRx</title>
   @include('partials.logo-head')
+  @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@1,8..60,400&display=swap" rel="stylesheet">
   <style>
@@ -185,8 +186,7 @@
 
 <nav class="nav">
   <a href="{{ url('/') }}" class="nav-brand">
-    <img src="{{ \App\Support\LogoAssets::mark() }}" alt="GeneoRx">
-    <span class="nav-brand-name">GeneoRx</span>
+    @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false, 'href' => url('/')])
   </a>
   <a href="{{ url('/') }}" class="nav-back">
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">

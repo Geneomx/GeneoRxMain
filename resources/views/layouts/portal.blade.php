@@ -11,10 +11,6 @@
   <style>
     #summaryPanel { display: block; }
     #summaryPanel.summary-panel--hidden { display: none !important; }
-    #summaryPanel.summary-panel--compact .hd .desc { display: none; }
-    #summaryPanel.summary-panel--compact #contactBox { display: none; }
-    .summaryCompactLine { font-size: 14px; line-height: 1.5; }
-    .summaryCompactNext { margin-top: 6px; font-size: 13px; }
     .summarySimpleHero { margin-bottom: 4px; }
     .summarySimpleHeroTitle { font-size: 16px; font-weight: 900; }
     .summarySimpleHeroMeta { font-size: 13px; color: var(--muted); margin-top: 4px; }

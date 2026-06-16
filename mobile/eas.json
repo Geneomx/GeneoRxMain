@@ -28,15 +28,29 @@
     },
     "production": {
       "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
         "GENEORX_API_URL": "https://geneorx.com/api",
         "GOOGLE_CLIENT_ID": "218044016082-62j05pjkn36g1937t9d9cr8s9ldv7nkl.apps.googleusercontent.com",
         "GOOGLE_ANDROID_CLIENT_ID": "218044016082-rdfvig4ss5hur2idp8f7n7junfa4k4lt.apps.googleusercontent.com",
         "GOOGLE_IOS_CLIENT_ID": "218044016082-7lqcvgf5g62d2j546aidaabpg2ufr2vm.apps.googleusercontent.com"
       }
+    },
+    "production-apk": {
+      "extends": "production",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "track": "production",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }

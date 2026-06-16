@@ -960,6 +960,83 @@ function computeInsightEngine(){
   return { summary, meaning, doctorPrompt, patterns, interactions, contraindications, prediction };
 }
 
+function generateDynamicHealthStory(){
+  const medNames = state.meds.map(m => {
+    const med = MED_DB.find(x=>x.id===m.medId);
+    return med ? med.name : m.medId;
+  });
+  const symptoms = state.symptoms?.selected || [];
+  const severity = state.symptoms?.severity || "mild";
+  const patterns = detectHealthPatterns();
+  const success = computeMedicationSuccessPrediction();
+  const interactions = computeDrugInteractions();
+  const contraindications = computeContraindications();
+  const last = latestCheckin();
+  const nutrientScores = computeNutrientScores();
+  const topNutrient = nutrientScores.length ? nutrientScores[0] : null;
+  const parts = [];
+
+  if (medNames.length) {
+    const medsText = medNames.slice(0, 2).join(", ") + (medNames.length > 2 ? t("summary.story.meds_other") : "");
+    const maxMonths = Math.max(...state.meds.map(x => Number(x.durationMonths || 0)), 0);
+    if (maxMonths > 0) {
+      parts.push(t("summary.story.meds_duration", { meds: medsText, months: maxMonths }));
+    } else {
+      parts.push(t("summary.story.meds", { meds: medsText }));
+    }
+  } else if (state.symptomOnlyMode) {
+    parts.push(t("summary.story.symptom_only"));
+  } else {
+    parts.push(t("summary.story.no_meds"));
+  }
+
+  if (symptoms.length) {
+    const symText = symptoms.slice(0, 3).join(", ") + (symptoms.length > 3 ? ", and other symptoms" : "");
+    parts.push(t("summary.story.symptoms", { symptoms: symText, severity }));
+  } else {
+    parts.push(t("summary.story.no_symptoms"));
+  }
+
+  if (patterns.length) {
+    const p = patterns[0];
+    parts.push(t("summary.story.pattern", { pattern: p.title.toLowerCase(), note: p.note }));
+  } else if (topNutrient) {
+    parts.push(t("summary.story.top_nutrient", { nutrient: topNutrient[0], score: topNutrient[1] }));
+  } else {
+    parts.push(t("summary.story.no_signal"));
+  }
+
+  if (last) {
+    const better = (last.symptoms?.items || []).filter(x => x.change === "Much better" || x.change === "Slightly better").map(x => x.symptom);
+    const worse = (last.symptoms?.items || []).filter(x => x.change === "Worse").map(x => x.symptom);
+    if (better.length && !worse.length) {
+      parts.push(t("summary.story.improved", { symptoms: better.slice(0, 2).join(" and ") }));
+    } else if (worse.length) {
+      parts.push(t("summary.story.worse", { symptoms: worse.slice(0, 2).join(" and ") }));
+    } else {
+      parts.push(t("summary.story.mixed"));
+    }
+    parts.push(t("summary.story.success_with_checkin", { score: success.score, level: success.level }));
+  } else {
+    parts.push(t("summary.story.success_no_checkin", { score: success.score, level: success.level }));
+  }
+
+  if (interactions.length || contraindications.length) {
+    const bits = [];
+    if (interactions.length) bits.push(t("summary.story.alert_interactions", { count: interactions.length }));
+    if (contraindications.length) bits.push(t("summary.story.alert_cautions", { count: contraindications.length }));
+    parts.push(t("summary.story.alerts", { alerts: bits.join(" and ") }));
+  }
+
+  if (topNutrient) {
+    parts.push(t("summary.story.discuss_nutrient", { nutrient: topNutrient[0] }));
+  } else {
+    parts.push(t("summary.story.discuss_general"));
+  }
+
+  return parts.join(" ");
+}
+
 function computePopulationInsights(){
   const syms = state.symptoms.selected || [];
   const items = (state.checkins || []).flatMap(c => (c.symptoms?.items || []));
@@ -1644,7 +1721,6 @@ function updateSummaryPanelMode(){
   const panel = document.getElementById("summaryPanel");
   if (!panel) return;
   panel.classList.toggle("summary-panel--hidden", state.step === 8);
-  panel.classList.toggle("summary-panel--compact", state.step !== 8);
 }
 
 function renderContactBox(){
@@ -1657,34 +1733,28 @@ function renderSummaryTop(){
   const cov = evidenceCoverage();
   const flags = safetyFlags();
   const next = nextSuggestedStep();
+  const noneLabel = t("summary.none");
 
   summaryTop.innerHTML = `
-    <div class="summaryCompact">
-      <div class="summaryCompactLine">
-        <strong>${medsCount}</strong> ${medsCount === 1 ? t("summary.med") : t("summary.meds")} ·
-        <strong>${symCount}</strong> ${symCount === 1 ? t("summary.symptom") : t("summary.symptoms")} ·
-        ${t("summary.evidence")} <strong>${cov.evidenceCount}/${cov.selectedCount}</strong>
+    <div class="tagline">
+      <strong>${escapeHtml(t("summary.quick_status"))}</strong><br>
+      ${escapeHtml(t("summary.age"))}: <strong>${escapeHtml(state.profile.age || "—")}</strong> • ${escapeHtml(t("summary.gender"))}: <strong>${escapeHtml(state.profile.gender || "—")}</strong><br>
+      ${escapeHtml(t("sidebar.meds"))}: <strong>${medsCount}</strong> • ${escapeHtml(t("summary.symptoms"))}: <strong>${symCount}</strong> • ${escapeHtml(t("summary.evidence"))}: <strong>${cov.evidenceCount}/${cov.selectedCount}</strong><br>
+      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("summary.safety_flags_line"))}: <strong>${escapeHtml(flags.length ? flags.join(", ") : noneLabel)}</strong></div>
+      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("summary.next_step"))}: <strong>${escapeHtml(next.label)}</strong></div>
+      <div class="quickActions">
+        <button type="button" class="qaBtn ghost" data-go="0">${escapeHtml(t("step.0"))}</button>
+        <button type="button" class="qaBtn ghost" data-go="1">${escapeHtml(t("step.1"))}</button>
+        <button type="button" class="qaBtn ghost" data-go="2">${escapeHtml(t("step.2"))}</button>
+        <button type="button" class="qaBtn ghost" data-go="4">${escapeHtml(t("step.4"))}</button>
+        <button type="button" class="qaBtn ghost" data-go="5">${escapeHtml(t("step.5"))}</button>
+        <button type="button" class="qaBtn ghost" data-go="6">${escapeHtml(t("step.6"))}</button>
       </div>
-      <div class="summaryCompactNext fineprint">
-        ${t("summary.next")}: <strong>${escapeHtml(next.label)}</strong>
-        ${flags.length ? ` · ${t("summary.safety")}: ${escapeHtml(flags.join(", "))}` : ""}
-      </div>
-      ${!IS_GUEST ? `
-        <div class="btns" style="margin-top:10px">
-          <button class="ghost mini" id="sidebarEditProfile">${escapeHtml(profileNeedsCompletion() ? t("profile.complete") : t("portal.health_profile"))}</button>
-        </div>
-      ` : ``}
-      ${state.checkins.length ? `
-        <div class="btns" style="margin-top:10px">
-          <button class="ghost mini" id="sidebarViewCheckin">${escapeHtml(t("portal.mycheckins"))}</button>
-        </div>
-      ` : `<div class="fineprint" style="margin-top:8px">${escapeHtml(t("sidebar.no_checkins"))}</div>`}
     </div>
   `;
-  const sidebarBtn = summaryTop.querySelector("#sidebarViewCheckin");
-  if (sidebarBtn) sidebarBtn.addEventListener("click", promptMyCheckins);
-  const profileBtn = summaryTop.querySelector("#sidebarEditProfile");
-  if (profileBtn) profileBtn.addEventListener("click", openProfileModal);
+  summaryTop.querySelectorAll("[data-go]").forEach(b=>{
+    b.addEventListener("click", ()=> setStep(parseInt(b.getAttribute("data-go"),10)));
+  });
 }
 
 function renderSide(){
@@ -1696,10 +1766,19 @@ function renderSide(){
   const lastLine = last
     ? `${t("sidebar.latest")}: ${fmtDate(last.dateISO)} • ${t("sidebar.adherence")} ${last.adherencePct}%`
     : t("sidebar.no_checkins");
+  const flags = safetyFlags();
+  const noneLabel = t("summary.none");
+  const wb = state.wellbeingBaseline || {};
 
   const blocks = [
+    {k: t("sidebar.account"), v: `${state.account.email || t("common.guest")} • Consent: ${state.account.consent ? t("sidebar.consent_yes") : t("sidebar.consent_no")}`},
+    {k: t("sidebar.age_gender"), v: `${state.profile.age || "—"} / ${state.profile.gender || "—"}`},
+    {k: t("sidebar.safety_flags"), v: flags.length ? flags.join(", ") : noneLabel},
     {k: t("sidebar.meds"), v: meds.length ? meds.join(", ") : t("sidebar.none_yet")},
+    {k: t("sidebar.symptoms_selected"), v: state.symptoms.selected.length ? state.symptoms.selected.join(", ") : t("sidebar.none_yet")},
+    {k: t("sidebar.baseline_wellbeing"), v: `${t("wellbeing.energy")} ${wb.energy ?? "—"}/10 • ${t("wellbeing.mood")} ${wb.mood ?? "—"}/10 • ${t("wellbeing.sleep")} ${wb.sleep ?? "—"}/10 • ${t("wellbeing.focus")} ${wb.focus ?? "—"}/10`},
     {k: t("sidebar.plan"), v: state.plan.started ? `${t("pill.started")} ${fmtDate(state.plan.startDate)}` : t("sidebar.not_started")},
+    {k: t("sidebar.supplements"), v: state.plan.recommendedSupplements.length ? state.plan.recommendedSupplements.join(", ") : t("sidebar.no_plan_supplements")},
     {k: t("sidebar.checkins"), v: lastLine},
   ];
 
@@ -2706,12 +2785,6 @@ function renderProgress(){
 
   const coach = computeWeeklyCoachMessage();
 
-  mainEl.appendChild(renderLastCheckinCard(last, { showDownloadReport: true }));
-
-  const gap = document.createElement("div");
-  gap.style.height = "14px";
-  mainEl.appendChild(gap);
-
   s1.innerHTML = `
     <div class="coachBox">
       <div class="coachTitle">
@@ -2857,54 +2930,51 @@ function renderSummaryTab(){
   const patterns = detectHealthPatterns();
   const interactions = computeDrugInteractions();
   const contraindications = computeContraindications();
-  const planLine = state.plan.started
-    ? `Started ${fmtDate(state.plan.startDate)}${state.plan.recommendedSupplements.length ? ` · ${state.plan.recommendedSupplements.join(", ")}` : ""}`
-    : t("summary.not_started");
+  const story = generateDynamicHealthStory();
+  const noneLabel = t("summary.none");
+
+  const sStory = document.createElement("div");
+  sStory.className = "section";
+  sStory.innerHTML = `
+    <div class="tagline">
+      <strong>${escapeHtml(t("summary.health_story_title"))}</strong><br>
+      ${escapeHtml(t("summary.health_story_sub"))}
+      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("summary.health_story_lead"))}</div>
+    </div>
+    <div style="height:12px"></div>
+    <div class="v" style="line-height:1.6">${escapeHtml(story)}</div>
+    <div class="btns">
+      <button type="button" class="primary" id="summarySnapshotBtn">${escapeHtml(t("progress.snapshot_btn"))}</button>
+      <button type="button" class="primary" id="summaryInsightBtn">${escapeHtml(t("results.insight_btn"))}</button>
+    </div>
+  `;
+  mainEl.appendChild(sStory);
+  sStory.querySelector("#summarySnapshotBtn").addEventListener("click", openSnapshotModal);
+  sStory.querySelector("#summaryInsightBtn").addEventListener("click", openInsightModal);
 
   const s1 = document.createElement("div");
   s1.className = "section";
-
-  if (last) {
-    mainEl.appendChild(renderLastCheckinCard(last, { showDownloadReport: true }));
-    const gap = document.createElement("div");
-    gap.style.height = "14px";
-    mainEl.appendChild(gap);
-  }
-
   s1.innerHTML = `
-    <div class="summarySimpleHero">
-      <div class="summarySimpleHeroTitle">${escapeHtml(t("summary.session"))}</div>
-      <div class="summarySimpleHeroMeta">${escapeHtml(state.profile.age || "—")} ${escapeHtml(t("summary.yrs"))} · ${escapeHtml(state.profile.gender || "—")}</div>
-    </div>
-    <div style="height:12px"></div>
-    <div class="summarySimpleGrid">
-      <div class="item"><div class="k">${escapeHtml(t("summary.medications"))}</div><div class="v">${meds.length ? escapeHtml(meds.join(", ")) : escapeHtml(t("summary.none_added"))}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("summary.symptoms_field"))}</div><div class="v">${state.symptoms.selected.length ? escapeHtml(state.symptoms.selected.join(", ")) : escapeHtml(t("summary.none_selected"))}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("summary.plan_field"))}</div><div class="v">${escapeHtml(planLine)}</div></div>
-      ${last ? "" : `<div class="item"><div class="k">${escapeHtml(t("summary.latest_checkin"))}</div><div class="v">${escapeHtml(t("summary.none_yet"))}</div></div>`}
-    </div>
-    ${flags.length ? `<div class="note" style="margin-top:12px">${escapeHtml(t("summary.safety_flags_label"))} ${escapeHtml(flags.join(", "))}</div>` : ""}
-    <details class="summaryDetails">
-      <summary>${escapeHtml(t("summary.clinical_details"))}</summary>
-      <div class="list">
-        <div class="item"><div class="k">${escapeHtml(t("summary.success_prediction"))}</div><div class="v"><strong>${success.score}%</strong> · ${escapeHtml(success.level)}<br>${escapeHtml(success.reason)}</div></div>
-        <div class="item"><div class="k">${escapeHtml(t("summary.pattern"))}</div><div class="v">${patterns.length ? `<strong>${escapeHtml(patterns[0].title)}</strong><br>${escapeHtml(patterns[0].note)}` : escapeHtml(t("summary.no_pattern"))}</div></div>
-        <div class="item"><div class="k">${escapeHtml(t("summary.interactions_field"))}</div><div class="v">${interactions.length ? escapeHtml(interactions.map(x=>x.title).join(", ")) : escapeHtml(t("summary.none_flagged"))}</div></div>
-        <div class="item"><div class="k">${escapeHtml(t("summary.contraindications_field"))}</div><div class="v">${contraindications.length ? escapeHtml(contraindications.map(x=>x.title).join(", ")) : escapeHtml(t("summary.none_flagged"))}</div></div>
-        <div class="item"><div class="k">${escapeHtml(t("summary.insight_field"))}</div><div class="v"><strong>${escapeHtml(insight.summary)}</strong><br>${escapeHtml(insight.meaning)}</div></div>
-      </div>
-    </details>
-    <div class="btns" style="margin-top:14px">
-      <button class="primary" id="summaryShareBtn">${escapeHtml(t("summary.share_btn"))}</button>
+    <div class="tagline"><strong>${escapeHtml(t("summary.dashboard_title"))}</strong><br>${escapeHtml(t("summary.dashboard_sub"))}</div>
+    <div style="height:10px"></div>
+    <div class="list">
+      <div class="item"><div class="k">${escapeHtml(t("summary.account_label"))}</div><div class="v">${escapeHtml(state.account.email || t("common.guest"))} • Consent: ${state.account.consent ? t("sidebar.consent_yes") : t("sidebar.consent_no")}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.medications"))}</div><div class="v">${meds.length ? escapeHtml(meds.join(", ")) : escapeHtml(t("summary.no_meds_added"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.symptoms_field"))}</div><div class="v">${state.symptoms.selected.length ? escapeHtml(state.symptoms.selected.join(", ")) : escapeHtml(t("summary.no_symptoms_selected"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("sidebar.safety_flags"))}</div><div class="v">${flags.length ? escapeHtml(flags.join(", ")) : escapeHtml(noneLabel)}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.success_prediction_full"))}</div><div class="v"><strong>${success.score}%</strong> • ${escapeHtml(success.level)}<br>${escapeHtml(success.reason)}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.detected_pattern"))}</div><div class="v">${patterns.length ? `<strong>${escapeHtml(patterns[0].title)}</strong><br>${escapeHtml(patterns[0].note)}` : escapeHtml(t("summary.no_pattern_detected"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.drug_interactions"))}</div><div class="v">${interactions.length ? escapeHtml(interactions.map(x=>x.title).join(", ")) : escapeHtml(t("summary.no_interactions"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.contraindications"))}</div><div class="v">${contraindications.length ? escapeHtml(contraindications.map(x=>x.title).join(", ")) : escapeHtml(t("summary.no_contraindications"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.insight_summary"))}</div><div class="v"><strong>${escapeHtml(insight.summary)}</strong><br>${escapeHtml(insight.meaning)}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.latest_checkin"))}</div><div class="v">${last ? `${fmtDate(last.dateISO)} • ${t("sidebar.adherence")} ${last.adherencePct}%` : escapeHtml(t("sidebar.no_checkins"))}</div></div>
     </div>
   `;
-  s1.querySelector("#summaryShareBtn").addEventListener("click", ()=>{
-    document.getElementById("btnShare").click();
-  });
 
   if (IS_GUEST && localHasMeaningfulData(state)) {
     const cta = document.createElement("div");
     cta.className = "save-account-cta";
+    cta.style.marginTop = "14px";
     cta.innerHTML = `
       <div class="save-account-cta-title">${escapeHtml(t("save_account.summary_title"))}</div>
       <div class="fineprint">${escapeHtml(t("save_account.summary_sub"))}</div>

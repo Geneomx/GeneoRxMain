@@ -6,6 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>@yield('title', 'GeneoRx')</title>
   @include('partials.logo-head')
+  @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -71,35 +72,6 @@
       font-size: 15px;
       font-weight: 800;
       letter-spacing: -0.2px;
-    }
-    .geneorx-brand--full { gap: 0; }
-    .geneorx-brand-full {
-      display: block;
-      width: auto;
-      height: auto;
-      object-fit: contain;
-    }
-    .auth-top .geneorx-brand-full {
-      height: 38px;
-      max-width: 220px;
-    }
-    .auth-intro .geneorx-brand {
-      margin-bottom: 22px;
-    }
-    .auth-intro .geneorx-brand-full {
-      height: 64px;
-      max-width: min(380px, 88vw);
-    }
-    .geneorx-brand-subtitle {
-      margin-left: 12px;
-      padding-left: 12px;
-      border-left: 1px solid rgba(255, 255, 255, 0.14);
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      white-space: nowrap;
     }
 
     .auth-top {
@@ -323,7 +295,7 @@
 </head>
 <body>
   <header class="auth-top">
-    @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 36, 'showName' => false])
+    @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false])
     <div class="auth-top-actions">
       @include('partials.language-selector')
       <a href="{{ route('home') }}" class="auth-top-link" data-i18n="auth.back">Back to home</a>

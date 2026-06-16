@@ -18,23 +18,23 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.geneorx.app",
-      "buildNumber": "1",
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "GeneoRx may use the camera to capture photos for your medication and symptom logs.",
-        "NSFaceIDUsageDescription": "GeneoRx uses Face ID to secure your account."
+        "NSFaceIDUsageDescription": "GeneoRx uses Face ID to secure your account.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.geneorx.app",
-      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
       "permissions": [
         "INTERNET"
-      ]
+      ],
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.geneorx.app"
     },
     "web": {
       "bundler": "metro",

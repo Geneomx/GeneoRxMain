@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GeneoRx   Personal medication intelligence</title>
 @include('partials.logo-head')
+@include('partials.brand-logo-styles')
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@1,8..60,400&display=swap" rel="stylesheet">
@@ -183,27 +184,6 @@
     letter-spacing: -0.3px;
   }
   .geneorx-brand--full { gap: 0; }
-  .geneorx-brand-full {
-    display: block;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-  }
-  .nav-brand-wrap .geneorx-brand-full {
-    height: 36px;
-    max-width: 220px;
-  }
-  .geneorx-brand-subtitle {
-    margin-left: 12px;
-    padding-left: 12px;
-    border-left: 1px solid rgba(255, 255, 255, 0.14);
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-soft);
-    white-space: nowrap;
-  }
   .nav-links {
     display: flex;
     align-items: center;
@@ -1491,14 +1471,24 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 22px 24px 0;
+    padding: 18px 24px 0;
     gap: 16px;
   }
 
-  .intro-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
+  .intro-header .geneorx-brand {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: calc(100% - 112px);
+    overflow: hidden;
+  }
+
+  .intro-header .geneorx-brand-full {
+    display: block;
+    height: 34px;
+    max-height: 34px;
+    width: auto;
+    max-width: min(168px, 48vw);
+    object-fit: contain;
   }
 
   .intro-header .geneorx-brand-name { font-size: 15px; }
@@ -1718,6 +1708,12 @@
     .intro-panel { border-radius: 20px 20px 16px 16px; max-height: 92vh; }
     .intro-viewport { padding: 16px 16px 0; min-height: 240px; }
     .intro-header, .intro-progress, .intro-footer { padding-left: 16px; padding-right: 16px; }
+    .intro-header { padding-top: 14px; }
+    .intro-header .geneorx-brand-full {
+      height: 30px;
+      max-height: 30px;
+      max-width: min(148px, 44vw);
+    }
     .intro-footer { grid-template-columns: 1fr 1fr; }
     .intro-step-counter { grid-column: 1 / -1; order: -1; margin-bottom: 4px; }
     .intro-nav-btn--ghost { justify-self: stretch; }
@@ -1737,7 +1733,7 @@
 
     <div class="nav-inner">
       <div class="nav-brand-wrap">
-        @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 36, 'showName' => false, 'href' => route('home')])
+        @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false, 'href' => route('home')])
       </div>
 
       <div class="nav-cta">
@@ -1822,7 +1818,7 @@
     <div class="footer-top">
       <div class="footer-brand-area">
         <div class="footer-brand">
-          @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 30, 'showName' => false, 'href' => route('home')])
+          @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false, 'href' => route('home')])
         </div>
         <p class="footer-tagline">
           Personal medication intelligence. Helping you connect the dots between medications, symptoms, and nutrition.

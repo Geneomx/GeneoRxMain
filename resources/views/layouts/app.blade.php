@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>GeneoRx</title>
   @include('partials.logo-head')
+  @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1142,10 +1143,9 @@
   <!-- NAV -->
   <nav class="nav">
     <div class="nav-inner">
-      <a href="{{ route('home') }}" class="nav-brand">
-        <img src="{{ \App\Support\LogoAssets::mark() }}" alt="GeneoRx" class="nav-logo">
-        <span class="nav-name">GeneoRx</span>
-      </a>
+      <div class="nav-brand">
+        @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false, 'href' => route('home')])
+      </div>
 
       <div class="nav-links">
         @auth

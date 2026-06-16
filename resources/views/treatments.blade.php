@@ -15,7 +15,7 @@
     <div class="brand portal-brand">
       @include('partials.geneorx-brand', [
         'variant' => 'full',
-        'size' => 44,
+        'logoSize' => 'portal',
         'subtitle' => 'Portal',
         'subtitleI18n' => 'portal.badge',
         'href' => route('home'),
@@ -69,10 +69,10 @@
     </div>
 
     <div class="card" id="summaryPanel">
-      <div class="hd">
+      <div class="hd summary-hd">
         <div>
           <h2 data-i18n="summary.panel_title">Summary</h2>
-          <div class="desc" data-i18n="summary.panel_desc">Quick recap while you work through steps</div>
+          <div class="desc" data-i18n="summary.panel_desc">What you've entered so far</div>
         </div>
       </div>
       <div class="bd">

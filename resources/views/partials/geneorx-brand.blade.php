@@ -3,17 +3,17 @@
   $size = $size ?? 36;
   $showName = $showName ?? ($variant === 'mark');
   $href = $href ?? route('home');
+  $logoSize = $logoSize ?? null;
   $markSize = max(28, (int) round($size * 0.92));
   $radius = max(10, (int) round($size * 0.32));
-  $fullHeight = $fullHeight ?? max(28, (int) round($size * 0.72));
+  $sizeClass = $logoSize ? ' geneorx-brand--logo-'.$logoSize : '';
 @endphp
-<a href="{{ $href }}" class="geneorx-brand geneorx-brand--{{ $variant }} {{ $class ?? '' }}" @isset($style) style="{{ $style }}" @endisset>
+<a href="{{ $href }}" class="geneorx-brand geneorx-brand--{{ $variant }}{{ $sizeClass }} {{ $class ?? '' }}" @isset($style) style="{{ $style }}" @endisset>
   @if($variant === 'full')
     <img
       src="{{ \App\Support\LogoAssets::full() }}"
       alt="GeneoRx"
       class="geneorx-brand-full"
-      height="{{ $fullHeight }}"
     >
     @if(!empty($subtitle))
       <span class="geneorx-brand-subtitle" @if(!empty($subtitleI18n)) data-i18n="{{ $subtitleI18n }}" @endif>{{ $subtitle }}</span>

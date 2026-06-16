@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>GeneoRx Admin   @yield('title', 'Dashboard')</title>
   @include('partials.logo-head')
+  @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -416,8 +417,7 @@
   <!-- TOP BAR -->
   <header class="admin-topbar">
     <a href="{{ route('home') }}" class="admin-brand">
-      <img src="{{ \App\Support\LogoAssets::mark() }}" alt="GeneoRx">
-      <span class="admin-brand-name">GeneoRx</span>
+      @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false, 'href' => route('home')])
       <span class="admin-brand-badge">Admin</span>
     </a>
 

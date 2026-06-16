@@ -36,6 +36,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   plugins: [
     ...(Array.isArray(config.plugins) ? config.plugins : []),
+    'expo-web-browser',
     [
       'expo-build-properties',
       {

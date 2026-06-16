@@ -1,6 +1,7 @@
   <!-- =========================================================
        ===== CSS (KEEPING ORIGINAL GENIORX BACKGROUND) =====
        ========================================================= -->
+  @include('partials.brand-logo-styles')
   <style>
     :root{
       --bg0:#070A12;
@@ -139,29 +140,6 @@
       width:40px;height:40px;object-fit:contain;display:block;
       filter: drop-shadow(0 10px 18px rgba(0,0,0,.25));
     }
-    .geneorx-brand--full { gap: 0; align-items: center; }
-    .geneorx-brand-full {
-      display: block;
-      width: auto;
-      height: auto;
-      object-fit: contain;
-      filter: drop-shadow(0 10px 18px rgba(0,0,0,.18));
-    }
-    .portal-brand .geneorx-brand-full {
-      height: 42px;
-      max-width: min(280px, 62vw);
-    }
-    .geneorx-brand-subtitle {
-      margin-left: 12px;
-      padding-left: 12px;
-      border-left: 1px solid rgba(255,255,255,.14);
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: .14em;
-      text-transform: uppercase;
-      color: var(--muted);
-      white-space: nowrap;
-    }
     .portal-brand { align-items: center; }
     h1{margin:0;font-size:18px;font-weight:900;letter-spacing:-.3px}
     .sub{margin:4px 0 0 0;color:var(--muted);font-size:14px;line-height:1.4}
@@ -245,6 +223,9 @@
     }
 
     #summaryPanel{display:none}
+    #summaryPanel .hd.summary-hd{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    }
 
     .section{
       padding:16px;

@@ -90,7 +90,7 @@ await appIcon(180, path.join(publicDir, 'apple-touch-icon.png'));
 await fullLogoBuffer(820).then((b) => sharp(b).toFile(path.join(assets, 'logo.png')));
 await appIcon(1024, path.join(assets, 'icon.png'));
 await appIcon(192, path.join(assets, 'favicon.png'));
-await fullLogoBuffer(1024).then((b) => sharp(b).toFile(path.join(publicDir, 'logo.png')));
+await fullLogoBuffer(1400).then((b) => sharp(b).toFile(path.join(publicDir, 'logo.png')));
 await adaptiveForeground(1024, path.join(assets, 'adaptive-icon.png'));
 await splashPng(path.join(assets, 'splash.png'));
 

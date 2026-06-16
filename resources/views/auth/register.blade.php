@@ -7,7 +7,7 @@
 @section('content')
 <div class="auth-shell">
   <div class="auth-intro">
-    @include('partials.geneorx-brand', ['variant' => 'full', 'size' => 40, 'showName' => false])
+    @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'hero', 'showName' => false])
     <span class="eyebrow">Get started</span>
     <h1>Create your free account.</h1>
     <p class="sub">Save your medications, symptoms, routine, check-ins, and doctor summary across devices.</p>

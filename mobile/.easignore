@@ -1,0 +1,9 @@
+# Keep EAS upload archives small and fast.
+node_modules/
+.expo/
+.expo-shared/
+.git/
+store-assets/*.png
+store-assets/node_modules/
+../mobile/.expo-tmp-export/
+../public/logo-master.png
