@@ -960,7 +960,7 @@ function computeInsightEngine(){
   return { summary, meaning, doctorPrompt, patterns, interactions, contraindications, prediction };
 }
 
-function generateDynamicHealthStory(){
+function generateDynamicHealthStory(checkinOverride){
   const medNames = state.meds.map(m => {
     const med = MED_DB.find(x=>x.id===m.medId);
     return med ? med.name : m.medId;
@@ -971,7 +971,7 @@ function generateDynamicHealthStory(){
   const success = computeMedicationSuccessPrediction();
   const interactions = computeDrugInteractions();
   const contraindications = computeContraindications();
-  const last = latestCheckin();
+  const last = checkinOverride ?? latestCheckin();
   const nutrientScores = computeNutrientScores();
   const topNutrient = nutrientScores.length ? nutrientScores[0] : null;
   const parts = [];
@@ -1340,15 +1340,12 @@ function computeWeeklyCoachMessage(){
    ========================================================= */
 function buildClinicianSnapshotText(checkinIndex){
   let checkin = null;
-  let resolvedIndex = null;
   if (state.checkins.length) {
     if (typeof checkinIndex !== "number" || checkinIndex < 0 || checkinIndex >= state.checkins.length) {
       checkinIndex = state.checkins.length - 1;
     }
-    resolvedIndex = checkinIndex;
     checkin = state.checkins[checkinIndex];
   }
-  const base = state.wellbeingBaseline || { energy: 5, mood: 5, sleep: 5, focus: 5 };
   const flags = safetyFlags();
   const meds = state.meds.map(m=>{
     const med = MED_DB.find(x=>x.id===m.medId);
@@ -1361,49 +1358,36 @@ function buildClinicianSnapshotText(checkinIndex){
   const interactions = computeDrugInteractions().map(x=>`- ${x.title} (${x.level})`);
   const contraindications = computeContraindications().map(x=>`- ${x.title} (${x.level})`);
   const success = computeMedicationSuccessPrediction();
-  const patterns = detectHealthPatterns().map(x=>`- ${x.title} (${x.confidence})`);
+  const patterns = detectHealthPatterns();
 
   const supp = (state.plan.recommendedSupplements||[]);
   const adh = checkin ? `${checkin.adherencePct}%` : " ";
   const labs = uniq(scores.slice(0,5).flatMap(([n]) => LAB_SUGGESTIONS[n] || [])).slice(0,8);
   const symptoms = state.symptoms.selected.length ? state.symptoms.selected.join(", ") : "None selected";
   const lastDate = checkin ? fmtDate(checkin.dateISO) : " ";
+  const story = generateDynamicHealthStory(checkin);
 
-  const checkinLines = [];
-  if (checkin) {
-    const wb = checkin.wellbeing || {};
-    const dE = (wb.energy ?? 0) - base.energy;
-    const dM = (wb.mood ?? 0) - base.mood;
-    const dS = (wb.sleep ?? 0) - base.sleep;
-    const dF = (wb.focus ?? 0) - base.focus;
-    const symItems = (checkin.symptoms?.items || []).map(x =>
-      `- ${x.symptom}: ${x.change || "No change"} (severity ${x.severityNow ?? "—"}/10)`
-    );
-    checkinLines.push(
-      `Selected check-in: Check-in ${resolvedIndex + 1} · ${lastDate}`,
-      `Adherence: ${adh}`,
-      `Wellbeing: Energy ${wb.energy ?? "—"}/10 · Mood ${wb.mood ?? "—"}/10 · Sleep ${wb.sleep ?? "—"}/10 · Focus ${wb.focus ?? "—"}/10`,
-      `Change vs baseline: Energy ${dE >= 0 ? "+" : ""}${dE}, Mood ${dM >= 0 ? "+" : ""}${dM}, Sleep ${dS >= 0 ? "+" : ""}${dS}, Focus ${dF >= 0 ? "+" : ""}${dF}`,
-      "Symptom changes this check-in:",
-      symItems.length ? symItems.join("\n") : "- None tracked",
-      `Supplements taken: ${(checkin.supplementsTaken || []).length ? checkin.supplementsTaken.join(", ") : "None logged"}`,
-      `Side effects: ${(checkin.sideEffects || []).length ? checkin.sideEffects.join(", ") : "None"}`,
-      `Notes: ${checkin.notes || "None"}`
-    );
-  }
+  const protocolBlock = [
+    "Current protocol (supplement support):",
+    supp.length ? supp.map(x=>`- ${x}`).join("\n") : "- Not started / none saved",
+    `Adherence (latest check-in): ${adh}`,
+  ].join("\n");
 
   return [
-    "GENEORX   YOUR DOCTOR VISIT SNAPSHOT",
+    "GENEORX — YOUR DOCTOR VISIT SNAPSHOT",
     "===================================",
     "",
     `Patient: ${state.account.email || "Anonymous"}   Age: ${state.profile.age || " "}   Gender: ${state.profile.gender || " "}`,
     `Safety flags: ${flags.length ? flags.join(", ") : "None reported"}`,
-    `Medication success prediction: ${success.score}% (${success.level})`,
+    `Medication success probability: ${success.score}% (${success.level})`,
     "",
     "Medications:",
     meds.length ? meds.join("\n") : "- None reported",
     "",
     `Symptoms (recent): ${symptoms}`,
+    "",
+    "Detected patterns:",
+    patterns.length ? patterns.map(x=>`- ${x.title} (${x.confidence})`).join("\n") : "- No strong pattern detected yet",
     "",
     "Nutrient risk signals (GeneoRx estimate):",
     top.length ? top.join("\n") : "- No signals yet (add meds/symptoms)",
@@ -1414,15 +1398,15 @@ function buildClinicianSnapshotText(checkinIndex){
     "Contraindications / cautions:",
     contraindications.length ? contraindications.join("\n") : "- None identified from current safety rules",
     "",
-    "Pattern detection:",
-    patterns.length ? patterns.join("\n") : "- No strong pattern detected yet",
+    protocolBlock,
     "",
-    "Current protocol (supplement support):",
-    supp.length ? supp.map(x=>`- ${x}`).join("\n") : "- Not started / none saved",
-    "",
-    ...(checkinLines.length ? ["Check-in details:", ...checkinLines, ""] : [`Adherence (latest check-in): ${adh}`, "", `Latest check-in date: ${lastDate}`, ""]),
     "Optional labs to consider (clinical context needed):",
     labs.length ? labs.map(x=>`- ${x}`).join("\n") : "-  ",
+    "",
+    "Health story:",
+    story,
+    "",
+    `Latest check-in date: ${lastDate}`,
     "",
     "Note: Educational guidance with evidence transparency; confirm labs, dosing, and interactions with your clinician."
   ].join("\n");
@@ -2804,7 +2788,6 @@ function renderProgress(){
       <div class="divider"></div>
 
       <div class="btns">
-        <button class="primary" id="btnSnapshot">${escapeHtml(t("progress.snapshot_btn"))}</button>
         <button class="ghost" id="btnAnother">${escapeHtml(t("progress.add_another"))}</button>
       </div>
     </div>
@@ -2844,7 +2827,6 @@ function renderProgress(){
   `;
   mainEl.appendChild(s1);
 
-  document.getElementById("btnSnapshot").addEventListener("click", openSnapshotModal);
   document.getElementById("btnAnother").addEventListener("click", ()=> setStep(5));
 
   const timeline = document.createElement("div");
@@ -2854,10 +2836,8 @@ function renderProgress(){
     <div class="tagline"><strong>${escapeHtml(t("progress.timeline_title"))}</strong><br>${escapeHtml(t("progress.timeline_sub"))}</div>
     <div style="height:10px"></div>
     <div class="list">${checkinTimeline || `<div class="fineprint">${escapeHtml(t("progress.timeline_none"))}</div>`}</div>
-    <div class="btns"><button class="primary" id="btnExportReport">${escapeHtml(t("progress.download_report"))}</button></div>
   `;
   mainEl.appendChild(timeline);
-  document.getElementById("btnExportReport").addEventListener("click", ()=> promptDownloadDoctorReport());
 
   mainEl.appendChild(navButtons(true,true,"nav.continue"));
 }
