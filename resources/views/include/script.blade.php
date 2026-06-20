@@ -6,6 +6,8 @@ const AUTHENTICATED_USER = "{{ Auth::check() ? Auth::user()->name : 'Guest' }}";
 const AUTH_EMAIL = @json(Auth::check() ? Auth::user()->email : '');
 const IS_GUEST = @json(! Auth::check() || (session('is_web_guest') ?? false));
 const LOGIN_URL = "{{ route('login') }}";
+const LOGOUT_URL = "{{ route('logout') }}";
+const CAN_LOGOUT = @json(Auth::check() && !(session('is_web_guest') ?? false));
 const ACCOUNT_SETTINGS_URL = "{{ route('account.settings') }}";
 
 /* =========================================================
@@ -1795,6 +1797,44 @@ function navButtons(prev=true,next=true,nextLabelKey="nav.continue"){
   return wrap;
 }
 
+function summaryExitButtons(){
+  const wrap = document.createElement("div");
+  wrap.className = "btns";
+
+  const back = document.createElement("button");
+  back.type = "button";
+  back.textContent = t("nav.back");
+  back.className = "ghost";
+  back.addEventListener("click", ()=> setStep(prevStep(state.step)));
+  wrap.appendChild(back);
+
+  if (CAN_LOGOUT) {
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = LOGOUT_URL;
+    form.style.display = "inline";
+    const csrf = document.createElement("input");
+    csrf.type = "hidden";
+    csrf.name = "_token";
+    csrf.value = document.querySelector('meta[name="csrf-token"]')?.content || "";
+    form.appendChild(csrf);
+    const logoutBtn = document.createElement("button");
+    logoutBtn.type = "submit";
+    logoutBtn.textContent = t("portal.logout");
+    logoutBtn.className = "primary";
+    form.appendChild(logoutBtn);
+    wrap.appendChild(form);
+  } else {
+    const signIn = document.createElement("a");
+    signIn.href = LOGIN_URL;
+    signIn.textContent = t("portal.signin");
+    signIn.className = "primary portal-link-btn";
+    wrap.appendChild(signIn);
+  }
+
+  return wrap;
+}
+
 /* =========================================================
    ===== TAB RENDERERS (DIVIDED BY TAB) =====
    ========================================================= */
@@ -2967,7 +3007,7 @@ function renderSummaryTab(){
   }
 
   mainEl.appendChild(s1);
-  mainEl.appendChild(navButtons(true,true,"nav.continue"));
+  mainEl.appendChild(summaryExitButtons());
 }
 
 /* ===== FEEDBACK (modal) ===== */
