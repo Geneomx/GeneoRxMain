@@ -1,9 +1,11 @@
-import React, { useRef, useState } from 'react';
-import { GestureResponderEvent, Linking, PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { GestureResponderEvent, Linking, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Button } from '@/components/Button';
 import { useTranslation } from '@/hooks/useTranslation';
-import { colors, radius, shadow, spacing, touchMin } from '@/theme';
-import { citationToLink } from '@/wizard/engine';
-import type { AlertLevel, Tier } from '@/wizard/engine';
+import { colors, gradients, radius, shadow, spacing, touchMin } from '@/theme';
+import { citationToLink, successLabel } from '@/wizard/engine';
+import type { AlertLevel, InsightResult, Tier } from '@/wizard/engine';
 
 /* ---------- Section card ---------- */
 export const Section: React.FC<{ children: React.ReactNode; style?: object }> = ({ children, style }) => (
@@ -68,9 +70,9 @@ export const HelpNote: React.FC<{
   );
 };
 
-/* ---------- Tagline (bold lead + body) ---------- */
+/* ---------- Tagline (cyan-tinted callout — matches website .tagline) ---------- */
 export const Tagline: React.FC<{ title: string; body?: string }> = ({ title, body }) => (
-  <View style={{ gap: 4 }}>
+  <View style={styles.taglineBox}>
     <Text style={styles.taglineTitle}>{title}</Text>
     {body ? <Text style={styles.taglineBody}>{body}</Text> : null}
   </View>
@@ -99,17 +101,20 @@ export const KVItem: React.FC<{ k: string; children: React.ReactNode }> = ({ k, 
   </View>
 );
 
-/* ---------- Tier pill ---------- */
+/* ---------- Tier pill — "Tier: High" like the website ---------- */
 const TIER_COLORS: Record<Tier, { bg: string; fg: string }> = {
   High: { bg: colors.successBg, fg: colors.success },
   Moderate: { bg: colors.warningBg, fg: colors.warning },
   Low: { bg: colors.surfaceAlt, fg: colors.textMuted },
 };
 export const TierPill: React.FC<{ tier: Tier }> = ({ tier }) => {
+  const { t } = useTranslation();
   const c = TIER_COLORS[tier];
+  const key = `tier.${tier.toLowerCase()}`;
+  const label = t(key) !== key ? t(key) : tier;
   return (
     <View style={[styles.pill, { backgroundColor: c.bg }]}>
-      <Text style={[styles.pillText, { color: c.fg }]}>{tier}</Text>
+      <Text style={[styles.pillText, { color: c.fg }]}>{t('results.tier')} {label}</Text>
     </View>
   );
 };
@@ -126,13 +131,14 @@ export const AlertBox: React.FC<{ title: string; level: AlertLevel; note: string
   note,
   action,
 }) => {
+  const { t } = useTranslation();
   const c = ALERT_COLORS[level];
   return (
     <View style={[styles.alert, { backgroundColor: c.bg, borderColor: c.border }]}>
       <View style={styles.alertHead}>
         <Text style={[styles.alertTitle, { color: c.fg }]}>{title}</Text>
         <View style={[styles.pill, { backgroundColor: c.pillBg, borderWidth: 1, borderColor: c.border }]}>
-          <Text style={[styles.pillText, { color: c.fg }]}>{level}</Text>
+          <Text style={[styles.pillText, { color: c.fg }]}>{level} {t('results.priority')}</Text>
         </View>
       </View>
       <Text style={styles.alertNote}>{note}</Text>
@@ -297,6 +303,119 @@ export const ToggleRow: React.FC<{ label: string; value: boolean; onChange: (v: 
   </Pressable>
 );
 
+/* ---------- Reveal animation — 4-step "analyzing" sequence before an
+   insight modal opens, matching the website's openInsightModal()/advance().
+   Shared by the Results and Summary steps. ---------- */
+const REVEAL_STEP_KEYS = [
+  { labelKey: 'modal.reveal.step1', hintKey: 'modal.reveal.step1_hint' },
+  { labelKey: 'modal.reveal.step2', hintKey: 'modal.reveal.step2_hint' },
+  { labelKey: 'modal.reveal.step3', hintKey: 'modal.reveal.step3_hint' },
+  { labelKey: 'modal.reveal.step4', hintKey: 'modal.reveal.step4_hint' },
+] as const;
+const REVEAL_PROGRESS_KEYS = [
+  'modal.reveal.progress1', 'modal.reveal.progress2', 'modal.reveal.progress3', 'modal.reveal.progress4',
+] as const;
+const REVEAL_STEPS = 4;
+const REVEAL_STEP_MS = 420;
+const REVEAL_READY_MS = 260;
+
+export const RevealAnimationModal: React.FC<{ visible: boolean; onComplete: () => void }> = ({ visible, onComplete }) => {
+  const { t } = useTranslation();
+  const [step, setStep] = useState(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    setStep(0);
+    const tick = (i: number) => {
+      setStep(i);
+      timer.current = setTimeout(() => {
+        if (i < REVEAL_STEPS) tick(i + 1);
+        else onComplete();
+      }, i < REVEAL_STEPS ? REVEAL_STEP_MS : REVEAL_READY_MS);
+    };
+    tick(0);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => undefined}>
+      <View style={styles.revealBackdrop} />
+      <View style={styles.revealWrap} pointerEvents="box-none">
+        <View style={styles.revealModal}>
+          <Text style={styles.revealTitle}>{t('modal.insight.title')}</Text>
+          <View style={{ gap: 10 }}>
+            {REVEAL_STEP_KEYS.map((s, idx) => {
+              const isDone = idx < step || step >= REVEAL_STEPS;
+              const isOn = idx === step && step < REVEAL_STEPS;
+              return (
+                <View key={s.labelKey} style={[styles.revealStep, isOn && styles.revealStepOn, isDone && styles.revealStepDone]}>
+                  <View style={[styles.revealIcon, isOn && styles.revealIconOn, isDone && styles.revealIconDone]}>
+                    <Text style={[styles.revealIconText, (isOn || isDone) && styles.revealIconTextActive]}>
+                      {isDone ? '✓' : idx + 1}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.revealLabel}>{t(s.labelKey)}</Text>
+                    <Text style={styles.revealHint}>{t(s.hintKey)}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+          <View style={styles.revealTrack}>
+            <LinearGradient
+              colors={gradients.primaryCta}
+              start={gradients.start}
+              end={gradients.end}
+              style={[styles.revealBar, { width: `${Math.round((Math.min(step + 1, REVEAL_STEPS) / REVEAL_STEPS) * 100)}%` }]}
+            />
+          </View>
+          <Text style={styles.revealFoot}>{step < REVEAL_STEPS ? t(REVEAL_PROGRESS_KEYS[step]) : t('modal.insight.ready')}</Text>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+/* ---------- Insight modal — "What GeneoRx sees / means / doctor / why".
+   Shared by the Results and Summary steps, opened after RevealAnimationModal. ---------- */
+export const InsightModal: React.FC<{ visible: boolean; onClose: () => void; insight: InsightResult }> = ({
+  visible,
+  onClose,
+  insight,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.revealBackdrop} onPress={onClose} />
+      <View style={styles.revealWrap} pointerEvents="box-none">
+        <View style={styles.insightModal}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text style={styles.insightKicker}>{t('modal.insight.title').toUpperCase()}</Text>
+            <Text style={styles.insightSummary}>{insight.summary}</Text>
+            <Text style={styles.insightLabel}>{t('modal.insight.means')}</Text>
+            <Text style={styles.insightBody}>{insight.meaning}</Text>
+            <Text style={styles.insightLabel}>{t('modal.insight.doctor')}</Text>
+            <Text style={styles.insightBody}>{insight.doctorPrompt}</Text>
+            <Text style={styles.insightLabel}>{t('modal.insight.why')}</Text>
+            <Text style={styles.insightBody}>
+              {insight.patterns.length ? `${t('summary.pattern')}: ${insight.patterns[0].title}\n` : ''}
+              {insight.interactions.length ? `${t('summary.interactions_field')}: ${insight.interactions.length}\n` : ''}
+              {insight.contraindications.length ? `${t('summary.contraindications_field')}: ${insight.contraindications.length}\n` : ''}
+              {t('summary.success_prediction')}: {insight.prediction.score}% ({successLabel(insight.prediction.level, t)})
+            </Text>
+          </ScrollView>
+          <Button title={t('modal.insight.close')} variant="secondary" onPress={onClose} />
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const styles = StyleSheet.create({
   section: {
     backgroundColor: colors.surface,
@@ -307,8 +426,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     ...shadow.card,
   },
+  taglineBox: {
+    gap: 4,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(58, 207, 235, 0.22)',
+    backgroundColor: colors.primary50,
+  },
   taglineTitle: { fontSize: 18, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
-  taglineBody: { fontSize: 15, color: colors.textMuted, lineHeight: 22 },
+  taglineBody: { fontSize: 15, color: colors.textSoft, lineHeight: 22 },
 
   help: { backgroundColor: colors.primary50, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary100 },
   helpHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: spacing.md, paddingVertical: 14, minHeight: touchMin - 8 },
@@ -427,4 +554,42 @@ const styles = StyleSheet.create({
   toggleTrackOn: { backgroundColor: colors.primary },
   toggleThumb: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFFFFF' },
   toggleThumbOn: { alignSelf: 'flex-end' },
+
+  /* Reveal animation — mirrors website .revealModal/.revealStep/.revealBar */
+  revealBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(4, 6, 12, 0.72)' },
+  revealWrap: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', padding: spacing.lg },
+  revealModal: {
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    padding: spacing.lg, gap: 14, maxHeight: '86%',
+  },
+  revealTitle: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  revealStep: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    padding: 12, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.borderSoft, backgroundColor: colors.ghostBg,
+    opacity: 0.55,
+  },
+  revealStepOn: { opacity: 1, borderColor: colors.primary100, backgroundColor: colors.primary50 },
+  revealStepDone: { opacity: 1, borderColor: 'rgba(52, 211, 153, 0.28)', backgroundColor: colors.successBg },
+  revealIcon: {
+    width: 26, height: 26, borderRadius: 13,
+    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceAlt,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  revealIconOn: { borderColor: colors.primary100, backgroundColor: colors.primary50 },
+  revealIconDone: { borderColor: 'rgba(52, 211, 153, 0.28)', backgroundColor: 'rgba(52, 211, 153, 0.14)' },
+  revealIconText: { fontSize: 12, fontWeight: '800', color: colors.textMuted },
+  revealIconTextActive: { color: colors.text },
+  revealLabel: { fontSize: 14, fontWeight: '700', color: colors.text },
+  revealHint: { fontSize: 12, color: colors.textMuted, lineHeight: 17, marginTop: 2 },
+  revealTrack: { height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
+  revealBar: { height: '100%', borderRadius: 3 },
+  revealFoot: { fontSize: 13, color: colors.textMuted, textAlign: 'center' },
+
+  /* Insight modal */
+  insightModal: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: 8, maxHeight: '80%' },
+  insightKicker: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 1 },
+  insightSummary: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 },
+  insightLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 8 },
+  insightBody: { fontSize: 14, color: colors.textSoft, lineHeight: 20 },
 });

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/auth/AuthContext';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useLanguage } from '@/store/LanguageContext';
@@ -100,33 +102,40 @@ export const SettingsScreen: React.FC = () => {
   }
 
   // ── Delete account ─────────────────────────────────────────────────────
+  // The website requires typing DELETE (all caps) before the destructive
+  // action fires; we mirror that friction with a confirmation dialog.
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const deleteArmed = deleteConfirmText === 'DELETE';
+
   function confirmDeleteAccount() {
-    Alert.alert(
-      t('mobile.settings.delete_account'),
-      t('mobile.alert.delete_body'),
-      [
-        { text: t('mobile.alert.cancel'), style: 'cancel' },
-        {
-          text: t('mobile.alert.delete_confirm'),
-          style: 'destructive',
-          onPress: doDeleteAccount,
-        },
-      ],
-    );
+    setDeleteConfirmText('');
+    setShowDeleteModal(true);
+  }
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setShowDeleteModal(false);
+    setDeleteConfirmText('');
   }
 
   async function doDeleteAccount() {
+    if (!deleteArmed || deleting) return;
+    setDeleting(true);
     try {
       await apiRequest('/account', { method: 'DELETE' });
       // signOut clears the token and navigates to Auth stack
       await signOut();
     } catch (err: any) {
+      setDeleting(false);
       Alert.alert(t('mobile.alert.error'), err?.message ?? t('mobile.alert.try_again'));
     }
   }
 
   return (
     <SafeAreaView style={ss.safe} edges={['top']}>
+      <AmbientBackground />
       <ScrollView contentContainerStyle={[ss.content, { paddingBottom: scrollBottom }]} showsVerticalScrollIndicator={false}>
         <View style={page}>
         {/* ── Preferences ─── */}
@@ -231,6 +240,46 @@ export const SettingsScreen: React.FC = () => {
         <Text style={ss.legal}>{t('mobile.settings.copyright')}</Text>
         </View>
       </ScrollView>
+
+      {/* ── Delete confirmation (type DELETE) ─── */}
+      <Modal visible={showDeleteModal} transparent animationType="fade" onRequestClose={closeDeleteModal}>
+        <View style={ss.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeDeleteModal} />
+          <View style={ss.modalCard}>
+            <Text style={ss.modalTitle}>{t('mobile.settings.delete_account')}</Text>
+            <Text style={ss.modalBody}>{t('mobile.settings.delete_note')}</Text>
+            <Text style={ss.modalPrompt}>To confirm, type DELETE in the box below.</Text>
+            <TextInput
+              style={ss.modalInput}
+              value={deleteConfirmText}
+              onChangeText={setDeleteConfirmText}
+              placeholder="DELETE"
+              placeholderTextColor={colors.textDim}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              editable={!deleting}
+              accessibilityLabel="Type DELETE to confirm account deletion"
+            />
+            <View style={ss.modalActions}>
+              <Button
+                title={t('mobile.alert.cancel')}
+                variant="ghost"
+                onPress={closeDeleteModal}
+                disabled={deleting}
+                style={ss.modalBtn}
+              />
+              <Button
+                title={t('mobile.alert.delete_confirm')}
+                variant="danger"
+                onPress={doDeleteAccount}
+                disabled={!deleteArmed || deleting}
+                loading={deleting}
+                style={ss.modalBtn}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -352,4 +401,35 @@ const ss = StyleSheet.create({
     marginTop: 12,
     paddingBottom: 8,
   },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(4, 6, 12, 0.72)',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: 12,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  modalBody: { fontSize: 14, color: colors.textMuted, lineHeight: 20 },
+  modalPrompt: { fontSize: 13, fontWeight: '600', color: colors.textSoft },
+  modalInput: {
+    backgroundColor: colors.inputBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.text,
+    letterSpacing: 1,
+  },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  modalBtn: { flex: 1 },
 });

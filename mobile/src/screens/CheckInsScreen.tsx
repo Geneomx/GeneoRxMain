@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import { Loader } from '@/components/Loader';
 import { ReportPickerModal } from '@/components/ReportPickerModal';
 import { useWizard } from '@/store/WizardContext';
@@ -29,6 +30,7 @@ export const CheckInsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <AmbientBackground />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: scrollBottom }]}
         showsVerticalScrollIndicator={false}

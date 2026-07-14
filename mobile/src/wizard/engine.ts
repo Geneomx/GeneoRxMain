@@ -64,12 +64,13 @@ export function tierFromScore(score: number): Tier {
 
 export type NutrientScore = [string, number];
 
-export function computeNutrientScores(s: WizardState): NutrientScore[] {
+export function computeNutrientScores(s: WizardState, catalog?: MedEntry[]): NutrientScore[] {
+  const db = catalog?.length ? catalog : MED_DB;
   const scores: Record<string, number> = {};
   const sevF = severityFactor(s.symptoms.severity);
 
   for (const mi of s.meds) {
-    const med = MED_DB.find((x) => x.id === mi.medId);
+    const med = db.find((x) => x.id === mi.medId);
     if (!med) continue;
     const f = doseFactor(mi.dose) * durationFactor(mi.durationMonths) * sevF;
     for (const cl of med.claims || []) {
@@ -122,10 +123,11 @@ export interface NutrientClaim extends MedClaim {
   medName: string;
 }
 
-export function claimsForSelectedMeds(s: WizardState): NutrientClaim[] {
+export function claimsForSelectedMeds(s: WizardState, catalog?: MedEntry[]): NutrientClaim[] {
+  const db = catalog?.length ? catalog : MED_DB;
   const out: NutrientClaim[] = [];
   for (const mi of s.meds) {
-    const med = MED_DB.find((x) => x.id === mi.medId);
+    const med = db.find((x) => x.id === mi.medId);
     if (!med) continue;
     for (const cl of med.claims || []) out.push({ medId: med.id, medName: med.name, ...cl });
   }
@@ -174,10 +176,11 @@ export function evidencePanel(nutrient: string, claims: NutrientClaim[]): Eviden
   return { citations: citations.slice(0, 6), noteText: uniq(notes).slice(0, 3).join(' '), labs };
 }
 
-export function evidenceCoverage(s: WizardState): { selectedCount: number; evidenceCount: number } {
+export function evidenceCoverage(s: WizardState, catalog?: MedEntry[]): { selectedCount: number; evidenceCount: number } {
+  const db = catalog?.length ? catalog : MED_DB;
   const selected = s.meds.map((m) => m.medId);
   const evidenceCount = selected.filter((id) => {
-    const med = MED_DB.find((x) => x.id === id);
+    const med = db.find((x) => x.id === id);
     return med && (med.claims || []).some((c) => (c.citations || []).length > 0);
   }).length;
   return { selectedCount: selected.length, evidenceCount };
@@ -395,17 +398,18 @@ export interface InsightResult {
   prediction: SuccessPrediction;
 }
 
-export function computeInsightEngine(s: WizardState, t: TranslateFn): InsightResult {
+export function computeInsightEngine(s: WizardState, t: TranslateFn, catalog?: MedEntry[]): InsightResult {
+  const db = catalog?.length ? catalog : MED_DB;
   const patterns = detectHealthPatterns(s, t);
   const interactions = computeDrugInteractions(s, t);
   const contraindications = computeContraindications(s, t);
   const prediction = computeMedicationSuccessPrediction(s, t);
-  const topScore = computeNutrientScores(s)[0];
+  const topScore = computeNutrientScores(s, catalog)[0];
   const symptomText = (s.symptoms.selected || []).slice(0, 4).join(', ') || t('engine.insight.no_symptoms');
   const medNames =
     s.meds
       .map((m) => {
-        const med = MED_DB.find((x) => x.id === m.medId);
+        const med = db.find((x) => x.id === m.medId);
         return med ? med.name : m.medId;
       })
       .join(', ') || t('engine.insight.no_meds');
@@ -503,10 +507,10 @@ export interface CoachMessage {
   nextBestAction: string;
 }
 
-export function computeWeeklyCoachMessage(s: WizardState, t: TranslateFn): CoachMessage {
+export function computeWeeklyCoachMessage(s: WizardState, t: TranslateFn, catalog?: MedEntry[]): CoachMessage {
   const last = latestCheckin(s);
   const base = s.wellbeingBaseline || { energy: 5, mood: 5, sleep: 5, focus: 5 };
-  const scores = computeNutrientScores(s);
+  const scores = computeNutrientScores(s, catalog);
   const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : t('engine.coach.bullet_empty');
 
   if (!last) {
@@ -556,6 +560,96 @@ export function computeWeeklyCoachMessage(s: WizardState, t: TranslateFn): Coach
   return { headline, bullets, nextBestAction: next };
 }
 
+/**
+ * A readable narrative combining meds, symptoms, detected patterns, the most
+ * recent check-in trend, safety alerts, and a discussion prompt — ported
+ * from the website's generateDynamicHealthStory().
+ */
+export function generateDynamicHealthStory(
+  s: WizardState,
+  t: TranslateFn,
+  catalog?: MedEntry[],
+  checkinOverride?: WizardCheckin | null,
+): string {
+  const db = catalog?.length ? catalog : MED_DB;
+  const medNames = s.meds.map((m) => {
+    const med = db.find((x) => x.id === m.medId);
+    return med ? med.name : m.medId;
+  });
+  const symptoms = s.symptoms?.selected || [];
+  const severity = s.symptoms?.severity || 'mild';
+  const patterns = detectHealthPatterns(s, t);
+  const success = computeMedicationSuccessPrediction(s, t);
+  const interactions = computeDrugInteractions(s, t);
+  const contraindications = computeContraindications(s, t);
+  const last = checkinOverride !== undefined ? checkinOverride : latestCheckin(s);
+  const nutrientScores = computeNutrientScores(s, catalog);
+  const topNutrient = nutrientScores.length ? nutrientScores[0] : null;
+  const parts: string[] = [];
+
+  if (medNames.length) {
+    const medsText = medNames.slice(0, 2).join(', ') + (medNames.length > 2 ? t('summary.story.meds_other') : '');
+    const maxMonths = Math.max(...s.meds.map((x) => Number(x.durationMonths || 0)), 0);
+    if (maxMonths > 0) {
+      parts.push(t('summary.story.meds_duration', { meds: medsText, months: maxMonths }));
+    } else {
+      parts.push(t('summary.story.meds', { meds: medsText }));
+    }
+  } else if (s.symptomOnlyMode) {
+    parts.push(t('summary.story.symptom_only'));
+  } else {
+    parts.push(t('summary.story.no_meds'));
+  }
+
+  if (symptoms.length) {
+    const symText = symptoms.slice(0, 3).join(', ') + (symptoms.length > 3 ? ', and other symptoms' : '');
+    parts.push(t('summary.story.symptoms', { symptoms: symText, severity }));
+  } else {
+    parts.push(t('summary.story.no_symptoms'));
+  }
+
+  if (patterns.length) {
+    const p = patterns[0];
+    parts.push(t('summary.story.pattern', { pattern: p.title.toLowerCase(), note: p.note }));
+  } else if (topNutrient) {
+    parts.push(t('summary.story.top_nutrient', { nutrient: topNutrient[0], score: topNutrient[1] }));
+  } else {
+    parts.push(t('summary.story.no_signal'));
+  }
+
+  if (last) {
+    const better = (last.symptoms?.items || [])
+      .filter((x) => x.change === 'Much better' || x.change === 'Slightly better')
+      .map((x) => x.symptom);
+    const worse = (last.symptoms?.items || []).filter((x) => x.change === 'Worse').map((x) => x.symptom);
+    if (better.length && !worse.length) {
+      parts.push(t('summary.story.improved', { symptoms: better.slice(0, 2).join(' and ') }));
+    } else if (worse.length) {
+      parts.push(t('summary.story.worse', { symptoms: worse.slice(0, 2).join(' and ') }));
+    } else {
+      parts.push(t('summary.story.mixed'));
+    }
+    parts.push(t('summary.story.success_with_checkin', { score: success.score, level: success.level }));
+  } else {
+    parts.push(t('summary.story.success_no_checkin', { score: success.score, level: success.level }));
+  }
+
+  if (interactions.length || contraindications.length) {
+    const bits: string[] = [];
+    if (interactions.length) bits.push(t('summary.story.alert_interactions', { count: interactions.length }));
+    if (contraindications.length) bits.push(t('summary.story.alert_cautions', { count: contraindications.length }));
+    parts.push(t('summary.story.alerts', { alerts: bits.join(' and ') }));
+  }
+
+  if (topNutrient) {
+    parts.push(t('summary.story.discuss_nutrient', { nutrient: topNutrient[0] }));
+  } else {
+    parts.push(t('summary.story.discuss_general'));
+  }
+
+  return parts.join(' ');
+}
+
 type CheckinItemAcc = WizardCheckin['symptoms']['items'][number] | null;
 
 function resolveMedName(medId: string, catalog?: MedEntry[]): string {
@@ -579,18 +673,15 @@ export function buildClinicianSnapshotText(
   });
 
   let checkin = null;
-  let resolvedIndex: number | null = null;
   if (s.checkins.length) {
-    let idx =
+    const idx =
       typeof checkinIndex === 'number' && checkinIndex >= 0 && checkinIndex < s.checkins.length
         ? checkinIndex
         : s.checkins.length - 1;
-    resolvedIndex = idx;
     checkin = s.checkins[idx];
   }
 
-  const base = s.wellbeingBaseline || { energy: 5, mood: 5, sleep: 5, focus: 5 };
-  const scores = computeNutrientScores(s);
+  const scores = computeNutrientScores(s, catalog);
   const top = scores.slice(0, 6).map(([n, sc]) => `- ${n}: ${tierFromScore(sc)} signal (${sc}%)`);
   const interactions = computeDrugInteractions(s, t).map((x) => `- ${x.title} (${x.level})`);
   const contraindications = computeContraindications(s, t).map((x) => `- ${x.title} (${x.level})`);
@@ -602,34 +693,13 @@ export function buildClinicianSnapshotText(
   const labs = uniq(scores.slice(0, 5).flatMap(([n]) => LAB_SUGGESTIONS[n] || [])).slice(0, 8);
   const symptoms = s.symptoms.selected.length ? s.symptoms.selected.join(', ') : 'None selected';
   const lastDate = checkin ? fmtDate(checkin.dateISO) : '—';
+  const story = generateDynamicHealthStory(s, t, catalog, checkin);
 
-  const checkinLines: string[] = [];
-  if (checkin) {
-    const wb = checkin.wellbeing || base;
-    const dE = (wb.energy ?? 0) - base.energy;
-    const dM = (wb.mood ?? 0) - base.mood;
-    const dS = (wb.sleep ?? 0) - base.sleep;
-    const dF = (wb.focus ?? 0) - base.focus;
-    const symItems = (checkin.symptoms?.items || []).map(
-      (x) => `- ${x.symptom}: ${x.change || 'No change'}`,
-    );
-    const sideEffects = Array.isArray(checkin.sideEffects)
-      ? checkin.sideEffects
-      : checkin.sideEffects
-        ? [checkin.sideEffects]
-        : [];
-    checkinLines.push(
-      `Selected check-in: Check-in ${(resolvedIndex ?? 0) + 1} · ${lastDate}`,
-      `Adherence: ${adh}`,
-      `Wellbeing: Energy ${wb.energy ?? '—'}/10 · Mood ${wb.mood ?? '—'}/10 · Sleep ${wb.sleep ?? '—'}/10 · Focus ${wb.focus ?? '—'}/10`,
-      `Change vs baseline: Energy ${dE >= 0 ? '+' : ''}${dE}, Mood ${dM >= 0 ? '+' : ''}${dM}, Sleep ${dS >= 0 ? '+' : ''}${dS}, Focus ${dF >= 0 ? '+' : ''}${dF}`,
-      'Symptom changes this check-in:',
-      symItems.length ? symItems.join('\n') : '- None tracked',
-      `Supplements taken: ${(checkin.supplementsTaken || []).length ? checkin.supplementsTaken.join(', ') : 'None logged'}`,
-      `Side effects: ${sideEffects.length ? sideEffects.join(', ') : 'None'}`,
-      `Notes: ${checkin.notes || 'None'}`,
-    );
-  }
+  const protocolBlock = [
+    'Current protocol (supplement support):',
+    supp.length ? supp.map((x) => `- ${x}`).join('\n') : '- Not started / none saved',
+    `Adherence (latest check-in): ${adh}`,
+  ].join('\n');
 
   return [
     'GENEORX — YOUR DOCTOR VISIT SNAPSHOT',
@@ -637,12 +707,15 @@ export function buildClinicianSnapshotText(
     '',
     `Patient: ${s.account.email || 'Anonymous'} • Age: ${s.profile.age || '—'} • Gender: ${s.profile.gender || '—'}`,
     `Safety flags: ${flags.length ? flags.join(', ') : 'None reported'}`,
-    `Medication success prediction: ${success.score}% (${success.level})`,
+    `Medication success probability: ${success.score}% (${success.level})`,
     '',
     'Medications:',
     meds.length ? meds.join('\n') : '- None reported',
     '',
     `Symptoms (recent): ${symptoms}`,
+    '',
+    'Detected patterns:',
+    patterns.length ? patterns.join('\n') : '- No strong pattern detected yet',
     '',
     'Nutrient risk signals (GeneoRx estimate):',
     top.length ? top.join('\n') : '- No signals yet (add meds/symptoms)',
@@ -653,17 +726,15 @@ export function buildClinicianSnapshotText(
     'Contraindications / cautions:',
     contraindications.length ? contraindications.join('\n') : '- None identified from current safety rules',
     '',
-    'Pattern detection:',
-    patterns.length ? patterns.join('\n') : '- No strong pattern detected yet',
+    protocolBlock,
     '',
-    'Current protocol (supplement support):',
-    supp.length ? supp.map((x) => `- ${x}`).join('\n') : '- Not started / none saved',
-    '',
-    ...(checkinLines.length
-      ? ['Check-in details:', ...checkinLines, '']
-      : [`Adherence (latest check-in): ${adh}`, '', `Latest check-in date: ${lastDate}`, '']),
     'Optional labs to consider (clinical context needed):',
     labs.length ? labs.map((x) => `- ${x}`).join('\n') : '- —',
+    '',
+    'Health story:',
+    story,
+    '',
+    `Latest check-in date: ${lastDate}`,
     '',
     'Note: Educational guidance with evidence transparency; confirm labs, dosing, and interactions with your clinician.',
   ].join('\n');

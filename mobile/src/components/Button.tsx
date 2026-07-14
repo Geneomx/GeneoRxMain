@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
-import { colors, radius, touchMin, typography } from '@/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, gradients, radius, touchMin, typography } from '@/theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -62,12 +63,30 @@ export const Button: React.FC<Props> = ({
         style,
       ]}
     >
+      {palette.gradient && (
+        <LinearGradient
+          colors={palette.gradient}
+          start={gradients.start}
+          end={gradients.end}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
       {label}
     </Pressable>
   );
 };
 
-function paletteFor(variant: Variant) {
+type Palette = {
+  bg: string;
+  fg: string;
+  border: string;
+  borderWidth: number;
+  shadow: ViewStyle | undefined;
+  labelExtra: { fontWeight: '600' | '700' | '800' };
+  gradient?: readonly [string, string, ...string[]];
+};
+
+function paletteFor(variant: Variant): Palette {
   switch (variant) {
     case 'secondary':
       return {
@@ -99,12 +118,14 @@ function paletteFor(variant: Variant) {
     case 'primary':
     default:
       return {
-        bg: colors.buttonPrimary,
-        fg: colors.buttonText,
-        border: 'rgba(255, 255, 255, 0.14)',
+        // Cyan → violet gradient overlaid on top; keep the base transparent
+        bg: 'transparent',
+        fg: colors.onPrimary,
+        border: 'rgba(255, 255, 255, 0.18)',
         borderWidth: 1,
         shadow: undefined,
         labelExtra: { fontWeight: '800' as const },
+        gradient: gradients.primaryCta,
       };
   }
 }
@@ -117,6 +138,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: touchMin,
+    overflow: 'hidden',
   },
   compact: {
     minHeight: 44,

@@ -11,12 +11,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AmbientBackground } from '@/components/AmbientBackground';
+import { SocialAuthButtons } from '@/components/SocialAuthButtons';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useAuth } from '@/auth/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
-import { colors, spacing } from '@/theme';
+import { colors, portalCard, spacing } from '@/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '@/navigation/AuthStack';
 
@@ -27,6 +29,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -46,7 +49,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     }
     setSubmitting(true);
     try {
-      await signUp({ name, email, password, password_confirmation: confirm });
+      await signUp({ name, email, phone: phone.trim() || undefined, password, password_confirmation: confirm });
     } catch (err) {
       Alert.alert(t('mobile.alert.signup_failed'), err instanceof Error ? err.message : t('mobile.alert.try_again'));
     } finally {
@@ -56,6 +59,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <AmbientBackground />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -124,6 +128,14 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
               placeholder="you@example.com"
             />
             <Input
+              label={t('mobile.profile.phone_optional')}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              placeholder="+1 555 000 0000"
+            />
+            <Input
               label={t('mobile.auth.password')}
               value={password}
               onChangeText={setPassword}
@@ -138,6 +150,9 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
               placeholder="••••••••"
             />
             <Button title={t('mobile.auth.create_btn')} onPress={onSubmit} loading={submitting} />
+
+            {/* ── Social sign-up ── */}
+            <SocialAuthButtons mode="signup" />
           </View>
 
           {/* FOOTER LINK */}
@@ -214,8 +229,8 @@ const styles = StyleSheet.create({
   },
   benefitText: { fontSize: 13.5, color: colors.textSoft },
 
-  /* FORM */
-  form: { gap: spacing.md, marginBottom: spacing.lg },
+  /* FORM — elevated card, mirrors the website .auth-card */
+  form: { ...portalCard, gap: spacing.md, marginBottom: spacing.lg, padding: spacing.lg },
 
   /* FOOTER LINK */
   bottomLink: {

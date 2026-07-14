@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
 import { useTranslation } from '@/hooks/useTranslation';
 import { forgotPassword } from '@/api/auth';
@@ -50,6 +51,7 @@ export const ForgotPasswordScreen: React.FC = () => {
   if (sent) {
     return (
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+        <AmbientBackground />
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           <View style={s.brandRow}>
             <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
@@ -81,6 +83,7 @@ export const ForgotPasswordScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      <AmbientBackground />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={s.scroll}

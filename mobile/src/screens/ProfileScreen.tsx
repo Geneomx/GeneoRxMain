@@ -18,7 +18,9 @@ import { useProfile } from '@/store/ProfileContext';
 import { useAuth } from '@/auth/AuthContext';
 import { clearToken } from '@/auth/tokenStorage';
 import { useWizard } from '@/store/WizardContext';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import { Input } from '@/components/Input';
+import { DropdownSelect } from '@/components/DropdownSelect';
 import { Button } from '@/components/Button';
 import { Loader } from '@/components/Loader';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -104,6 +106,7 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <AmbientBackground />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: scrollBottom }]}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />}
@@ -156,7 +159,18 @@ export const ProfileScreen: React.FC = () => {
               <Input label={t('account.age')} value={age} onChangeText={setAge} keyboardType="number-pad" placeholder={t('account.age_placeholder')} />
             </View>
             <View style={styles.col}>
-              <Input label={t('account.gender')} value={gender} onChangeText={setGender} placeholder={t('account.gender')} />
+              <DropdownSelect
+                label={t('account.gender')}
+                placeholder={t('account.gender')}
+                value={gender}
+                onChange={setGender}
+                options={[
+                  { value: 'Female', label: t('gender.female') },
+                  { value: 'Male', label: t('gender.male') },
+                  { value: 'Non-binary', label: t('gender.non_binary') },
+                  { value: 'Prefer not to say', label: t('gender.prefer_not') },
+                ]}
+              />
             </View>
           </View>
           <Input label={t('mobile.profile.phone_optional')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+1 555 000 0000" />

@@ -17,6 +17,8 @@ export interface RegisterPayload {
   email: string;
   password: string;
   password_confirmation: string;
+  /** Optional — used only for reminders/support (backend accepts nullable phone). */
+  phone?: string;
 }
 
 export interface LoginPayload {

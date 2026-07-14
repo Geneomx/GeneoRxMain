@@ -9,12 +9,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProfile } from '@/store/ProfileContext';
 import { useWizard } from '@/store/WizardContext';
+import { useMedCatalog } from '@/store/MedCatalogContext';
 import {
+  buildRoutineFromSupplements,
   computeContraindications,
   computeDrugInteractions,
   computeInsightEngine,
   computeNutrientScores,
   detectHealthPatterns,
+  latestCheckin,
   recommendSupplements,
   successLabel,
   tierFromScore,
@@ -23,6 +26,7 @@ import {
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
 import { STEP_LABELS } from '@/content/wizardData';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
 import { Loader } from '@/components/Loader';
 import { colors, portalCard, radius, spacing } from '@/theme';
@@ -38,7 +42,7 @@ const PRIORITY_COLORS: Record<string, { bg: string; text: string; border: string
   High: { bg: colors.dangerBg, text: colors.danger, border: 'rgba(251, 113, 133, 0.35)' },
   Moderate: { bg: colors.warningBg, text: colors.warning, border: 'rgba(251, 191, 36, 0.35)' },
   Low: { bg: colors.successBg, text: colors.success, border: 'rgba(52, 211, 153, 0.35)' },
-  Info: { bg: colors.primary50, text: colors.primary, border: 'rgba(40, 225, 255, 0.35)' },
+  Info: { bg: colors.primary50, text: colors.primary, border: 'rgba(58, 207, 235, 0.35)' },
 };
 
 interface SecondaryCard {
@@ -53,6 +57,7 @@ interface SecondaryCard {
 export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
   const { data, loading } = useProfile();
   const { state: wizState, hydrated, setStep } = useWizard();
+  const { catalog } = useMedCatalog();
   const { t, language } = useTranslation();
   const { page, scrollBottom } = useResponsiveLayout();
 
@@ -67,10 +72,10 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
 
   const hasInputs = wizState.meds.length > 0 || wizState.symptoms.selected.length > 0;
 
-  const insight = useMemo(() => computeInsightEngine(wizState, t), [wizState, language, t]);
+  const insight = useMemo(() => computeInsightEngine(wizState, t, catalog), [wizState, language, t, catalog]);
   const interactions = useMemo(() => computeDrugInteractions(wizState, t), [wizState, language, t]);
   const contraindications = useMemo(() => computeContraindications(wizState, t), [wizState, language, t]);
-  const scores = useMemo(() => computeNutrientScores(wizState), [wizState]);
+  const scores = useMemo(() => computeNutrientScores(wizState, catalog), [wizState, catalog]);
   const recs = useMemo(() => recommendSupplements(scores), [scores]);
   const patterns = useMemo(() => detectHealthPatterns(wizState, t), [wizState, language, t]);
 
@@ -106,6 +111,32 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
 
   const reviewCount = interactions.length + contraindications.length;
 
+  // Progress trends — wellbeing change vs baseline + last check-in (mirrors ProgressStep).
+  const lastCheckin = useMemo(() => latestCheckin(wizState), [wizState]);
+  const base = wizState.wellbeingBaseline;
+  const deltas = lastCheckin
+    ? {
+        energy: lastCheckin.wellbeing.energy - base.energy,
+        mood: lastCheckin.wellbeing.mood - base.mood,
+        sleep: lastCheckin.wellbeing.sleep - base.sleep,
+        focus: lastCheckin.wellbeing.focus - base.focus,
+      }
+    : null;
+  const improvementScore = lastCheckin
+    ? (lastCheckin.symptoms.items || []).reduce((acc, x) => acc + (x.changeScore || 0), 0)
+    : 0;
+
+  // Plan — recommended supplements + daily routine (mirrors ResultsStep sourcing).
+  const planSupps = useMemo(
+    () =>
+      wizState.plan.recommendedSupplements.length
+        ? wizState.plan.recommendedSupplements
+        : recs.map((r) => r.supplement),
+    [wizState.plan.recommendedSupplements, recs],
+  );
+  const routine = useMemo(() => buildRoutineFromSupplements(planSupps), [planSupps]);
+  const hasRoutine = routine.morning.length > 0 || routine.midday.length > 0 || routine.night.length > 0;
+
   const openResults = () => {
     if (RESULTS_STEP >= 0) setStep(RESULTS_STEP);
     navigation.navigate('Guided');
@@ -115,6 +146,7 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <AmbientBackground />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: scrollBottom }]}
         showsVerticalScrollIndicator={false}
@@ -192,6 +224,33 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
           </>
         )}
 
+        {/* PROGRESS TRENDS — wellbeing change vs baseline */}
+        {deltas && (
+          <>
+            <Text style={styles.sectionLabel}>{t('progress.what_changed')}</Text>
+            <View style={styles.trendsCard}>
+              <View style={styles.deltaGrid}>
+                {(['energy', 'mood', 'sleep', 'focus'] as const).map((k) => {
+                  const v = deltas[k];
+                  const c = v > 0 ? colors.success : v < 0 ? colors.danger : colors.textMuted;
+                  return (
+                    <View key={k} style={styles.deltaCell}>
+                      <Text style={styles.deltaLabel}>{t(`wellbeing.${k}`).replace(/\s*\([^)]*\)\s*$/, '')}</Text>
+                      <Text style={[styles.deltaVal, { color: c }]}>{v >= 0 ? `+${v}` : v}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+              <View style={styles.trendScoreRow}>
+                <Text style={styles.trendScoreLabel}>{t('progress.symptom_score')}</Text>
+                <Text style={styles.trendScoreVal}>
+                  {improvementScore >= 0 ? `+${improvementScore}` : improvementScore}
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
+
         {/* ADHERENCE SUMMARY */}
         <Text style={styles.sectionLabel}>{t('mobile.insights.adherence_label')}</Text>
 
@@ -218,6 +277,37 @@ export const InsightsScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
+        {/* PLAN — recommended supplements + daily routine */}
+        {planSupps.length > 0 && (
+          <>
+            <Text style={styles.sectionLabel}>{t('results.supplements_title')}</Text>
+            <View style={styles.planCard}>
+              <View style={styles.suppWrap}>
+                {planSupps.map((s) => (
+                  <View key={s} style={styles.suppPill}>
+                    <Text style={styles.suppPillText}>{s}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {hasRoutine && (
+                <View style={styles.routineWrap}>
+                  {(['morning', 'midday', 'night'] as const).map((slot) =>
+                    routine[slot].length > 0 ? (
+                      <View key={slot} style={styles.routineRow}>
+                        <Text style={styles.routineSlot}>{t(`results.routine.${slot}`)}</Text>
+                        <Text style={styles.routineItems}>{routine[slot].join(', ')}</Text>
+                      </View>
+                    ) : null,
+                  )}
+                </View>
+              )}
+
+              <Text style={styles.planDisclaimer}>{t('results.supplements_disclaimer')}</Text>
+            </View>
+          </>
+        )}
+
         <Text style={styles.legal}>{t('mobile.legal')}</Text>
         </View>
       </ScrollView>
@@ -236,8 +326,8 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5, flex: 1, minWidth: 0 },
   newBadge: {
     paddingVertical: 5, paddingHorizontal: 12, borderRadius: 999,
-    borderWidth: 1, borderColor: 'rgba(40, 225, 255, 0.45)',
-    backgroundColor: 'rgba(40, 225, 255, 0.12)',
+    borderWidth: 1, borderColor: 'rgba(58, 207, 235, 0.45)',
+    backgroundColor: 'rgba(58, 207, 235, 0.12)',
     flexShrink: 0,
     maxWidth: '46%',
   },
@@ -280,7 +370,7 @@ const styles = StyleSheet.create({
   doctorCard: {
     ...portalCard,
     padding: 16, marginBottom: 14,
-    borderColor: 'rgba(40, 225, 255, 0.25)',
+    borderColor: 'rgba(58, 207, 235, 0.25)',
     backgroundColor: colors.primary50,
   },
   doctorLabel: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 0.8, marginBottom: 6 },
@@ -338,6 +428,33 @@ const styles = StyleSheet.create({
   adherenceInfo: { flex: 1 },
   adherenceTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 },
   adherenceSub: { fontSize: 13, color: colors.textMuted },
+
+  /* TRENDS */
+  trendsCard: { ...portalCard, padding: 16, marginBottom: 20, gap: 12 },
+  deltaGrid: { flexDirection: 'row', gap: spacing.sm },
+  deltaCell: {
+    flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md,
+    paddingVertical: spacing.md, alignItems: 'center', gap: 2,
+  },
+  deltaLabel: { fontSize: 11, color: colors.textMuted, textTransform: 'capitalize' },
+  deltaVal: { fontSize: 20, fontWeight: '800' },
+  trendScoreRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  trendScoreLabel: { fontSize: 14, color: colors.textSoft },
+  trendScoreVal: { fontSize: 15, fontWeight: '800', color: colors.primary },
+
+  /* PLAN */
+  planCard: { ...portalCard, padding: 16, marginBottom: 20, gap: 12 },
+  suppWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  suppPill: {
+    paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999,
+    backgroundColor: colors.primary50, borderWidth: 1, borderColor: colors.primary100,
+  },
+  suppPillText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  routineWrap: { gap: 8, borderTopWidth: 1, borderTopColor: colors.borderSoft, paddingTop: 12 },
+  routineRow: { flexDirection: 'row', gap: 10 },
+  routineSlot: { fontSize: 13, fontWeight: '700', color: colors.textSoft, width: 76, textTransform: 'capitalize' },
+  routineItems: { flex: 1, fontSize: 13, color: colors.text, lineHeight: 19 },
+  planDisclaimer: { fontSize: 11.5, color: colors.textDim, lineHeight: 16 },
 
   legal: { fontSize: 11.5, color: colors.textMuted, textAlign: 'center' },
 });

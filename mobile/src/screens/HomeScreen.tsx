@@ -22,6 +22,7 @@ import {
 import { useTranslation } from '@/hooks/useTranslation';
 import { STEP_LABELS } from '@/content/wizardData';
 import { useMedCatalog, findMedName } from '@/store/MedCatalogContext';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
 import { Loader } from '@/components/Loader';
 import { ReportPickerModal } from '@/components/ReportPickerModal';
@@ -117,7 +118,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const wizardResults = useMemo(() => {
     const hasInputs = wizState.meds.length > 0 || wizState.symptoms.selected.length > 0;
     if (!hasInputs) return null;
-    const scores = computeNutrientScores(wizState);
+    const scores = computeNutrientScores(wizState, catalog);
     const recs = recommendSupplements(scores);
     const success = computeMedicationSuccessPrediction(wizState, t);
     return {
@@ -126,7 +127,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       recCount: recs.length,
       success,
     };
-  }, [wizState, language, t]);
+  }, [wizState, language, t, catalog]);
 
   const openWizardResults = () => {
     setWizStep(RESULTS_STEP);
@@ -169,6 +170,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <AmbientBackground />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: scrollBottom }]}
         refreshControl={

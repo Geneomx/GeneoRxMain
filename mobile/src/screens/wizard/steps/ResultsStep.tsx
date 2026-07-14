@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { useToast } from '@/components/Toast';
 import { useWizard } from '@/store/WizardContext';
+import { useMedCatalog } from '@/store/MedCatalogContext';
 import {
   aggregateEvidenceByNutrient,
   buildRoutineFromSupplements,
@@ -33,8 +34,10 @@ import {
   CiteChip,
   Divider,
   FinePrint,
+  InsightModal,
   KVItem,
   NoteBox,
+  RevealAnimationModal,
   Section,
   Tagline,
   TierPill,
@@ -81,19 +84,21 @@ function topInlineCites(
 
 export const ResultsStep: React.FC = () => {
   const { state, update } = useWizard();
+  const { catalog } = useMedCatalog();
   const { t, language } = useTranslation();
   const toast = useToast();
   const [insightOpen, setInsightOpen] = useState(false);
+  const [revealOpen, setRevealOpen] = useState(false);
   const [openEvidence, setOpenEvidence] = useState<Record<string, boolean>>({});
 
-  const scores = useMemo(() => computeNutrientScores(state), [state]);
+  const scores = useMemo(() => computeNutrientScores(state, catalog), [state, catalog]);
   const recs = useMemo(() => recommendSupplements(scores), [scores]);
-  const claims = useMemo(() => claimsForSelectedMeds(state), [state]);
+  const claims = useMemo(() => claimsForSelectedMeds(state, catalog), [state, catalog]);
   const evidenceMap = useMemo(() => aggregateEvidenceByNutrient(claims), [claims]);
-  const cov = useMemo(() => evidenceCoverage(state), [state]);
+  const cov = useMemo(() => evidenceCoverage(state, catalog), [state, catalog]);
   const flags = useMemo(() => safetyFlags(state, t), [state, language, t]);
-  const coach = useMemo(() => computeWeeklyCoachMessage(state, t), [state, language, t]);
-  const insight = useMemo(() => computeInsightEngine(state, t), [state, language, t]);
+  const coach = useMemo(() => computeWeeklyCoachMessage(state, t, catalog), [state, language, t, catalog]);
+  const insight = useMemo(() => computeInsightEngine(state, t, catalog), [state, language, t, catalog]);
   const success = useMemo(() => computeMedicationSuccessPrediction(state, t), [state, language, t]);
   const patterns = useMemo(() => detectHealthPatterns(state, t), [state, language, t]);
   const population = useMemo(() => computePopulationInsights(state, t), [state, language, t]);
@@ -140,7 +145,7 @@ export const ResultsStep: React.FC = () => {
     success.score >= 75 ? styles.scoreBadgeTextHigh : success.score >= 50 ? styles.scoreBadgeTextMid : styles.scoreBadgeTextLow;
 
   const customMeds = useMemo(
-    () => state.meds.filter((m) => m.medId.startsWith('custom:')),
+    () => state.meds.filter((m) => m.medId.startsWith('custom_')),
     [state.meds],
   );
 
@@ -242,7 +247,7 @@ export const ResultsStep: React.FC = () => {
       {/* GeneoRx Insight popup */}
       <Section>
         <Tagline title={t('results.insight_title')} body={t('results.insight_sub')} />
-        <Button title={t('results.insight_btn')} onPress={() => setInsightOpen(true)} />
+        <Button title={t('results.insight_btn')} onPress={() => setRevealOpen(true)} />
       </Section>
 
       {/* Detected patterns */}
@@ -412,30 +417,12 @@ export const ResultsStep: React.FC = () => {
         {!recs.length ? <FinePrint>{t('results.add_inputs_first')}</FinePrint> : null}
       </Section>
 
-      {/* Insight modal */}
-      <Modal visible={insightOpen} transparent animationType="fade" onRequestClose={() => setInsightOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setInsightOpen(false)} />
-        <View style={styles.modalWrap} pointerEvents="box-none">
-          <View style={styles.modal}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalKicker}>{t('modal.insight.title').toUpperCase()}</Text>
-              <Text style={styles.modalSummary}>{insight.summary}</Text>
-              <Text style={styles.modalLabel}>{t('modal.insight.means')}</Text>
-              <Text style={styles.modalBody}>{insight.meaning}</Text>
-              <Text style={styles.modalLabel}>{t('modal.insight.doctor')}</Text>
-              <Text style={styles.modalBody}>{insight.doctorPrompt}</Text>
-              <Text style={styles.modalLabel}>{t('modal.insight.why')}</Text>
-              <Text style={styles.modalBody}>
-                {insight.patterns.length ? `${t('summary.pattern')}: ${insight.patterns[0].title}\n` : ''}
-                {insight.interactions.length ? `${t('summary.interactions_field')}: ${insight.interactions.length}\n` : ''}
-                {insight.contraindications.length ? `${t('summary.contraindications_field')}: ${insight.contraindications.length}\n` : ''}
-                {t('summary.success_prediction')}: {insight.prediction.score}% ({successLabel(insight.prediction.level, t)})
-              </Text>
-            </ScrollView>
-            <Button title={t('modal.insight.close')} variant="secondary" onPress={() => setInsightOpen(false)} />
-          </View>
-        </View>
-      </Modal>
+      {/* Reveal animation — plays before the insight modal, matching the website */}
+      <RevealAnimationModal
+        visible={revealOpen}
+        onComplete={() => { setRevealOpen(false); setInsightOpen(true); }}
+      />
+      <InsightModal visible={insightOpen} onClose={() => setInsightOpen(false)} insight={insight} />
     </View>
   );
 };
@@ -509,12 +496,4 @@ const styles = StyleSheet.create({
   recRow: { paddingVertical: 2 },
   recMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
   recDriven: { fontSize: 13, color: colors.textMuted },
-
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(4, 6, 12, 0.72)' },
-  modalWrap: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', padding: spacing.lg },
-  modal: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: 8, maxHeight: '80%' },
-  modalKicker: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 1 },
-  modalSummary: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 },
-  modalLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 8 },
-  modalBody: { fontSize: 14, color: colors.textSoft, lineHeight: 20 },
 });

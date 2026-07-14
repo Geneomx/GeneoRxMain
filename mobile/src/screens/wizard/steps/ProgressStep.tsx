@@ -8,8 +8,10 @@ import { useWizard } from '@/store/WizardContext';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import {
   buildClinicianSnapshotText,
+  computeNutrientScores,
   computeWeeklyCoachMessage,
   fmtDate,
+  impactLabel,
   latestCheckin,
 } from '@/wizard/engine';
 import { shareClinicianSnapshot, downloadDoctorReport } from '@/wizard/reports';
@@ -28,7 +30,7 @@ export const ProgressStep: React.FC = () => {
   const [reportPickerOpen, setReportPickerOpen] = useState(false);
   const [reportIndex, setReportIndex] = useState<number | undefined>();
 
-  const coach = useMemo(() => computeWeeklyCoachMessage(state, t), [state, language, t]);
+  const coach = useMemo(() => computeWeeklyCoachMessage(state, t, catalog), [state, language, t, catalog]);
   const last = useMemo(() => latestCheckin(state), [state]);
   const snapshot = useMemo(() => buildClinicianSnapshotText(state, t, undefined, catalog), [state, language, t, catalog]);
 
@@ -45,6 +47,16 @@ export const ProgressStep: React.FC = () => {
   const improvementScore = last
     ? (last.symptoms.items || []).reduce((acc, x) => acc + (x.changeScore || 0), 0)
     : 0;
+
+  const symptomItems = last ? last.symptoms.items || [] : [];
+  const mostImproved = symptomItems.length
+    ? symptomItems.reduce((acc, x) => ((x.changeScore || 0) > (acc.changeScore || 0) ? x : acc))
+    : null;
+  const leastImproved = symptomItems.length
+    ? symptomItems.reduce((acc, x) => ((x.changeScore || 0) < (acc.changeScore || 0) ? x : acc))
+    : null;
+  const nutrientScores = useMemo(() => computeNutrientScores(state, catalog), [state, catalog]);
+  const topDriver = nutrientScores.length ? `${nutrientScores[0][0]} (${nutrientScores[0][1]}%)` : null;
 
   const shareSnapshot = async () => {
     const ok = await shareClinicianSnapshot(state, t, { catalog, title: t('portal.share') });
@@ -92,6 +104,28 @@ export const ProgressStep: React.FC = () => {
             })}
           </View>
           <Divider />
+          {mostImproved ? (
+            <View style={styles.rowBetween}>
+              <Text style={styles.metaLabel}>{t('progress.most_improved')}</Text>
+              <Text style={styles.changeVal}>
+                {mostImproved.symptom} ({impactLabel(mostImproved.change, t)})
+              </Text>
+            </View>
+          ) : null}
+          {leastImproved ? (
+            <View style={styles.rowBetween}>
+              <Text style={styles.metaLabel}>{t('progress.least_improved')}</Text>
+              <Text style={styles.changeVal}>
+                {leastImproved.symptom} ({impactLabel(leastImproved.change, t)})
+              </Text>
+            </View>
+          ) : null}
+          {topDriver ? (
+            <View style={styles.rowBetween}>
+              <Text style={styles.metaLabel}>{t('progress.top_driver')}</Text>
+              <Text style={styles.changeVal}>{topDriver}</Text>
+            </View>
+          ) : null}
           <View style={styles.rowBetween}>
             <Text style={styles.metaLabel}>{t('progress.symptom_score')}</Text>
             <Text style={styles.metaVal}>{improvementScore >= 0 ? `+${improvementScore}` : improvementScore}</Text>
@@ -167,7 +201,7 @@ export const ProgressStep: React.FC = () => {
       />
 
       <Section>
-        <Button title={t('nav.dashboard')} variant="ghost" onPress={goToDashboard} />
+        <Button title={t('nav.home')} variant="ghost" onPress={goToDashboard} />
       </Section>
     </View>
   );
@@ -184,9 +218,10 @@ const styles = StyleSheet.create({
   deltaLabel: { fontSize: 11, color: colors.textMuted, textTransform: 'capitalize' },
   deltaVal: { fontSize: 20, fontWeight: '800' },
 
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, gap: 12 },
   metaLabel: { fontSize: 14, color: colors.textSoft },
   metaVal: { fontSize: 15, fontWeight: '700', color: colors.text },
+  changeVal: { fontSize: 14, fontWeight: '700', color: colors.text, flexShrink: 1, textAlign: 'right' },
 
   timelineItem: { gap: 2, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
   tlTitle: { fontSize: 14, fontWeight: '700', color: colors.text },

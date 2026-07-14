@@ -62,5 +62,5 @@ export function useMedCatalog(): MedCatalogContextValue {
 
 export function findMedName(catalog: MedEntry[], id: string): string {
   const m = catalog.find((x) => x.id === id);
-  return m ? m.name : id.replace(/^custom:/, '').replace(/-/g, ' ');
+  return m ? m.name : id.replace(/^custom[:_]/, '').replace(/[-_]/g, ' ');
 }

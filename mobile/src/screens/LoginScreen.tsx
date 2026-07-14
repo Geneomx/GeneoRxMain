@@ -13,22 +13,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { AmbientBackground } from '@/components/AmbientBackground';
+import { SocialAuthButtons } from '@/components/SocialAuthButtons';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useAuth } from '@/auth/AuthContext';
-import { useSocialAuth } from '@/hooks/useSocialAuth';
 import { useTranslation } from '@/hooks/useTranslation';
-import { colors, spacing } from '@/theme';
+import { colors, portalCard, spacing } from '@/theme';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '@/navigation/AuthStack';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
-  const { signIn } = useAuth();
+  const { signIn, continueAsGuest } = useAuth();
   const { t } = useTranslation();
-  const { signInWithGoogle, signInWithApple, appleAvailable, loading: socialLoading, error: socialError } = useSocialAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -50,6 +50,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <AmbientBackground />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -117,49 +118,14 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.forgotLinkText}>{t('mobile.auth.forgot')}</Text>
             </Pressable>
 
-            {/* ── Social sign-in ─────────────────────────────────────────── */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{t('mobile.auth.or_continue')}</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {socialError ? (
-              <Text style={styles.socialError}>{socialError}</Text>
-            ) : null}
-
-            {socialLoading ? (
-              <View style={styles.socialLoadingRow}>
-                <ActivityIndicator color={colors.primary} />
-                <Text style={styles.socialLoadingText}>{t('mobile.auth.signing_in')}</Text>
-              </View>
-            ) : (
-              <View style={styles.socialBtns}>
-                {/* Google */}
-                <Pressable
-                  style={({ pressed }) => [styles.socialBtn, styles.googleBtn, pressed && styles.socialBtnPressed]}
-                  onPress={signInWithGoogle}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Google"
-                >
-                  {/* Google "G" coloured logo */}
-                  <Text style={styles.googleIcon}>G</Text>
-                  <Text style={styles.googleBtnText}>{t('mobile.auth.google')}</Text>
-                </Pressable>
-
-                {/* Apple   rendered with the native Apple button (iOS only) */}
-                {appleAvailable && (
-                  <AppleAuthentication.AppleAuthenticationButton
-                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                    cornerRadius={10}
-                    style={styles.appleNativeBtn}
-                    onPress={signInWithApple}
-                  />
-                )}
-              </View>
-            )}
+            {/* ── Social sign-in ── */}
+            <SocialAuthButtons mode="signin" />
           </View>
+
+          {/* GUEST / DEMO SHORTCUT */}
+          <Pressable onPress={() => continueAsGuest()} style={styles.guestLink} hitSlop={8}>
+            <Text style={styles.guestLinkText}>{t('welcome.guest')}</Text>
+          </Pressable>
 
           {/* FOOTER LINK */}
           <View style={styles.bottomLink}>
@@ -248,13 +214,18 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  /* FORM */
+  /* FORM — elevated card, mirrors the website .auth-card */
   form: {
+    ...portalCard,
     gap: spacing.md,
     marginBottom: spacing.lg,
+    padding: spacing.lg,
   },
   forgotLink: { alignSelf: 'center', paddingVertical: 4 },
   forgotLinkText: { fontSize: 14, color: colors.primary, fontWeight: '600' },
+
+  guestLink: { alignSelf: 'center', paddingVertical: 8, marginBottom: spacing.sm },
+  guestLinkText: { fontSize: 14, color: colors.primaryLight, fontWeight: '600' },
 
   /* FOOTER LINK */
   bottomLink: {

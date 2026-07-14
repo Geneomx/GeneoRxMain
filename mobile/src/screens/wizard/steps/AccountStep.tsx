@@ -54,6 +54,7 @@ export const AccountStep: React.FC = () => {
               { label: t('gender.female'), value: 'Female' },
               { label: t('gender.male'), value: 'Male' },
               { label: t('gender.non_binary'), value: 'Non-binary' },
+              { label: t('gender.prefer_not'), value: 'Prefer not to say' },
             ]}
           />
         </View>

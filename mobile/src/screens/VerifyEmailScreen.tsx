@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
 import { useAuth } from '@/auth/AuthContext';
 import { sendOtp, verifyOtp } from '@/api/auth';
@@ -94,6 +95,7 @@ export const VerifyEmailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      <AmbientBackground />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

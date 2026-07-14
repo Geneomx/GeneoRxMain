@@ -12,13 +12,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProfile } from '@/store/ProfileContext';
+import { useWizard } from '@/store/WizardContext';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import { DropdownSelect } from '@/components/DropdownSelect';
+import { Chip } from '@/components/Chip';
 import { Loader } from '@/components/Loader';
 import { useToast } from '@/components/Toast';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useMedCatalog, findMedName } from '@/store/MedCatalogContext';
-import type { WizardMed } from '@/wizard/types';
+import { getSymptomUniverse } from '@/wizard/engine';
+import type { WizardMed, Severity } from '@/wizard/types';
 import { Button } from '@/components/Button';
 import { colors, portalCard, radius, spacing } from '@/theme';
 
@@ -42,6 +46,7 @@ const MedIcon: React.FC<{ index: number }> = ({ index }) => {
 export const TreatmentsScreen: React.FC = () => {
   const { t } = useTranslation();
   const { data, loading, refresh, save } = useProfile();
+  const { state, update } = useWizard();
   const { catalog } = useMedCatalog();
   const toast = useToast();
   const { page, scrollBottom } = useResponsiveLayout();
@@ -52,6 +57,34 @@ export const TreatmentsScreen: React.FC = () => {
   const [medDose, setMedDose] = useState('medium');
   const [medMonths, setMedMonths] = useState('12');
   const [saving, setSaving] = useState(false);
+  const [customSymptom, setCustomSymptom] = useState('');
+
+  // Symptoms live in the wizard store; update() auto-persists (local + backend).
+  const symptomUniverse = getSymptomUniverse(state);
+  const selectedSymptoms = state.symptoms.selected;
+  const selectedSymptomSet = useMemo(() => new Set(selectedSymptoms), [selectedSymptoms]);
+
+  const toggleSymptom = (sym: string) =>
+    update((d) => {
+      const set = new Set(d.symptoms.selected);
+      if (set.has(sym)) set.delete(sym);
+      else set.add(sym);
+      d.symptoms.selected = [...set];
+    });
+
+  const addCustomSymptom = () => {
+    const v = customSymptom.trim();
+    if (!v) return;
+    update((d) => {
+      if (!d.symptoms.custom.includes(v)) d.symptoms.custom.push(v);
+      if (!d.symptoms.selected.includes(v)) d.symptoms.selected.push(v);
+    });
+    setCustomSymptom('');
+    toast.show(t('toast.custom_added'));
+  };
+
+  const clearSymptoms = () => update((d) => { d.symptoms.selected = []; });
+  const setSeverity = (sv: Severity) => update((d) => { d.symptoms.severity = sv; });
 
   const meds = useMemo<WizardMed[]>(
     () => (data?.medications ?? []).map((m) => ({
@@ -158,6 +191,7 @@ export const TreatmentsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <AmbientBackground />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: scrollBottom }]}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />}
@@ -239,6 +273,66 @@ export const TreatmentsScreen: React.FC = () => {
         {meds.length > 0 && (
           <Text style={styles.hint}>{t('mobile.treatments.hint')}</Text>
         )}
+
+        {/* SYMPTOMS */}
+        <View style={styles.symHeaderRow}>
+          <Text style={styles.sectionLabel}>{t('symptoms.select')}</Text>
+          {selectedSymptoms.length > 0 && (
+            <TouchableOpacity onPress={clearSymptoms} hitSlop={8}>
+              <Text style={styles.clearLink}>{t('symptoms.clear')}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.symCard}>
+          <Text style={styles.symHint}>{t('symptoms.select_hint')}</Text>
+          <View style={styles.chipsWrap}>
+            {symptomUniverse.map((sym) => (
+              <Chip
+                key={sym}
+                label={sym}
+                selected={selectedSymptomSet.has(sym)}
+                onPress={() => toggleSymptom(sym)}
+              />
+            ))}
+          </View>
+
+          <Text style={styles.fieldLabel}>{t('symptoms.add_custom')}</Text>
+          <View style={styles.addCustomRow}>
+            <TextInput
+              style={styles.customInput}
+              value={customSymptom}
+              onChangeText={setCustomSymptom}
+              placeholder={t('symptoms.custom_placeholder')}
+              placeholderTextColor={colors.textDim}
+              onSubmitEditing={addCustomSymptom}
+              returnKeyType="done"
+            />
+            <TouchableOpacity style={styles.addCustomBtn} onPress={addCustomSymptom} activeOpacity={0.8}>
+              <Text style={styles.addCustomBtnText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={[styles.fieldLabel, { marginTop: 4 }]}>{t('symptoms.severity')}</Text>
+          <View style={styles.freqRow}>
+            {(['mild', 'moderate', 'severe'] as const).map((sv) => (
+              <TouchableOpacity
+                key={sv}
+                style={[styles.freqChip, state.symptoms.severity === sv && styles.freqChipActive]}
+                onPress={() => setSeverity(sv)}
+              >
+                <Text style={[styles.freqChipText, state.symptoms.severity === sv && styles.freqChipTextActive]}>
+                  {t(`symptoms.severity.${sv}`)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {selectedSymptoms.length > 0 && (
+            <Text style={styles.symCount}>{selectedSymptoms.length} {t('symptoms.custom_saved_hint')}</Text>
+          )}
+        </View>
+
         <Text style={styles.legal}>{t('mobile.legal')}</Text>
         </View>
       </ScrollView>
@@ -380,8 +474,8 @@ const styles = StyleSheet.create({
 
   activeBadge: {
     paddingVertical: 5, paddingHorizontal: 12, borderRadius: 999,
-    borderWidth: 1, borderColor: 'rgba(40, 225, 255, 0.45)',
-    backgroundColor: 'rgba(40, 225, 255, 0.12)',
+    borderWidth: 1, borderColor: 'rgba(58, 207, 235, 0.45)',
+    backgroundColor: 'rgba(58, 207, 235, 0.12)',
   },
   activeBadgeText: { fontSize: 12, fontWeight: '700', color: colors.primary },
 
@@ -393,6 +487,27 @@ const styles = StyleSheet.create({
 
   hint: { fontSize: 11, color: colors.textDim, textAlign: 'center', marginBottom: 4 },
   legal: { fontSize: 11.5, color: colors.textMuted, textAlign: 'center' },
+
+  symHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  clearLink: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  symCard: { ...portalCard, padding: 16, marginBottom: 16 },
+  symHint: { fontSize: 13, color: colors.textMuted, lineHeight: 19, marginBottom: 12 },
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
+  addCustomRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  customInput: {
+    flex: 1,
+    backgroundColor: colors.inputBg, borderRadius: radius.button,
+    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: colors.text,
+  },
+  addCustomBtn: {
+    width: 46, height: 46, borderRadius: radius.button,
+    backgroundColor: colors.ghostBg, borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  addCustomBtnText: { fontSize: 22, fontWeight: '300', color: colors.primary, lineHeight: 26 },
+  symCount: { fontSize: 12, color: colors.textDim, marginTop: 4 },
 
   overlay: { flex: 1, justifyContent: 'flex-end' },
   overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(4, 6, 12, 0.72)' },
@@ -423,8 +538,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border, backgroundColor: colors.ghostBg,
   },
   freqChipActive: {
-    borderColor: 'rgba(40, 225, 255, 0.45)',
-    backgroundColor: 'rgba(40, 225, 255, 0.18)',
+    borderColor: 'rgba(58, 207, 235, 0.45)',
+    backgroundColor: 'rgba(58, 207, 235, 0.18)',
   },
   freqChipText: { fontSize: 13, fontWeight: '600', color: colors.textSoft },
   freqChipTextActive: { color: colors.text, fontWeight: '900' },

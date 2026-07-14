@@ -161,9 +161,15 @@ export const MedicationsStep: React.FC = () => {
       {state.meds.length ? (
         <Section>
           <Tagline title={t('meds.list')} />
+          {/* Evidence coverage pill — mirrors website meds.coverage */}
+          <View style={styles.coveragePill}>
+            <Text style={styles.coverageText}>
+              {t('meds.coverage')} {state.meds.filter((mi) => (catalog.find((c) => c.id === mi.medId)?.claims?.length ?? 0) > 0).length}/{state.meds.length} · {t('meds.coverage_mapped')}
+            </Text>
+          </View>
           {state.meds.map((mi) => {
             const med = catalog.find((x) => x.id === mi.medId);
-            const name = med ? med.name : mi.medId.replace(/^custom:/, '').replace(/-/g, ' ');
+            const name = med ? med.name : mi.medId.replace(/^custom_/, '').replace(/_/g, ' ');
             return (
               <View key={mi.medId} style={styles.medCard}>
                 <View style={styles.medHead}>
@@ -198,6 +204,16 @@ export const MedicationsStep: React.FC = () => {
 
 const styles = StyleSheet.create({
   fieldLabel: { fontSize: 15, fontWeight: '700', color: colors.textMuted, marginTop: 4 },
+  coveragePill: {
+    alignSelf: 'flex-start',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primary100,
+    backgroundColor: colors.primary50,
+  },
+  coverageText: { fontSize: 12, fontWeight: '700', color: colors.primary },
   medCard: { gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
   medHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   medName: { fontSize: 15, fontWeight: '700', color: colors.text, flex: 1 },

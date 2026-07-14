@@ -71,7 +71,7 @@ export const FeedbackStep: React.FC = () => {
 
         <View style={{ gap: spacing.sm }}>
           <Button title={t('feedback.send_short')} onPress={send} />
-          <Button title={t('nav.dashboard')} variant="secondary" onPress={finish} />
+          <Button title={t('nav.home')} variant="secondary" onPress={finish} />
         </View>
         <FinePrint>{t('step.9.sub')}</FinePrint>
       </Section>

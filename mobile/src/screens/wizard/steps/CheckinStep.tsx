@@ -8,7 +8,7 @@ import { Input } from '@/components/Input';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/auth/AuthContext';
 import { useWizard } from '@/store/WizardContext';
-import { fmtDate, impactLabel } from '@/wizard/engine';
+import { fmtDate, getSymptomUniverse, impactLabel } from '@/wizard/engine';
 import { dedupeCheckins } from '@/wizard/sync';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { CheckinSymptomItem, SymptomChange, Wellbeing } from '@/wizard/types';
@@ -22,7 +22,6 @@ const CHANGE_VALUES: { value: SymptomChange; score: number }[] = [
   { value: 'Much better', score: 2 },
   { value: 'Not present', score: 0 },
 ];
-const ADHERENCE_STEPS = [40, 50, 60, 70, 80, 90, 100];
 const PROGRESS_STEP = 6;
 
 function todayISO(): string {
@@ -41,7 +40,7 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [detailIndex, setDetailIndex] = useState<number | null>(null);
   const [checkinDate, setCheckinDate] = useState(todayISO());
-  const [adherence, setAdherence] = useState(80);
+  const [adherence, setAdherence] = useState(70);
   const [taken, setTaken] = useState<Set<string>>(new Set(state.plan.recommendedSupplements));
   const [changes, setChanges] = useState<Record<string, SymptomChange>>({});
   const [severities, setSeverities] = useState<Record<string, number>>({});
@@ -50,6 +49,12 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
   const [notes, setNotes] = useState('');
 
   const allSupplements = state.plan.recommendedSupplements;
+
+  // Like the website: when no symptoms are selected yet, rate the first 12
+  // of the symptom universe so there is always something to log.
+  const symptomsToRate = state.symptoms.selected.length
+    ? state.symptoms.selected
+    : getSymptomUniverse(state).slice(0, 12);
 
   const toggleTaken = (s: string) =>
     setTaken((prev) => {
@@ -68,7 +73,7 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
       ? new Date(`${dateStr}T12:00:00`).toISOString()
       : new Date().toISOString();
 
-    const items: CheckinSymptomItem[] = state.symptoms.selected.map((symptom) => {
+    const items: CheckinSymptomItem[] = symptomsToRate.map((symptom) => {
       const change = changes[symptom] ?? 'No change';
       const score = CHANGE_VALUES.find((o) => o.value === change)?.score ?? 0;
       const severityNow = severities[symptom] ?? 5;
@@ -130,12 +135,16 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
           autoCapitalize="none"
         />
 
-        <Text style={styles.label}>{t('checkin.adherence')}: {adherence}%</Text>
-        <View style={styles.chips}>
-          {ADHERENCE_STEPS.map((a) => (
-            <Chip key={a} label={`${a}%`} selected={adherence === a} onPress={() => setAdherence(a)} />
-          ))}
-        </View>
+        <Input
+          label={t('checkin.adherence')}
+          value={String(adherence)}
+          onChangeText={(txt) => {
+            const digits = txt.replace(/[^0-9]/g, '');
+            setAdherence(digits === '' ? 0 : Math.min(100, parseInt(digits, 10)));
+          }}
+          keyboardType="number-pad"
+          maxLength={3}
+        />
 
         {allSupplements.length ? (
           <>
@@ -164,10 +173,10 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
         <FinePrint>{t(isGuest ? 'checkin.storage_guest' : 'checkin.storage_account')}</FinePrint>
       </Section>
 
-      {state.symptoms.selected.length ? (
+      {symptomsToRate.length ? (
         <Section>
           <Tagline title={t('checkin.symptom_improvement')} body={t('checkin.symptom_improvement_sub')} />
-          {state.symptoms.selected.map((sym) => (
+          {symptomsToRate.map((sym) => (
             <View key={sym} style={styles.symRow}>
               <Text style={styles.symName}>{sym}</Text>
               <View style={styles.changeWrap}>
@@ -249,8 +258,8 @@ const styles = StyleSheet.create({
   changeWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   changeChip: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: 11, paddingVertical: 6, backgroundColor: colors.surface },
   changeChipActive: {
-    backgroundColor: 'rgba(40, 225, 255, 0.18)',
-    borderColor: 'rgba(40, 225, 255, 0.45)',
+    backgroundColor: 'rgba(58, 207, 235, 0.18)',
+    borderColor: 'rgba(58, 207, 235, 0.45)',
   },
   changeText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
   changeTextActive: { color: colors.text, fontWeight: '900' },

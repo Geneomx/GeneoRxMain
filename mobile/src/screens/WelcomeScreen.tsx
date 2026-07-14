@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { ABOUT_CARDS } from '@/content/homeContent';
@@ -72,6 +73,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <AmbientBackground />
         <View style={[styles.topHeader, page]}>
           <View style={styles.brandRow}>
             <Image source={require('../../assets/logo.png')} style={styles.brandLogo} resizeMode="contain" />

@@ -1,13 +1,16 @@
 // GeneoRx mobile theme — dark clinical design matching the website.
 export const colors = {
-  // Brand — soft clinical teal (toned down from neon #28E1FF)
-  primary:       '#4BAEC8',
+  // Brand — cyan, matched to the website (--cyan #28E1FF) but softened one
+  // notch so it's easier on the eyes on a dark screen.
+  primary:       '#3ACFEB',
   primaryDark:   '#3589A3',
-  primaryLight:  '#6FC4DA',
-  primary50:     'rgba(75, 174, 200, 0.10)',
-  primary100:    'rgba(75, 174, 200, 0.18)',
-  /** Solid CTA buttons — deeper teal, easy on the eyes */
-  buttonPrimary: '#3589A3',
+  primaryLight:  '#6FDDF2',
+  primary50:     'rgba(58, 207, 235, 0.10)',
+  primary100:    'rgba(58, 207, 235, 0.18)',
+  /** Solid deep-accent fills that carry light text (tab pill, dots) */
+  buttonPrimary: '#2E6E86',
+  /** Near-black text/icon color that sits on the bright cyan gradient CTA */
+  onPrimary:     '#061018',
 
   // Surfaces
   background:    '#070A12',
@@ -51,6 +54,19 @@ export const colors = {
   cardTop:      'rgba(15, 23, 54, 0.72)',
   cardBottom:   'rgba(16, 27, 64, 0.58)',
   badgeBg:      'rgba(15, 23, 54, 0.60)',
+};
+
+/**
+ * Brand gradients, matched to the website.
+ *  - primaryCta  → web `.primary`  (cyan → violet), dark text sits on top
+ *  - stepActive  → web `.step.on`  (cyan → blue), used for active tabs/steps
+ */
+export const gradients = {
+  primaryCta: ['#3ACFEB', '#A78BFA'] as const,
+  stepActive: ['#3ACFEB', '#1565C0'] as const,
+  /** Diagonal direction used by the website (135deg) */
+  start: { x: 0, y: 0 },
+  end:   { x: 1, y: 1 },
 };
 
 export const spacing = {
