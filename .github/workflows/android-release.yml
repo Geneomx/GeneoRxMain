@@ -1,0 +1,59 @@
+# Automated Android deploy → Google Play Console (via EAS)
+#
+# Triggers:
+#   • Manually: GitHub → Actions → "Android Release" → Run workflow (pick a track)
+#   • Automatically: push a tag like android-v1.0.1  →  deploys to the internal track
+#
+# One-time setup required (see mobile/PLAYSTORE_DEPLOY.md):
+#   1. GitHub repo → Settings → Secrets and variables → Actions → add EXPO_TOKEN
+#      (create the token at https://expo.dev/accounts/mtayyedd/settings/access-tokens)
+#   2. Upload the Google service-account key to EAS once (eas credentials), so this
+#      workflow never needs to touch the key file.
+
+name: Android Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Play Console track"
+        type: choice
+        default: internal
+        options: [internal, production]
+  push:
+    tags: ["android-v*"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build + submit to Play Console
+        run: |
+          TRACK="${{ github.event.inputs.track || 'internal' }}"
+          if [ "$TRACK" = "production" ]; then
+            eas build --platform android --profile production --non-interactive --auto-submit
+          else
+            eas build --platform android --profile production --non-interactive --auto-submit-with-profile internal
+          fi
