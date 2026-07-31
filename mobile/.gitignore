@@ -13,6 +13,8 @@ android/build/
 android/app/build/
 .env
 .env.local
+# Google Play service-account credentials — NEVER commit
+play-service-account.json
 npm-debug.*
 yarn-debug.*
 yarn-error.*

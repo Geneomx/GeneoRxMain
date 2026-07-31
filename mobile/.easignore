@@ -1,4 +1,5 @@
 # Keep EAS upload archives small and fast.
+play-service-account.json
 node_modules/
 .expo/
 .expo-shared/
