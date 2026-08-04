@@ -4,369 +4,296 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GeneoRx Screenshots</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+  /* ── Exact app / website tokens ─────────────────────────────────────────
+     bg #070A12→#0B1022 · card rgba(15,23,54,.72) r18 · cyan #28E1FF
+     text #EAF0FF / #A9B4D6 / #7E8AB8 · borders .12/.14/.08 white        */
   :root {
-    --teal: #0E7C66;
-    --teal-light: #3FB39A;
-    --teal-bg: #E8F5F1;
-    --teal-border: #B0DCD0;
-    --dark: #0F1F1B;
-    --text: #1A2E28;
-    --muted: #6B7B77;
-    --bg: #F3FAF7;
-    --card: #FFFFFF;
-    --radius: 16px;
-    --shadow: 0 2px 16px rgba(14,124,102,0.10);
+    --bg0: #070A12;
+    --bg1: #0B1022;
+    --surface: rgba(15, 23, 54, 0.80);
+    --surface-alt: #101B40;
+    --card: rgba(15, 23, 54, 0.72);
+    --input-bg: rgba(7, 10, 18, 0.45);
+    --ghost-bg: rgba(7, 10, 18, 0.35);
+    --button-bg: rgba(15, 23, 54, 0.55);
+    --chip-bg: rgba(15, 23, 54, 0.45);
+    --border: rgba(255, 255, 255, 0.12);
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --border-soft: rgba(255, 255, 255, 0.08);
+    --txt: #EAF0FF;
+    --soft: #A9B4D6;
+    --muted: #7E8AB8;
+    --dim: #5A6490;
+    --cyan: #28E1FF;
+    --violet: #A78BFA;
+    --on-primary: #061018;
+    --grad-cta: linear-gradient(135deg, rgba(40,225,255,.92), rgba(167,139,250,.86));
+    --grad-step: linear-gradient(135deg, rgba(40,225,255,.92), rgba(21,101,192,.65));
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+
   body {
-    font-family: 'Inter', -apple-system, sans-serif;
-    background: var(--bg);
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    color: var(--text);
+    font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--txt);
+    background:
+      radial-gradient(65% 45% at 20% 2%,  rgba(40,225,255,.12),  transparent 70%),
+      radial-gradient(60% 42% at 86% 14%, rgba(167,139,250,.12), transparent 70%),
+      radial-gradient(65% 45% at 28% 100%, rgba(255,79,216,.10), transparent 70%),
+      linear-gradient(180deg, var(--bg0), var(--bg1));
+    display: flex;
+    flex-direction: column;
   }
 
   /* ─── STATUS BAR ─── */
   .status-bar {
     height: 48px;
-    background: var(--bg);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex: none;
+    display: flex; align-items: center; justify-content: space-between;
     padding: 0 28px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
   }
-  .status-time { font-size: 15px; font-weight: 700; color: var(--dark); }
+  .status-time { font-size: 15px; font-weight: 700; color: var(--txt); }
   .status-icons { display: flex; align-items: center; gap: 6px; }
-  .status-icons svg { width: 16px; height: 16px; fill: var(--dark); }
+  .status-icons svg { width: 16px; height: 16px; }
 
-  /* ─── MAIN SCROLL AREA ─── */
+  /* ─── WIZARD HEADER (mirrors WizardScreen) ─── */
+  .wiz-header {
+    flex: none;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 8px 24px 16px;
+  }
+  .wiz-title-row { display: flex; align-items: flex-start; gap: 12px; }
+  .wiz-title { flex: 1; font-size: 22px; font-weight: 800; color: var(--txt); letter-spacing: -0.5px; margin-top: 2px; }
+  .reset-pill {
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--surface-alt);
+    font-size: 12px; font-weight: 700; color: var(--muted);
+  }
+  .wiz-sub { font-size: 15px; color: var(--muted); line-height: 22px; margin-top: 2px; }
+  .steps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .step {
+    padding: 9px 12px; border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--ghost-bg);
+    color: var(--soft); font-size: 13px; font-weight: 600;
+  }
+  .step.on {
+    background: var(--grad-step);
+    border-color: rgba(40, 225, 255, 0.35);
+    color: var(--on-primary); font-weight: 900;
+  }
+
+  /* ─── BODY ─── */
   .screen {
-    height: calc(100vh - 48px - 80px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 0 20px 20px;
-    scrollbar-width: none;
+    flex: 1; min-height: 0;
+    overflow: hidden;
+    padding: 24px;
+    display: flex; flex-direction: column; gap: 16px;
+    width: 100%;
+    max-width: 688px;
+    margin: 0 auto;
   }
-  .screen::-webkit-scrollbar { display: none; }
 
-  /* ─── BOTTOM NAV ─── */
-  .bottom-nav {
-    height: 80px;
-    background: var(--card);
-    border-top: 1px solid rgba(14,124,102,0.10);
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    padding: 0 8px 12px;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-  }
-  .nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    flex: 1;
-    padding: 8px 0;
-    cursor: pointer;
-  }
-  .nav-item .nav-icon {
-    width: 26px; height: 26px;
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
-  .nav-item.active .nav-icon { background: var(--teal-bg); }
-  .nav-label { font-size: 9px; font-weight: 600; color: var(--muted); }
-  .nav-item.active .nav-label { color: var(--teal); }
-
-  /* ─── SHARED COMPONENTS ─── */
+  /* ─── SECTION CARD (website .card) ─── */
   .card {
     background: var(--card);
-    border-radius: var(--radius);
-    padding: 18px;
-    box-shadow: var(--shadow);
-    border: 1px solid rgba(14,124,102,0.08);
-    margin-bottom: 14px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 24px;
+    display: flex; flex-direction: column; gap: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
   }
-  .tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .tag-teal { background: var(--teal-bg); color: var(--teal); border: 1px solid var(--teal-border); }
-  .tag-amber { background: #FFF7E6; color: #B45309; border: 1px solid #FBBF24; }
-  .tag-blue  { background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; }
-  .tag-red   { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+  .card.tight { gap: 12px; padding: 20px 24px; }
+  .card-title { font-size: 17px; font-weight: 800; color: var(--txt); letter-spacing: -0.2px; }
+  .hint { font-size: 13px; color: var(--muted); line-height: 19px; }
 
-  .section-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--muted);
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
-    margin: 20px 0 10px;
+  /* ─── INPUTS ─── */
+  .label { font-size: 15px; font-weight: 700; color: var(--txt); margin-bottom: 4px; }
+  .input {
+    border: 1px solid var(--border-strong);
+    background: var(--input-bg);
+    border-radius: 12px;
+    min-height: 52px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    font-size: 16px; color: var(--txt);
+  }
+  .input .ph { color: rgba(169, 180, 214, 0.75); }
+  .input .chev { color: var(--muted); font-size: 14px; }
+
+  /* ─── SEGMENTED ─── */
+  .seg { display: flex; gap: 8px; }
+  .seg-item {
+    flex: 1; min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    border: 1px solid var(--border-soft);
+    background: var(--ghost-bg);
+    font-size: 14px; font-weight: 600; color: var(--soft);
+  }
+  .seg-item.on {
+    background: rgba(40, 225, 255, 0.18);
+    border-color: rgba(40, 225, 255, 0.45);
+    color: var(--txt); font-weight: 900;
   }
 
-  /* ─── HEADER BANNER ─── */
-  .hero-banner {
-    background: linear-gradient(135deg, #0E7C66 0%, #075F4F 100%);
-    border-radius: 20px;
-    padding: 22px 20px;
-    color: #fff;
-    margin-bottom: 16px;
-    margin-top: 8px;
-    position: relative;
-    overflow: hidden;
-  }
-  .hero-banner::after {
-    content: '';
-    position: absolute;
-    right: -30px; top: -30px;
-    width: 140px; height: 140px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.07);
-  }
-  .hero-banner::before {
-    content: '';
-    position: absolute;
-    right: 20px; bottom: -40px;
-    width: 100px; height: 100px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.05);
-  }
-  .hero-greeting { font-size: 14px; font-weight: 500; opacity: 0.85; margin-bottom: 4px; }
-  .hero-name { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 14px; }
-  .hero-stats { display: flex; gap: 16px; }
-  .hero-stat { text-align: center; }
-  .hero-stat-num { font-size: 22px; font-weight: 800; }
-  .hero-stat-label { font-size: 11px; opacity: 0.75; margin-top: 2px; }
-
-  /* ─── MEDICATION ROW ─── */
-  .med-row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 0;
-    border-bottom: 1px solid #F0F5F3;
-  }
-  .med-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .med-icon {
-    width: 44px; height: 44px;
+  /* ─── BUTTONS ─── */
+  .btn {
+    min-height: 52px;
     border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
+    font-size: 16px;
+    padding: 0 16px;
+    text-align: center;
   }
-  .med-icon.teal { background: var(--teal-bg); }
-  .med-icon.blue { background: #EEF2FF; }
-  .med-icon.amber { background: #FFF7E6; }
-  .med-icon.rose  { background: #FFF1F2; }
-  .med-info { flex: 1; }
-  .med-name { font-size: 15px; font-weight: 700; color: var(--dark); }
-  .med-dose { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .med-check {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-  .med-check.done { background: var(--teal-bg); color: var(--teal); }
-  .med-check.pending { background: #F3F4F6; color: #D1D5DB; border: 2px solid #E5E7EB; }
+  .btn-primary { background: var(--grad-cta); border: 1px solid rgba(255,255,255,.18); color: var(--on-primary); font-weight: 800; }
+  .btn-secondary { background: var(--button-bg); border: 1px solid var(--border-strong); color: var(--txt); font-weight: 600; }
 
-  /* ─── SYMPTOM CHIPS ─── */
-  .chips-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 12px;
-  }
+  /* ─── CHIPS ─── */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
   .chip {
-    padding: 10px 18px;
+    padding: 11px 14px; min-height: 44px;
+    display: inline-flex; align-items: center;
     border-radius: 999px;
-    font-size: 14px;
-    font-weight: 600;
-    border: 2px solid #E5E9E8;
-    background: #fff;
-    color: var(--text);
-    cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: var(--chip-bg);
+    color: var(--txt); font-size: 15px; font-weight: 600;
   }
-  .chip.selected {
-    background: var(--teal-bg);
-    border-color: var(--teal);
-    color: var(--teal);
-  }
-  .chip.mild {
-    background: #FFF7E6;
-    border-color: #FBBF24;
-    color: #B45309;
-  }
-  .chip.none {
-    background: #F9FAFB;
-    border-color: #E5E7EB;
-    color: #9CA3AF;
+  .chip.sel {
+    background: rgba(40, 225, 255, 0.18);
+    border-color: rgba(40, 225, 255, 0.45);
+    font-weight: 900;
   }
 
-  /* ─── INSIGHT CARD ─── */
-  .insight-card {
-    background: linear-gradient(135deg, #0E7C66 0%, #075F4F 100%);
-    border-radius: 20px;
-    padding: 20px;
-    color: #fff;
-    margin-bottom: 14px;
-    position: relative;
+  /* ─── SCORE PILLS (website 0–10 picker) ─── */
+  .scale { display: flex; flex-direction: column; gap: 10px; }
+  .scale-head { display: flex; justify-content: space-between; align-items: center; }
+  .scale-label { font-size: 16px; font-weight: 600; color: var(--txt); }
+  .scale-value { font-size: 22px; font-weight: 900; color: var(--cyan); }
+  .scale-value small { font-size: 13px; font-weight: 700; color: var(--dim); }
+  .pills { display: flex; gap: 4px; }
+  .pill {
+    flex: 1; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--chip-bg);
+    font-size: 13px; font-weight: 800; color: var(--soft);
+  }
+  .pill.on {
+    background: rgba(40, 225, 255, 0.22);
+    border-color: rgba(40, 225, 255, 0.55);
+    color: #fff; transform: scale(1.06);
+  }
+  .scale-ends { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--dim); }
+
+  /* ─── TAGLINE / COACH BOX ─── */
+  .tagline {
+    padding: 14px; border-radius: 14px;
+    border: 1px solid rgba(40, 225, 255, 0.22);
+    background: rgba(40, 225, 255, 0.10);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .tagline b { font-size: 18px; font-weight: 700; color: var(--txt); letter-spacing: -0.2px; }
+  .tagline span { font-size: 15px; color: var(--soft); line-height: 22px; }
+
+  /* ─── SIGNAL ROW / BADGES ─── */
+  .signal { display: flex; flex-direction: column; gap: 8px; }
+  .signal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .signal-name { font-size: 15px; font-weight: 700; color: var(--txt); }
+  .prio { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .3px; }
+  .prio-high { background: rgba(251,113,133,.18); color: #FB7185; border: 1px solid rgba(251,113,133,.35); }
+  .prio-mod  { background: rgba(251,191,36,.18);  color: #FBBF24; border: 1px solid rgba(251,191,36,.35); }
+  .bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; background: var(--grad-cta); }
+  .cite {
+    display: inline-flex; padding: 4px 8px; border-radius: 7px;
+    background: rgba(40,225,255,.10); border: 1px solid rgba(40,225,255,.18);
+    font-size: 12px; font-weight: 700; color: var(--cyan); text-decoration: underline;
+  }
+
+  /* ─── MED ROW ─── */
+  .med-item {
+    border: 1px solid var(--border);
+    background: rgba(7, 10, 18, 0.22);
+    border-radius: 14px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .med-top { display: flex; justify-content: space-between; align-items: center; }
+  .med-name { font-size: 16px; font-weight: 800; color: var(--txt); }
+  .remove { font-size: 13px; font-weight: 700; color: #FB7185; }
+
+  /* ─── WIZARD FOOTER NAV ─── */
+  .wiz-nav {
+    flex: none;
+    display: flex; gap: 8px;
+    padding: 16px 24px 16px;
+    background: var(--surface);
+    border-top: 1px solid var(--border-soft);
+  }
+  .wiz-nav .btn-secondary { flex: 1; }
+  .wiz-nav .btn-primary { flex: 1.5; }
+
+  /* ─── TAB BAR (Guided/Setup + Profile/Account) ─── */
+  .tab-bar {
+    flex: none;
+    height: 84px;
+    background: var(--bg1);
+    border-top: 1px solid var(--border-soft);
+    display: flex; gap: 3px;
+    padding: 6px 4px 14px;
+  }
+  .tab {
+    flex: 1;
+    border-radius: 10px;
+    border: 1px solid var(--border-soft);
+    background: var(--ghost-bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     overflow: hidden;
   }
-  .insight-card::before {
-    content: '';
-    position: absolute; right: -20px; top: -20px;
-    width: 120px; height: 120px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.08);
+  .tab.on {
+    background: var(--grad-step);
+    border-color: rgba(40, 225, 255, 0.35);
   }
-  .insight-pill-row { display: flex; gap: 8px; margin-bottom: 12px; }
-  .insight-pill {
-    padding: 4px 12px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-    background: rgba(255,255,255,0.18);
-    color: #fff;
-    letter-spacing: 0.3px;
-  }
-  .insight-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.3px; }
-  .insight-body { font-size: 13px; line-height: 1.55; opacity: 0.90; }
-  .insight-action {
-    margin-top: 14px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 700;
-    color: #B0DCD0;
-  }
+  .tab-label { font-size: 10.5px; font-weight: 600; color: var(--soft); }
+  .tab.on .tab-label { font-weight: 900; color: var(--on-primary); }
+  .tab svg { width: 22px; height: 22px; }
 
-  /* ─── PROGRESS RING ─── */
-  .progress-wrap {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 16px;
-    background: var(--teal-bg);
-    border-radius: 14px;
-    border: 1px solid var(--teal-border);
-    margin-bottom: 14px;
-  }
-  .progress-ring { position: relative; flex-shrink: 0; }
-  .progress-ring svg { transform: rotate(-90deg); }
-  .progress-label {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--teal);
-  }
-  .progress-info h4 { font-size: 15px; font-weight: 700; color: var(--dark); }
-  .progress-info p { font-size: 12px; color: var(--muted); margin-top: 3px; }
-
-  /* ─── BTN ─── */
-  .btn-primary {
-    background: linear-gradient(135deg, #0E7C66, #075F4F);
-    color: #fff;
-    border: none;
-    border-radius: 14px;
-    padding: 16px;
-    font-size: 16px;
-    font-weight: 700;
-    width: 100%;
-    text-align: center;
-    cursor: pointer;
-    box-shadow: 0 4px 16px rgba(14,124,102,0.35);
-    margin-top: 8px;
-  }
-  .btn-outline {
-    background: transparent;
-    color: var(--teal);
-    border: 2px solid var(--teal-border);
-    border-radius: 14px;
-    padding: 14px;
-    font-size: 15px;
-    font-weight: 600;
-    width: 100%;
-    text-align: center;
-    cursor: pointer;
-    margin-top: 10px;
-  }
-
-  /* ─── PROFILE / SETTINGS ─── */
-  .profile-avatar {
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #3FB39A, #0E7C66);
+  /* ─── PROFILE SCREEN ─── */
+  .brand-row { display: flex; align-items: center; gap: 10px; }
+  .brand-row img { height: 34px; }
+  .avatar {
+    width: 64px; height: 64px; border-radius: 32px;
+    background: rgba(40, 225, 255, 0.10);
+    border: 1px solid rgba(40, 225, 255, 0.18);
     display: flex; align-items: center; justify-content: center;
-    font-size: 28px;
-    font-weight: 800;
-    color: #fff;
-    margin: 0 auto 12px;
+    font-size: 26px; font-weight: 800; color: var(--cyan);
   }
-  .settings-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 15px 0;
-    border-bottom: 1px solid #F0F5F3;
-  }
-  .settings-row:last-child { border-bottom: none; }
-  .settings-row-left { display: flex; align-items: center; gap: 12px; }
-  .settings-icon {
-    width: 38px; height: 38px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
+  .who b { display: block; font-size: 18px; font-weight: 800; color: var(--txt); }
+  .who span { font-size: 13.5px; color: var(--muted); }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; }
+  .toggle-row span { font-size: 15px; font-weight: 600; color: var(--txt); }
+  .switch { width: 54px; height: 32px; border-radius: 16px; background: var(--border); position: relative; flex: none; }
+  .switch.on { background: var(--cyan); }
+  .switch i { position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 13px; background: #fff; }
+  .switch.on i { left: auto; right: 3px; }
 
-  /* ─── TABLET TWO-COL ─── */
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-  }
-  .two-col .col-left, .two-col .col-right { min-width: 0; }
+  .row2 { display: flex; gap: 12px; }
+  .row2 > * { flex: 1; }
 
   /* ─── SCREEN VISIBILITY ─── */
-  .s1, .s2, .s3, .s4 { display: none; }
+  .s1, .s2, .s3, .s4, .s5, .s6 { display: none; }
+  .wiz-chrome { display: none; }
 
-  /* ─── LARGE SCREEN ADAPTATIONS ─── */
-  @media (min-width: 900px) {
-    .status-bar { height: 56px; padding: 0 36px; }
-    .status-time { font-size: 17px; }
-    .screen { padding: 0 28px 28px; }
-    .hero-name { font-size: 30px; }
-    .card { padding: 22px; }
-    .med-name { font-size: 17px; }
-    .med-dose { font-size: 14px; }
-    .chip { font-size: 15px; padding: 12px 22px; }
-    .insight-title { font-size: 22px; }
-    .insight-body { font-size: 15px; }
-    .bottom-nav { height: 90px; }
-    .nav-label { font-size: 12px; }
-  }
+  /* ─── TABLET (activated via ?d=tablet — media queries don't play well with zoom) ─── */
+  body.tablet .status-bar { height: 56px; padding: 0 36px; }
+  body.tablet .wiz-header, body.tablet .wiz-nav { padding-left: calc((100% - 688px) / 2); padding-right: calc((100% - 688px) / 2); }
+  body.tablet .tab-bar { padding-left: calc((100% - 720px) / 2); padding-right: calc((100% - 720px) / 2); }
 </style>
 </head>
 <body>
@@ -375,293 +302,284 @@
 <div class="status-bar">
   <span class="status-time">9:41</span>
   <div class="status-icons">
-    <svg viewBox="0 0 24 24"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" stroke="#0F1F1B" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="11" rx="2" stroke="#0F1F1B" stroke-width="2" fill="none"/><path d="M22 11v3" stroke="#0F1F1B" stroke-width="2" stroke-linecap="round"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M5 12.55a10.94 10.94 0 0 1 14 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01M1.42 9a15.91 15.91 0 0 1 21.16 0" stroke="#EAF0FF" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="11" rx="2" stroke="#EAF0FF" stroke-width="2" fill="none"/><rect x="4" y="9" width="10" height="7" rx="1" fill="#EAF0FF"/><path d="M22 11v3" stroke="#EAF0FF" stroke-width="2" stroke-linecap="round"/></svg>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     SCREEN 1 — HOME / DASHBOARD
-═══════════════════════════════════════ -->
+<!-- WIZARD HEADER (screens 1–5) -->
+<div class="wiz-header wiz-chrome">
+  <div class="wiz-title-row">
+    <div class="wiz-title" id="wt">Medications</div>
+    <div class="reset-pill">Reset</div>
+  </div>
+  <div class="wiz-sub" id="ws">Pick from list or search + add a custom medication.</div>
+  <div class="steps" id="steps">
+    <div class="step" data-s="1">Medications</div>
+    <div class="step" data-s="2">Symptoms</div>
+    <div class="step" data-s="3">Wellbeing</div>
+    <div class="step" data-s="4">Results</div>
+    <div class="step" data-s="5">Check-in</div>
+    <div class="step" data-s="6">Progress</div>
+    <div class="step" data-s="8">Summary</div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN 1 — MEDICATIONS (wizard step 1) ══════════ -->
 <div class="screen s1">
-  <div class="hero-banner">
-    <div class="hero-greeting">Good morning,</div>
-    <div class="hero-name">Ayaz 👋</div>
-    <div class="hero-stats">
-      <div class="hero-stat">
-        <div class="hero-stat-num">3/4</div>
-        <div class="hero-stat-label">Today's doses</div>
-      </div>
-      <div class="hero-stat" style="border-left:1px solid rgba(255,255,255,0.2);padding-left:16px">
-        <div class="hero-stat-num">92%</div>
-        <div class="hero-stat-label">Weekly adherence</div>
-      </div>
-      <div class="hero-stat" style="border-left:1px solid rgba(255,255,255,0.2);padding-left:16px">
-        <div class="hero-stat-num">12</div>
-        <div class="hero-stat-label">Check-ins</div>
+  <div class="card tight">
+    <div>
+      <div class="label">Search medications</div>
+      <div class="input"><span class="ph">Search medications…</span></div>
+    </div>
+    <div>
+      <div class="label">Medication list</div>
+      <div class="input"><span>Metformin</span><span class="chev">▾</span></div>
+    </div>
+    <div class="row2">
+      <div>
+        <div class="label">Dose</div>
+        <div class="seg">
+          <div class="seg-item">Low</div>
+          <div class="seg-item on">Medium</div>
+          <div class="seg-item">High</div>
+        </div>
       </div>
     </div>
+    <div class="btn btn-primary">Add medication</div>
   </div>
 
-  <div class="section-title">Today's Medications</div>
-
-  <div class="card">
-    <div class="med-row">
-      <div class="med-icon teal">💊</div>
-      <div class="med-info">
-        <div class="med-name">Metformin</div>
-        <div class="med-dose">500 mg · Morning</div>
+  <div class="card tight">
+    <div class="card-title">Your medications</div>
+    <div class="med-item">
+      <div class="med-top"><span class="med-name">Metformin</span><span class="remove">Remove</span></div>
+      <div class="seg">
+        <div class="seg-item">Low</div>
+        <div class="seg-item on">Medium</div>
+        <div class="seg-item">High</div>
       </div>
-      <div class="med-check done">✓</div>
     </div>
-    <div class="med-row">
-      <div class="med-icon blue">💙</div>
-      <div class="med-info">
-        <div class="med-name">Lisinopril</div>
-        <div class="med-dose">10 mg · Morning</div>
+    <div class="med-item">
+      <div class="med-top"><span class="med-name">Atorvastatin</span><span class="remove">Remove</span></div>
+      <div class="seg">
+        <div class="seg-item">Low</div>
+        <div class="seg-item on">Medium</div>
+        <div class="seg-item">High</div>
       </div>
-      <div class="med-check done">✓</div>
     </div>
-    <div class="med-row">
-      <div class="med-icon amber">🌿</div>
-      <div class="med-info">
-        <div class="med-name">Vitamin D3</div>
-        <div class="med-dose">2000 IU · Lunch</div>
-      </div>
-      <div class="med-check done">✓</div>
-    </div>
-    <div class="med-row">
-      <div class="med-icon rose">🔴</div>
-      <div class="med-info">
-        <div class="med-name">Atorvastatin</div>
-        <div class="med-dose">20 mg · Evening</div>
-      </div>
-      <div class="med-check pending"></div>
-    </div>
-  </div>
-
-  <div class="section-title">Latest Insight</div>
-
-  <div class="insight-card">
-    <div class="insight-pill-row">
-      <span class="insight-pill">⚡ Nutrient Signal</span>
-      <span class="insight-pill">B12</span>
-    </div>
-    <div class="insight-title">Vitamin B12 Depletion Risk</div>
-    <div class="insight-body">Long-term Metformin use is linked to reduced B12 absorption. Your fatigue symptoms align with this pattern.</div>
-    <div class="insight-action">View full insight →</div>
+    <div class="chip sel" style="align-self:flex-start">2/2 evidence mapped</div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     SCREEN 2 — SYMPTOM CHECK-IN
-═══════════════════════════════════════ -->
+<!-- ══════════ SCREEN 2 — SYMPTOMS (wizard step 2) ══════════ -->
 <div class="screen s2">
-  <div style="margin-top:12px;margin-bottom:4px;">
-    <div style="font-size:22px;font-weight:800;color:var(--dark);letter-spacing:-0.5px">How are you<br>feeling today?</div>
-    <div style="font-size:14px;color:var(--muted);margin-top:8px">Select all that apply</div>
+  <div class="card">
+    <div class="card-title">Which symptoms do you feel?</div>
+    <div class="chips">
+      <div class="chip sel">Fatigue</div>
+      <div class="chip sel">Brain fog</div>
+      <div class="chip">Low energy</div>
+      <div class="chip sel">Muscle aches</div>
+      <div class="chip">Nausea</div>
+      <div class="chip">Headache</div>
+      <div class="chip">Poor sleep</div>
+      <div class="chip">Dizziness</div>
+      <div class="chip">Low mood</div>
+    </div>
+    <div>
+      <div class="label">Add a custom symptom</div>
+      <div class="input"><span class="ph">e.g. tingling hands</span></div>
+    </div>
   </div>
-
-  <div class="section-title">Energy & Focus</div>
-  <div class="chips-grid">
-    <div class="chip selected">Fatigue</div>
-    <div class="chip selected">Brain fog</div>
-    <div class="chip">Low energy</div>
-    <div class="chip">Poor focus</div>
-    <div class="chip none">Insomnia</div>
+  <div class="card tight">
+    <div class="label">Severity</div>
+    <div class="seg">
+      <div class="seg-item">Mild</div>
+      <div class="seg-item on">Moderate</div>
+      <div class="seg-item">Severe</div>
+    </div>
+    <div class="hint">Severity helps rank your nutrient signals and evidence.</div>
   </div>
-
-  <div class="section-title">Physical</div>
-  <div class="chips-grid">
-    <div class="chip mild">Headache</div>
-    <div class="chip">Muscle ache</div>
-    <div class="chip">Nausea</div>
-    <div class="chip none">Dizziness</div>
-    <div class="chip none">Joint pain</div>
-  </div>
-
-  <div class="section-title">Digestion</div>
-  <div class="chips-grid">
-    <div class="chip">Bloating</div>
-    <div class="chip none">Stomach pain</div>
-    <div class="chip none">Constipation</div>
-  </div>
-
-  <div class="section-title">Mood</div>
-  <div class="chips-grid">
-    <div class="chip">Anxious</div>
-    <div class="chip none">Irritable</div>
-    <div class="chip none">Low mood</div>
-  </div>
-
-  <div class="btn-primary">Save Check-in</div>
-  <div class="btn-outline">I feel fine today</div>
 </div>
 
-<!-- ══════════════════════════════════════
-     SCREEN 3 — INSIGHTS
-═══════════════════════════════════════ -->
+<!-- ══════════ SCREEN 3 — WELLBEING (wizard step 3, score pills) ══════════ -->
 <div class="screen s3">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;margin-bottom:16px">
-    <div style="font-size:22px;font-weight:800;color:var(--dark);letter-spacing:-0.5px">Your Insights</div>
-    <span class="tag tag-teal">2 new</span>
-  </div>
-
-  <div class="insight-card">
-    <div class="insight-pill-row">
-      <span class="insight-pill">⚡ High Priority</span>
-      <span class="insight-pill">Nutrient</span>
-    </div>
-    <div class="insight-title">Vitamin B12 Signal Detected</div>
-    <div class="insight-body">Metformin (500mg, 18 months) commonly depletes B12. You reported fatigue and brain fog — symptoms consistent with B12 deficiency. Consider discussing B12 testing with your doctor.</div>
-    <div class="insight-action">Learn more + Actions →</div>
-  </div>
-
   <div class="card">
-    <div style="display:flex;gap:12px;align-items:flex-start;">
-      <div style="width:42px;height:42px;border-radius:12px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💊</div>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div style="font-size:15px;font-weight:700;color:var(--dark)">Drug Interaction Note</div>
-          <span class="tag tag-amber">Mild</span>
-        </div>
-        <div style="font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5">Taking Atorvastatin and Lisinopril together is generally safe but monitor for muscle soreness.</div>
-        <div style="font-size:12px;color:var(--teal);font-weight:600;margin-top:8px">View detail →</div>
-      </div>
+    <div class="scale">
+      <div class="scale-head"><span class="scale-label">Energy (0–10)</span><span class="scale-value">6 <small>/ 10</small></span></div>
+      <div class="pills"><div class="pill">0</div><div class="pill">1</div><div class="pill">2</div><div class="pill">3</div><div class="pill">4</div><div class="pill">5</div><div class="pill on">6</div><div class="pill">7</div><div class="pill">8</div><div class="pill">9</div><div class="pill">10</div></div>
+      <div class="scale-ends"><span>Worst</span><span>Best</span></div>
+    </div>
+    <div class="scale">
+      <div class="scale-head"><span class="scale-label">Mood (0–10)</span><span class="scale-value">5 <small>/ 10</small></span></div>
+      <div class="pills"><div class="pill">0</div><div class="pill">1</div><div class="pill">2</div><div class="pill">3</div><div class="pill">4</div><div class="pill on">5</div><div class="pill">6</div><div class="pill">7</div><div class="pill">8</div><div class="pill">9</div><div class="pill">10</div></div>
+      <div class="scale-ends"><span>Worst</span><span>Best</span></div>
+    </div>
+    <div class="scale">
+      <div class="scale-head"><span class="scale-label">Sleep (0–10)</span><span class="scale-value">4 <small>/ 10</small></span></div>
+      <div class="pills"><div class="pill">0</div><div class="pill">1</div><div class="pill">2</div><div class="pill">3</div><div class="pill on">4</div><div class="pill">5</div><div class="pill">6</div><div class="pill">7</div><div class="pill">8</div><div class="pill">9</div><div class="pill">10</div></div>
+      <div class="scale-ends"><span>Worst</span><span>Best</span></div>
+    </div>
+    <div class="scale">
+      <div class="scale-head"><span class="scale-label">Focus (0–10)</span><span class="scale-value">6 <small>/ 10</small></span></div>
+      <div class="pills"><div class="pill">0</div><div class="pill">1</div><div class="pill">2</div><div class="pill">3</div><div class="pill">4</div><div class="pill">5</div><div class="pill on">6</div><div class="pill">7</div><div class="pill">8</div><div class="pill">9</div><div class="pill">10</div></div>
+      <div class="scale-ends"><span>Worst</span><span>Best</span></div>
     </div>
   </div>
-
-  <div class="section-title">Adherence Summary</div>
-  <div class="progress-wrap">
-    <div class="progress-ring">
-      <svg width="64" height="64" viewBox="0 0 64 64">
-        <circle cx="32" cy="32" r="26" stroke="#E8F5F1" stroke-width="8" fill="none"/>
-        <circle cx="32" cy="32" r="26" stroke="#0E7C66" stroke-width="8" fill="none"
-          stroke-dasharray="163" stroke-dashoffset="13" stroke-linecap="round"/>
-      </svg>
-      <div class="progress-label">92%</div>
-    </div>
-    <div class="progress-info">
-      <h4>Great adherence this week!</h4>
-      <p>You've taken 25 of 27 scheduled doses</p>
-    </div>
-  </div>
-
-  <div class="card">
-    <div style="display:flex;gap:12px;align-items:flex-start;">
-      <div style="width:42px;height:42px;border-radius:12px;background:#E0F2FE;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🌿</div>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div style="font-size:15px;font-weight:700;color:var(--dark)">Vitamin D Status</div>
-          <span class="tag tag-blue">Info</span>
-        </div>
-        <div style="font-size:13px;color:var(--muted);margin-top:6px;line-height:1.5">Your Vitamin D3 dose of 2000 IU/day is within the recommended range for maintenance.</div>
-        <div style="font-size:12px;color:var(--teal);font-weight:600;margin-top:8px">View detail →</div>
-      </div>
-    </div>
-  </div>
+  <div class="hint" style="text-align:center">Your baseline is used to track improvement over time.</div>
 </div>
 
-<!-- ══════════════════════════════════════
-     SCREEN 4 — MEDICATIONS LIST
-═══════════════════════════════════════ -->
+<!-- ══════════ SCREEN 4 — RESULTS (wizard step 4) ══════════ -->
 <div class="screen s4">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;margin-bottom:16px">
-    <div style="font-size:22px;font-weight:800;color:var(--dark);letter-spacing:-0.5px">Medications</div>
-    <div style="width:36px;height:36px;border-radius:10px;background:var(--teal-bg);display:flex;align-items:center;justify-content:center;color:var(--teal);font-size:22px;font-weight:300">+</div>
+  <div class="tagline">
+    <b>Your weekly coach</b>
+    <span>Your fatigue and brain fog pattern matches a possible B12 depletion signal from long-term Metformin use.</span>
   </div>
-
-  <div class="progress-wrap">
-    <div class="progress-ring">
-      <svg width="64" height="64" viewBox="0 0 64 64">
-        <circle cx="32" cy="32" r="26" stroke="#E8F5F1" stroke-width="8" fill="none"/>
-        <circle cx="32" cy="32" r="26" stroke="#0E7C66" stroke-width="8" fill="none"
-          stroke-dasharray="163" stroke-dashoffset="26" stroke-linecap="round"/>
-      </svg>
-      <div class="progress-label">84%</div>
+  <div class="card tight">
+    <div class="card-title">Nutrient signals</div>
+    <div class="signal">
+      <div class="signal-head"><span class="signal-name">Vitamin B12</span><span class="prio prio-high">High priority</span></div>
+      <div class="bar"><i style="width:86%"></i></div>
+      <div class="hint">Long-term Metformin use is linked to reduced B12 absorption.</div>
+      <div style="display:flex;gap:8px"><span class="cite">PMID 26071889</span><span class="cite">PMC 4833935</span></div>
     </div>
-    <div class="progress-info">
-      <h4>Monthly adherence: 84%</h4>
-      <p>4 active medications tracked</p>
-    </div>
-  </div>
-
-  <div class="section-title">Active Medications</div>
-
-  <div class="card" style="padding:8px 18px">
-    <div class="med-row">
-      <div class="med-icon teal">💊</div>
-      <div class="med-info">
-        <div class="med-name">Metformin</div>
-        <div class="med-dose">500 mg · Twice daily · Since Jan 2023</div>
-      </div>
-      <span class="tag tag-teal" style="font-size:11px">Active</span>
-    </div>
-    <div class="med-row">
-      <div class="med-icon blue">💙</div>
-      <div class="med-info">
-        <div class="med-name">Lisinopril</div>
-        <div class="med-dose">10 mg · Once daily · Since Mar 2023</div>
-      </div>
-      <span class="tag tag-teal" style="font-size:11px">Active</span>
-    </div>
-    <div class="med-row">
-      <div class="med-icon amber">🌿</div>
-      <div class="med-info">
-        <div class="med-name">Vitamin D3</div>
-        <div class="med-dose">2000 IU · Once daily · Since Jun 2024</div>
-      </div>
-      <span class="tag tag-teal" style="font-size:11px">Active</span>
-    </div>
-    <div class="med-row">
-      <div class="med-icon rose">🔴</div>
-      <div class="med-info">
-        <div class="med-name">Atorvastatin</div>
-        <div class="med-dose">20 mg · Evening · Since Aug 2024</div>
-      </div>
-      <span class="tag tag-teal" style="font-size:11px">Active</span>
+    <div class="signal">
+      <div class="signal-head"><span class="signal-name">Coenzyme Q10</span><span class="prio prio-mod">Moderate</span></div>
+      <div class="bar"><i style="width:58%"></i></div>
+      <div class="hint">Statins can lower CoQ10 levels — linked to muscle aches.</div>
     </div>
   </div>
-
-  <div class="btn-primary">+ Add Medication</div>
+  <div class="card tight">
+    <div class="card-title">Recommended supplements</div>
+    <div class="chips">
+      <div class="chip sel">Vitamin B12</div>
+      <div class="chip sel">CoQ10</div>
+      <div class="chip">Magnesium</div>
+    </div>
+  </div>
+  <div class="btn btn-primary">Reveal My GeneoRx Insight</div>
 </div>
 
-<!-- ─── BOTTOM NAV ─── -->
-<div class="bottom-nav">
-  <div class="nav-item" id="nav-home">
-    <div class="nav-icon">🏠</div>
-    <span class="nav-label">Home</span>
+<!-- ══════════ SCREEN 5 — CHECK-IN (wizard step 5) ══════════ -->
+<div class="screen s5">
+  <div class="card tight">
+    <div class="row2">
+      <div>
+        <div class="label">Check-in date</div>
+        <div class="input"><span>2026-08-04</span></div>
+      </div>
+      <div>
+        <div class="label">Adherence (approx %)</div>
+        <div class="input"><span>80</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">Supplements taken</div>
+      <div class="chips">
+        <div class="chip sel">Vitamin B12</div>
+        <div class="chip sel">CoQ10</div>
+        <div class="chip">Magnesium</div>
+      </div>
+    </div>
   </div>
-  <div class="nav-item" id="nav-guided">
-    <div class="nav-icon">🧭</div>
-    <span class="nav-label">Guided</span>
+  <div class="card tight">
+    <div class="card-title">Fatigue</div>
+    <div class="chips">
+      <div class="chip">Worse</div>
+      <div class="chip">No change</div>
+      <div class="chip sel">Slightly better</div>
+      <div class="chip">Much better</div>
+    </div>
+    <div class="scale">
+      <div class="scale-head"><span class="scale-label">Severity now</span><span class="scale-value">4 <small>/ 10</small></span></div>
+      <div class="pills"><div class="pill">0</div><div class="pill">1</div><div class="pill">2</div><div class="pill">3</div><div class="pill on">4</div><div class="pill">5</div><div class="pill">6</div><div class="pill">7</div><div class="pill">8</div><div class="pill">9</div><div class="pill">10</div></div>
+    </div>
   </div>
-  <div class="nav-item" id="nav-meds">
-    <div class="nav-icon">💊</div>
-    <span class="nav-label">Meds</span>
+  <div class="btn btn-primary">Save check-in</div>
+</div>
+
+<!-- ══════════ SCREEN 6 — ACCOUNT / PROFILE ══════════ -->
+<div class="screen s6">
+  <div class="brand-row">
+    <img src="../assets/logo.png" alt="GeneoRx">
   </div>
-  <div class="nav-item" id="nav-check">
-    <div class="nav-icon">✅</div>
-    <span class="nav-label">Check-in</span>
+  <div class="card tight" style="flex-direction:row;align-items:center;gap:16px;display:flex">
+    <div class="avatar">A</div>
+    <div class="who"><b>Ayaz</b><span>ayaz@example.com</span></div>
   </div>
-  <div class="nav-item" id="nav-insights">
-    <div class="nav-icon">⚡</div>
-    <span class="nav-label">Insights</span>
+  <div class="card tight">
+    <div class="card-title">Health profile</div>
+    <div class="row2">
+      <div>
+        <div class="label">Age</div>
+        <div class="input"><span>35</span></div>
+      </div>
+      <div>
+        <div class="label">Gender</div>
+        <div class="input"><span>Male</span><span class="chev">▾</span></div>
+      </div>
+    </div>
+    <div class="toggle-row"><span>Kidney disease</span><div class="switch"><i></i></div></div>
+    <div class="toggle-row"><span>Blood thinners (anticoagulants)</span><div class="switch"><i></i></div></div>
+    <div class="toggle-row"><span>Consent to analysis</span><div class="switch on"><i></i></div></div>
+    <div class="btn btn-primary">Save profile</div>
   </div>
-  <div class="nav-item" id="nav-profile">
-    <div class="nav-icon">👤</div>
-    <span class="nav-label">Profile</span>
+</div>
+
+<!-- WIZARD FOOTER (screens 1–5) -->
+<div class="wiz-nav wiz-chrome">
+  <div class="btn btn-secondary">Back</div>
+  <div class="btn btn-primary">Continue</div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <div class="tab" id="tab-guided">
+    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.9"/><polygon points="15.5,8.5 11,11 8.5,15.5 13,13" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+    <span class="tab-label">Setup</span>
+  </div>
+  <div class="tab" id="tab-profile">
+    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.9"/><path d="M4 20c0-3.5 3.5-6 8-6s8 2.5 8 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="tab-label">Account</span>
   </div>
 </div>
 
 <script>
   const params = new URLSearchParams(location.search);
+  // ?z=3 renders everything at 3x for store-resolution captures;
+  // ?d=tablet switches to the centered tablet layout.
+  const zoom = parseFloat(params.get('z') || '1');
+  if (zoom !== 1) document.body.style.zoom = zoom;
+  if (params.get('d') === 'tablet') document.body.classList.add('tablet');
   const screen = parseInt(params.get('s') || '1');
-  document.querySelector('.s' + screen).style.display = 'block';
+  document.querySelector('.s' + screen).style.display = 'flex';
 
-  const navMap = { 1: 'nav-home', 2: 'nav-check', 3: 'nav-insights', 4: 'nav-meds' };
-  const activeNav = document.getElementById(navMap[screen]);
-  if (activeNav) activeNav.classList.add('active');
+  // Wizard chrome for steps 1–5; Account screen (6) has no wizard header/footer
+  const meta = {
+    1: { t: 'Medications', s: 'Pick from list or search + add a custom medication.', step: '1' },
+    2: { t: 'Symptoms',    s: 'Pick symptoms and severity.',                          step: '2' },
+    3: { t: 'Wellbeing',   s: 'Set baseline for tracking improvement.',               step: '3' },
+    4: { t: 'Results',     s: 'Nutrient signals + recommendations + evidence.',       step: '4' },
+    5: { t: 'Check-in',    s: 'Log symptom improvement + adherence + wellbeing.',     step: '5' },
+  };
+  const m = meta[screen];
+  if (m) {
+    document.querySelectorAll('.wiz-chrome').forEach(el => el.style.display = '');
+    document.querySelector('.wiz-header').style.display = 'block';
+    document.querySelector('.wiz-nav').style.display = 'flex';
+    document.getElementById('wt').textContent = m.t;
+    document.getElementById('ws').textContent = m.s;
+    document.querySelector('.step[data-s="' + m.step + '"]').classList.add('on');
+  }
+
+  // Active tab: Setup for wizard screens, Account for profile
+  document.getElementById(screen === 6 ? 'tab-profile' : 'tab-guided').classList.add('on');
+  const iconColor = (id, on) => {
+    const el = document.getElementById(id);
+    el.querySelectorAll('svg').forEach(s => s.style.color = on ? '#061018' : '#A9B4D6');
+  };
+  iconColor('tab-guided', screen !== 6);
+  iconColor('tab-profile', screen === 6);
 </script>
 
 </body>
