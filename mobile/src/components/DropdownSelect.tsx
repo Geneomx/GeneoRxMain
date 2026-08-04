@@ -111,9 +111,9 @@ const styles = StyleSheet.create({
   trigger: {
     minHeight: touchMin,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.inputBg,
+    borderRadius: radius.button,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     flexDirection: 'row',

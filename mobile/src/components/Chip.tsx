@@ -45,11 +45,11 @@ const styles = StyleSheet.create({
   },
   selected: {
     backgroundColor: colors.primary100,
-    borderColor: colors.primary,
+    borderColor: 'rgba(40, 225, 255, 0.45)',
   },
   unselected: {
     backgroundColor: 'rgba(15, 23, 54, 0.45)',
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
   },
   text: { fontSize: 15, fontWeight: '600' },
   textSelected: { color: colors.text, fontWeight: '900' },

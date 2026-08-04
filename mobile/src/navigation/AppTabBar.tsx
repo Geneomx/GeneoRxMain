@@ -2,21 +2,18 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { AppTabsParamList } from '@/navigation/AppTabs';
 import { TAB_BAR_HEIGHT } from '@/hooks/useResponsiveLayout';
-import { colors, radius, touchMin } from '@/theme';
+import { colors, gradients, radius, touchMin } from '@/theme';
 
 type TabKey = keyof AppTabsParamList;
 
-const TAB_ORDER: TabKey[] = ['Home', 'Guided', 'Treatments', 'CheckIns', 'Insights', 'Profile'];
+const TAB_ORDER: TabKey[] = ['Guided', 'Profile'];
 
 const TAB_LABEL_KEYS: Record<TabKey, string> = {
-  Home: 'mobile.tab.home',
   Guided: 'mobile.tab.guided',
-  Treatments: 'mobile.tab.meds',
-  CheckIns: 'mobile.tab.checkin',
-  Insights: 'mobile.tab.insights',
   Profile: 'mobile.tab.profile',
 };
 
@@ -44,7 +41,7 @@ export const AppTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, nav
           const { options } = descriptors[route.key];
           const icon = options.tabBarIcon?.({
             focused,
-            color: focused ? colors.buttonText : colors.textSoft,
+            color: focused ? colors.onPrimary : colors.textSoft,
             size: iconOnly ? ICON_SIZE_COMPACT : ICON_SIZE,
           });
 
@@ -72,6 +69,14 @@ export const AppTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, nav
               style={styles.item}
             >
               <View style={[styles.pill, focused ? styles.pillOn : styles.pillOff]}>
+                {focused && (
+                  <LinearGradient
+                    colors={gradients.stepActive}
+                    start={gradients.start}
+                    end={gradients.end}
+                    style={StyleSheet.absoluteFill}
+                  />
+                )}
                 <View style={[styles.iconWrap, iconOnly && styles.iconWrapLarge]}>{icon}</View>
                 {!iconOnly ? (
                   <Text
@@ -122,14 +127,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     gap: 3,
+    overflow: 'hidden',
   },
   pillOff: {
     backgroundColor: colors.ghostBg,
     borderColor: colors.borderSoft,
   },
   pillOn: {
-    backgroundColor: colors.buttonPrimary,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
+    backgroundColor: 'transparent',
+    borderColor: 'rgba(40, 225, 255, 0.35)',
   },
   iconWrap: {
     height: ICON_SIZE,
@@ -151,7 +157,7 @@ const styles = StyleSheet.create({
     color: colors.textSoft,
   },
   labelOn: {
-    fontWeight: '800',
-    color: colors.buttonText,
+    fontWeight: '900',
+    color: colors.onPrimary,
   },
 });

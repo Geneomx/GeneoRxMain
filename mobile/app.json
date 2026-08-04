@@ -20,8 +20,6 @@
       "bundleIdentifier": "com.geneorx.app",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "GeneoRx may use the camera to capture photos for your medication and symptom logs.",
-        "NSFaceIDUsageDescription": "GeneoRx uses Face ID to secure your account.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

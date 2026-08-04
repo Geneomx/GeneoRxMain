@@ -20,7 +20,7 @@ export const AmbientBackground: React.FC = () => (
           <Stop offset="1" stopColor="#0B1022" />
         </LinearGradient>
         <RadialGradient id="amb-cyan" cx="0.2" cy="0.02" r="0.65">
-          <Stop offset="0" stopColor="#28E1FF" stopOpacity="0.13" />
+          <Stop offset="0" stopColor="#28E1FF" stopOpacity="0.12" />
           <Stop offset="1" stopColor="#28E1FF" stopOpacity="0" />
         </RadialGradient>
         <RadialGradient id="amb-violet" cx="0.86" cy="0.14" r="0.6">

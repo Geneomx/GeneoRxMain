@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { GestureResponderEvent, Linking, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '@/components/Button';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -160,7 +160,7 @@ export const CiteChip: React.FC<{ token: string }> = ({ token }) => {
   );
 };
 
-/* ---------- 0–10 slider (stepper buttons) ---------- */
+/* ---------- 0–10 score pills — mirrors the website score picker ---------- */
 const SCALE_MAX = 10;
 
 export const ScaleRow: React.FC<{
@@ -170,31 +170,6 @@ export const ScaleRow: React.FC<{
   minLabel?: string;
   maxLabel?: string;
 }> = ({ label, value, onChange, minLabel = 'Worst', maxLabel = 'Best' }) => {
-  const widthRef = useRef(0);
-
-  const valueFromX = (x: number): number => {
-    const w = widthRef.current;
-    if (w <= 0) return value;
-    const ratio = Math.max(0, Math.min(1, x / w));
-    return Math.round(ratio * SCALE_MAX);
-  };
-
-  const handle = (e: GestureResponderEvent) => {
-    const next = valueFromX(e.nativeEvent.locationX);
-    if (next !== value) onChange(next);
-  };
-
-  const pan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: handle,
-      onPanResponderMove: handle,
-    }),
-  ).current;
-
-  const pct = (value / SCALE_MAX) * 100;
-
   return (
     <View style={styles.scaleWrap}>
       <View style={styles.scaleHead}>
@@ -204,16 +179,21 @@ export const ScaleRow: React.FC<{
           <Text style={styles.scaleValueMax}> / {SCALE_MAX}</Text>
         </Text>
       </View>
-      <View
-        style={styles.sliderTrack}
-        onLayout={(e) => {
-          widthRef.current = e.nativeEvent.layout.width;
-        }}
-        {...pan.panHandlers}
-      >
-        <View style={styles.sliderBase} />
-        <View style={[styles.sliderFill, { width: `${pct}%` }]} />
-        <View style={[styles.sliderThumb, { left: `${pct}%` }]} />
+      <View style={styles.scorePillRow}>
+        {Array.from({ length: SCALE_MAX + 1 }, (_, n) => {
+          const on = n === value;
+          return (
+            <Pressable
+              key={n}
+              onPress={() => onChange(n)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={[styles.scorePill, on && styles.scorePillOn]}
+            >
+              <Text style={[styles.scorePillText, on && styles.scorePillTextOn]}>{n}</Text>
+            </Pressable>
+          );
+        })}
       </View>
       <View style={styles.sliderEnds}>
         <Text style={styles.sliderEndText}>{minLabel}</Text>
@@ -417,11 +397,12 @@ export const InsightModal: React.FC<{ visible: boolean; onClose: () => void; ins
 };
 
 const styles = StyleSheet.create({
+  // Website .card: navy gradient panel, radius 18, white .12 hairline
   section: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
+    borderColor: colors.border,
     padding: spacing.lg,
     gap: spacing.md,
     ...shadow.card,
@@ -431,7 +412,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(58, 207, 235, 0.22)',
+    borderColor: 'rgba(40, 225, 255, 0.22)',
     backgroundColor: colors.primary50,
   },
   taglineTitle: { fontSize: 18, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
@@ -478,39 +459,27 @@ const styles = StyleSheet.create({
   scaleWrap: { gap: 10 },
   scaleHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   scaleLabel: { fontSize: 16, fontWeight: '600', color: colors.text },
-  scaleValue: { fontSize: 20, fontWeight: '800', color: colors.primary },
+  scaleValue: { fontSize: 22, fontWeight: '900', color: colors.primary },
   scaleValueMax: { fontSize: 13, fontWeight: '700', color: colors.textDim },
-  sliderTrack: {
-    height: 32,
+  // Website .scorePill: dark navy pill, cyan when selected
+  scorePillRow: { flexDirection: 'row', gap: 4 },
+  scorePill: {
+    flex: 1,
+    height: 36,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: 'rgba(15, 23, 54, 0.45)',
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 13,
   },
-  sliderBase: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.surfaceAlt,
+  scorePillOn: {
+    backgroundColor: 'rgba(40, 225, 255, 0.22)',
+    borderColor: 'rgba(40, 225, 255, 0.55)',
+    transform: [{ scale: 1.06 }],
   },
-  sliderFill: {
-    position: 'absolute',
-    left: 0,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.primary,
-  },
-  sliderThumb: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    marginLeft: -14,
-    backgroundColor: colors.primary,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    ...shadow.raised,
-  },
+  scorePillText: { fontSize: 13, fontWeight: '800', color: colors.textSoft },
+  scorePillTextOn: { color: '#FFFFFF' },
   sliderEnds: { flexDirection: 'row', justifyContent: 'space-between' },
   sliderEndText: { fontSize: 13, fontWeight: '600', color: colors.textDim },
 

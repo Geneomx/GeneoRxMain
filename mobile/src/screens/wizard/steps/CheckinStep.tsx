@@ -258,8 +258,8 @@ const styles = StyleSheet.create({
   changeWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   changeChip: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: 11, paddingVertical: 6, backgroundColor: colors.surface },
   changeChipActive: {
-    backgroundColor: 'rgba(58, 207, 235, 0.18)',
-    borderColor: 'rgba(58, 207, 235, 0.45)',
+    backgroundColor: 'rgba(40, 225, 255, 0.18)',
+    borderColor: 'rgba(40, 225, 255, 0.45)',
   },
   changeText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
   changeTextActive: { color: colors.text, fontWeight: '900' },

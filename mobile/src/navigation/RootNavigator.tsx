@@ -3,6 +3,7 @@ import { NavigationContainer, DefaultTheme, LinkingOptions } from '@react-naviga
 import { useAuth } from '@/auth/AuthContext';
 import { AuthStack } from './AuthStack';
 import { AppTabs } from './AppTabs';
+import { VerifyEmailScreen } from '@/screens/VerifyEmailScreen';
 import { Loader } from '@/components/Loader';
 import { colors } from '@/theme';
 
@@ -36,13 +37,16 @@ const navTheme = {
 };
 
 export const RootNavigator: React.FC = () => {
-  const { token, loading } = useAuth();
+  const { token, loading, isGuest, emailVerified } = useAuth();
 
   if (loading) return <Loader />;
 
+  // Mirrors the website flow: register → email code verification → portal.
+  const needsVerification = Boolean(token) && !isGuest && !emailVerified;
+
   return (
     <NavigationContainer theme={navTheme} linking={linking}>
-      {!token ? <AuthStack /> : <AppTabs />}
+      {!token ? <AuthStack /> : needsVerification ? <VerifyEmailScreen /> : <AppTabs />}
     </NavigationContainer>
   );
 };

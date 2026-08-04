@@ -173,8 +173,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
   },
   triggerPressed: {
-    borderColor: 'rgba(58, 207, 235, 0.35)',
-    backgroundColor: 'rgba(58, 207, 235, 0.10)',
+    borderColor: 'rgba(40, 225, 255, 0.35)',
+    backgroundColor: 'rgba(40, 225, 255, 0.10)',
   },
   globe: {
     fontSize: 13,
@@ -218,8 +218,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   codeBadgeActive: {
-    borderColor: 'rgba(58, 207, 235, 0.45)',
-    backgroundColor: 'rgba(58, 207, 235, 0.14)',
+    borderColor: 'rgba(40, 225, 255, 0.45)',
+    backgroundColor: 'rgba(40, 225, 255, 0.14)',
   },
   codeText: {
     fontSize: 10,
@@ -339,8 +339,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   optionSelected: {
-    backgroundColor: 'rgba(58, 207, 235, 0.10)',
-    borderColor: 'rgba(58, 207, 235, 0.38)',
+    backgroundColor: 'rgba(40, 225, 255, 0.10)',
+    borderColor: 'rgba(40, 225, 255, 0.38)',
   },
   optionTextWrap: {
     flex: 1,

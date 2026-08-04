@@ -80,9 +80,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await apiRegister(payload);
     await setToken(res.token);
     setTokenState(res.token);
-    setUser({ ...res.user, emailVerified: true });
+    setUser({ ...res.user, emailVerified: false });
     setIsGuest(false);
-    setEmailVerified(true);
+    // Same as the website: after registering, confirm the email with a 6-digit code.
+    setEmailVerified(false);
   }, []);
 
   /** Used by useSocialAuth after Google/Apple backend verification succeeds. */

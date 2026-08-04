@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 import { colors, radius, spacing, touchMin, typography } from '@/theme';
 
@@ -7,13 +7,22 @@ interface Props extends TextInputProps {
   error?: string;
 }
 
-export const Input: React.FC<Props> = ({ label, error, style, ...rest }) => {
+export const Input: React.FC<Props> = ({ label, error, style, onFocus, onBlur, ...rest }) => {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.wrap}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
-        placeholderTextColor={colors.textMuted}
-        style={[styles.input, error && styles.inputError, style]}
+        placeholderTextColor="rgba(169, 180, 214, 0.75)"
+        style={[styles.input, focused && styles.inputFocused, error && styles.inputError, style]}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
         {...rest}
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -26,7 +35,7 @@ const styles = StyleSheet.create({
   label: { ...typography.bodyMuted, color: colors.text, fontWeight: '700', fontSize: 15 },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     backgroundColor: colors.inputBg,
     borderRadius: radius.button,
     paddingHorizontal: spacing.md,
@@ -35,6 +44,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     minHeight: touchMin,
   },
+  // Website auth focus ring: cyan border glow
+  inputFocused: { borderColor: 'rgba(40, 225, 255, 0.45)' },
   inputError: { borderColor: colors.danger },
   error: { color: colors.danger, fontSize: 14 },
 });

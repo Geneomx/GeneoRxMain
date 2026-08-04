@@ -18,7 +18,7 @@ import { colors, gradients, spacing } from '@/theme';
 
 const STORAGE_KEY = '@geneorx_onboarding_seen';
 
-const SLIDE_ACCENTS = ['#3ACFEB', '#A78BFA', '#FF4FD8', '#34D399'] as const;
+const SLIDE_ACCENTS = ['#28E1FF', '#A78BFA', '#FF4FD8', '#34D399'] as const;
 const SLIDE_ICONS = ['💊', '⚙️', '✨', '🎯'] as const;
 
 function getSlideCopy(index: number, lang: string) {
@@ -101,7 +101,8 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
   }, [visible, backdropOpacity, sheetTranslateY, sheetOpacity]);
 
   const dismiss = async () => {
-    await AsyncStorage.setItem(STORAGE_KEY, 'true');
+    // Never let a storage failure make the modal unclosable
+    await AsyncStorage.setItem(STORAGE_KEY, 'true').catch(() => undefined);
     Animated.parallel([
       Animated.timing(backdropOpacity, {
         toValue: 0,
@@ -128,7 +129,7 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
   if (!visible) return null;
 
   return (
-    <Modal transparent animationType="none" statusBarTranslucent>
+    <Modal transparent animationType="none" statusBarTranslucent onRequestClose={() => void dismiss()}>
       <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
 
       <View style={styles.sheetContainer}>

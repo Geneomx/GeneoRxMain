@@ -1,34 +1,35 @@
 // GeneoRx mobile theme — dark clinical design matching the website.
 export const colors = {
-  // Brand — cyan, matched to the website (--cyan #28E1FF) but softened one
-  // notch so it's easier on the eyes on a dark screen.
-  primary:       '#3ACFEB',
-  primaryDark:   '#3589A3',
-  primaryLight:  '#6FDDF2',
-  primary50:     'rgba(58, 207, 235, 0.10)',
-  primary100:    'rgba(58, 207, 235, 0.18)',
-  /** Solid deep-accent fills that carry light text (tab pill, dots) */
-  buttonPrimary: '#2E6E86',
+  // Brand — cyan, identical to the website (--cyan / --teal-dark / --teal-light).
+  primary:       '#28E1FF',
+  primaryDark:   '#1E9BB8',
+  primaryLight:  '#5EEBFF',
+  primary50:     'rgba(40, 225, 255, 0.10)',
+  primary100:    'rgba(40, 225, 255, 0.18)',
+  /** Solid deep-accent fills that carry light text (dots, small accents) */
+  buttonPrimary: '#1E9BB8',
   /** Near-black text/icon color that sits on the bright cyan gradient CTA */
   onPrimary:     '#061018',
 
   // Surfaces
   background:    '#070A12',
   backgroundAlt: '#0B1022',
-  surface:       'rgba(15, 23, 54, 0.86)',
+  surface:       'rgba(15, 23, 54, 0.80)',
   surfaceAlt:    '#101B40',
   card:          'rgba(15, 23, 54, 0.72)',
   hero:          '#101B40',
 
   // Borders
   border:        'rgba(255, 255, 255, 0.12)',
+  /** Website border for inputs, buttons, chips and modals */
+  borderStrong:  'rgba(255, 255, 255, 0.14)',
   borderSoft:    'rgba(255, 255, 255, 0.08)',
 
   // Text
   text:          '#EAF0FF',
   textSoft:      '#A9B4D6',
-  textMuted:     '#8E9BC4',
-  textDim:       '#6A7498',
+  textMuted:     '#7E8AB8',
+  textDim:       '#5A6490',
   textInverse:   '#070A12',
 
   // Accent palette (slides, tags)
@@ -41,13 +42,13 @@ export const colors = {
   warning:  '#FBBF24',
   danger:   '#FB7185',
 
-  // Status backgrounds
-  successBg: 'rgba(52, 211, 153, 0.12)',
-  warningBg: 'rgba(251, 191, 36, 0.12)',
+  // Status backgrounds (website alpha tints)
+  successBg: 'rgba(52, 211, 153, 0.10)',
+  warningBg: 'rgba(251, 191, 36, 0.08)',
   dangerBg:  'rgba(251, 113, 133, 0.12)',
 
   // Website portal tokens
-  buttonText:   '#F5FAFF',
+  buttonText:   '#EAF0FF',
   inputBg:      'rgba(7, 10, 18, 0.45)',
   ghostBg:      'rgba(7, 10, 18, 0.35)',
   buttonBg:     'rgba(15, 23, 54, 0.55)',
@@ -62,8 +63,8 @@ export const colors = {
  *  - stepActive  → web `.step.on`  (cyan → blue), used for active tabs/steps
  */
 export const gradients = {
-  primaryCta: ['#3ACFEB', '#A78BFA'] as const,
-  stepActive: ['#3ACFEB', '#1565C0'] as const,
+  primaryCta: ['rgba(40, 225, 255, 0.92)', 'rgba(167, 139, 250, 0.86)'] as const,
+  stepActive: ['rgba(40, 225, 255, 0.92)', 'rgba(21, 101, 192, 0.65)'] as const,
   /** Diagonal direction used by the website (135deg) */
   start: { x: 0, y: 0 },
   end:   { x: 1, y: 1 },

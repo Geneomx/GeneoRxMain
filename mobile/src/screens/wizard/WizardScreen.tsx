@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
   },
-  tabOn: { borderColor: 'rgba(58, 207, 235, 0.35)' },
+  tabOn: { borderColor: 'rgba(40, 225, 255, 0.35)' },
   tabText: { fontSize: 13, color: colors.textSoft, fontWeight: '600' },
   tabTextOn: { color: colors.onPrimary, fontWeight: '900' },
 

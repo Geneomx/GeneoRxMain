@@ -92,19 +92,20 @@ function paletteFor(variant: Variant): Palette {
       return {
         bg: colors.buttonBg,
         fg: colors.text,
-        border: colors.border,
+        border: colors.borderStrong,
         borderWidth: 1,
         shadow: undefined,
         labelExtra: { fontWeight: '600' as const },
       };
     case 'ghost':
+      // Website `.ghost`: dark translucent fill, white hairline, normal text
       return {
-        bg: 'transparent',
-        fg: colors.primary,
-        border: colors.primary,
-        borderWidth: 1.5,
+        bg: colors.ghostBg,
+        fg: colors.text,
+        border: colors.borderStrong,
+        borderWidth: 1,
         shadow: undefined,
-        labelExtra: { fontWeight: '700' as const },
+        labelExtra: { fontWeight: '600' as const },
       };
     case 'danger':
       return {
