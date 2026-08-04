@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
@@ -125,6 +126,9 @@ export const SettingsScreen: React.FC = () => {
     setDeleting(true);
     try {
       await apiRequest('/account', { method: 'DELETE' });
+      // Clear on-device health data too — otherwise it would be pushed into
+      // the next account registered on this device.
+      await AsyncStorage.clear().catch(() => undefined);
       // signOut clears the token and navigates to Auth stack
       await signOut();
     } catch (err: any) {
@@ -203,13 +207,13 @@ export const SettingsScreen: React.FC = () => {
           <Row
             label={t('mobile.settings.privacy')}
             chevron
-            onPress={() => Linking.openURL(legalPrivacyUrl(language))}
+            onPress={() => Linking.openURL(legalPrivacyUrl(language)).catch(() => undefined)}
           />
           <Divider />
           <Row
             label={t('mobile.settings.terms')}
             chevron
-            onPress={() => Linking.openURL(legalTermsUrl(language))}
+            onPress={() => Linking.openURL(legalTermsUrl(language)).catch(() => undefined)}
           />
         </View>
 

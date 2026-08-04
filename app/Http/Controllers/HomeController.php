@@ -11,6 +11,7 @@ use App\Support\IntroSlides;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 class HomeController extends Controller
 {
@@ -166,7 +167,8 @@ class HomeController extends Controller
         );
 
         $profile->update([
-            'date_of_birth' => $dob,
+            // A payload without a usable age must not wipe a stored birth date
+            'date_of_birth' => $dob ?? $profile->date_of_birth,
             'gender' => $validated['profile']['gender'] ?? $profile->gender,
             'phone' => $validated['profile']['phone'] ?? $profile->phone,
             'pregnant' => $validated['profile']['pregnant'] ?? $profile->pregnant,
@@ -175,25 +177,29 @@ class HomeController extends Controller
         ]);
 
         if (array_key_exists('medications', $validated) && is_array($validated['medications'])) {
-            Medication::where('user_id', $user->id)->delete();
-            foreach ($validated['medications'] as $med) {
-                Medication::create([
-                    'user_id' => $user->id,
-                    'medication_name' => $med['medId'] ?? '',
-                    'dosage' => $med['dose'] ?? '',
-                    'duration_months' => $med['durationMonths'] ?? 0,
-                ]);
-            }
+            DB::transaction(function () use ($user, $validated) {
+                Medication::where('user_id', $user->id)->delete();
+                foreach ($validated['medications'] as $med) {
+                    Medication::create([
+                        'user_id' => $user->id,
+                        'medication_name' => $med['medId'] ?? '',
+                        'dosage' => $med['dose'] ?? '',
+                        'duration_months' => $med['durationMonths'] ?? 0,
+                    ]);
+                }
+            });
         }
 
         if (array_key_exists('symptoms', $validated) && is_array($validated['symptoms'])) {
-            Symptom::where('user_id', $user->id)->delete();
-            foreach ($validated['symptoms'] as $symptom) {
-                Symptom::create([
-                    'user_id' => $user->id,
-                    'symptom_name' => is_array($symptom) ? ($symptom['name'] ?? $symptom) : $symptom,
-                ]);
-            }
+            DB::transaction(function () use ($user, $validated) {
+                Symptom::where('user_id', $user->id)->delete();
+                foreach ($validated['symptoms'] as $symptom) {
+                    Symptom::create([
+                        'user_id' => $user->id,
+                        'symptom_name' => is_array($symptom) ? ($symptom['name'] ?? $symptom) : $symptom,
+                    ]);
+                }
+            });
         }
 
         $mergedPortal = $profile->portal_state ?? [];
@@ -204,6 +210,13 @@ class HomeController extends Controller
         }
         if (isset($validated['portal_state']) && is_array($validated['portal_state'])) {
             $mergedPortal = array_replace_recursive($mergedPortal, $validated['portal_state']);
+            // List-valued keys must replace wholesale — index-wise merging would
+            // resurrect entries the client deleted.
+            foreach (['feedback', 'customMedCatalog', 'symptoms'] as $listKey) {
+                if (array_key_exists($listKey, $validated['portal_state'])) {
+                    $mergedPortal[$listKey] = $validated['portal_state'][$listKey];
+                }
+            }
             $portalChanged = true;
         }
         if (array_key_exists('account', $validated) && is_array($validated['account'] ?? null) && array_key_exists('consent', $validated['account'] ?? [])) {
@@ -220,26 +233,28 @@ class HomeController extends Controller
         }
 
         if (array_key_exists('checkins', $validated) && is_array($validated['checkins'])) {
-            CheckIn::where('user_id', $user->id)->delete();
-            foreach ($validated['checkins'] as $row) {
-                if (! is_array($row)) {
-                    continue;
-                }
-                $data = $row;
-                $dateStr = $data['dateISO'] ?? null;
-                $dateChecked = $dateStr ? Carbon::parse((string) $dateStr) : now();
-                Arr::forget($data, 'id');
+            DB::transaction(function () use ($user, $validated, $profile) {
+                CheckIn::where('user_id', $user->id)->delete();
+                foreach ($validated['checkins'] as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $data = $row;
+                    $dateStr = $data['dateISO'] ?? null;
+                    $dateChecked = $dateStr ? Carbon::parse((string) $dateStr) : now();
+                    Arr::forget($data, 'id');
 
-                CheckIn::create([
-                    'user_id' => $user->id,
-                    'date_checked' => $dateChecked,
-                    'adherence_percentage' => (int) ($data['adherencePct'] ?? 0),
-                    'notes' => (string) ($data['notes'] ?? ''),
-                    'data' => $data,
-                    'status' => 'active',
-                ]);
-            }
-            $profile->update(['check_ins_count' => count($validated['checkins'])]);
+                    CheckIn::create([
+                        'user_id' => $user->id,
+                        'date_checked' => $dateChecked,
+                        'adherence_percentage' => (int) ($data['adherencePct'] ?? 0),
+                        'notes' => (string) ($data['notes'] ?? ''),
+                        'data' => $data,
+                        'status' => 'active',
+                    ]);
+                }
+                $profile->update(['check_ins_count' => count($validated['checkins'])]);
+            });
         }
 
         return response()->json(['success' => true, 'message' => 'Profile saved successfully']);
@@ -247,6 +262,7 @@ class HomeController extends Controller
 
     private function calculateAge($dob)
     {
-        return now()->diffInYears($dob);
+        // Carbon 3 diffInYears() is signed — ->age always yields a positive int
+        return Carbon::parse($dob)->age;
     }
 }

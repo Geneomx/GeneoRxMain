@@ -64,8 +64,12 @@ export const ProgressStep: React.FC = () => {
   };
 
   const copySnapshot = async () => {
-    await Clipboard.setStringAsync(snapshot);
-    toast.show(t('toast.copied'));
+    try {
+      await Clipboard.setStringAsync(snapshot);
+      toast.show(t('toast.copied'));
+    } catch {
+      // clipboard unavailable — nothing to surface
+    }
   };
 
   const downloadReport = async (idx: number) => {

@@ -18,6 +18,8 @@ import { useProfile } from '@/store/ProfileContext';
 import { useAuth } from '@/auth/AuthContext';
 import { clearToken } from '@/auth/tokenStorage';
 import { useWizard } from '@/store/WizardContext';
+import { wizardToSavePayload } from '@/wizard/sync';
+import { defaultWizardState } from '@/wizard/types';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Input } from '@/components/Input';
 import { DropdownSelect } from '@/components/DropdownSelect';
@@ -84,6 +86,14 @@ export const ProfileScreen: React.FC = () => {
           text: t('mobile.profile.reset_btn'),
           style: 'destructive',
           onPress: async () => {
+            try {
+              // Wipe the server copy first, while we still have a valid token —
+              // resetWizard() alone only schedules a debounced save that would
+              // fire after sign-out and silently 401.
+              await save(wizardToSavePayload(defaultWizardState(), []));
+            } catch {
+              // offline — local wipe still proceeds
+            }
             try {
               resetWizard();
               await AsyncStorage.clear();

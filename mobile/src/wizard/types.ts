@@ -61,7 +61,7 @@ export interface WizardFeedback {
 export interface WizardState {
   step: number;
   account: { email: string; consent: boolean };
-  profile: { age: string; gender: string; pregnant: boolean; kidneyDisease: boolean; anticoagulants: boolean };
+  profile: { age: string; gender: string; phone: string; pregnant: boolean; kidneyDisease: boolean; anticoagulants: boolean };
   meds: WizardMed[];
   symptoms: { selected: string[]; custom: string[]; severity: Severity };
   symptomOnlyMode: boolean;
@@ -74,7 +74,7 @@ export interface WizardState {
 export const defaultWizardState = (): WizardState => ({
   step: 0,
   account: { email: '', consent: false },
-  profile: { age: '', gender: '', pregnant: false, kidneyDisease: false, anticoagulants: false },
+  profile: { age: '', gender: '', phone: '', pregnant: false, kidneyDisease: false, anticoagulants: false },
   meds: [],
   symptoms: { selected: [], custom: [], severity: 'mild' },
   symptomOnlyMode: false,

@@ -6,7 +6,14 @@ import { defaultWizardState } from '@/wizard/types';
 export function dedupeCheckins(checkins: WizardCheckin[]): WizardCheckin[] {
   const seen = new Set<string>();
   return (checkins || []).filter((c) => {
-    const key = `${c.dateISO}|${c.adherencePct}|${JSON.stringify(c.wellbeing || {})}|${(c.notes || '').trim()}`;
+    const key = [
+      c.dateISO,
+      c.adherencePct,
+      JSON.stringify(c.wellbeing || {}),
+      (c.notes || '').trim(),
+      JSON.stringify(c.supplementsTaken || []),
+      JSON.stringify(c.symptoms?.items || []),
+    ].join('|');
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -62,6 +69,7 @@ export function applyProfileToWizard(base: WizardState, data: ProfileResponse): 
     next.profile = {
       age: String(data.profile.age ?? next.profile.age ?? ''),
       gender: data.profile.gender ?? next.profile.gender ?? '',
+      phone: data.profile.phone ?? next.profile.phone ?? '',
       pregnant: data.profile.pregnant ?? next.profile.pregnant ?? false,
       kidneyDisease: data.profile.kidneyDisease ?? next.profile.kidneyDisease ?? false,
       anticoagulants: data.profile.anticoagulants ?? next.profile.anticoagulants ?? false,
@@ -75,6 +83,16 @@ export function applyProfileToWizard(base: WizardState, data: ProfileResponse): 
   if (data.medications?.length) next.meds = medsFromApi(data.medications);
   if (data.symptoms?.length) {
     next.symptoms.selected = data.symptoms.map((s) => s.name);
+  }
+  // Custom symptom list + overall severity live in portal_state
+  const psSymptoms = ps.symptoms as { custom?: unknown; severity?: unknown } | undefined;
+  if (psSymptoms && typeof psSymptoms === 'object') {
+    if (Array.isArray(psSymptoms.custom)) {
+      next.symptoms.custom = psSymptoms.custom.map((s) => String(s));
+    }
+    if (psSymptoms.severity === 'mild' || psSymptoms.severity === 'moderate' || psSymptoms.severity === 'severe') {
+      next.symptoms.severity = psSymptoms.severity;
+    }
   }
   if (data.checkins?.length) {
     next.checkins = dedupeCheckins(data.checkins as unknown as WizardCheckin[])
@@ -160,13 +178,18 @@ export function customMedCatalogFromDb(medDb: MedEntry[]): MedEntry[] {
   );
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function wizardToSavePayload(state: WizardState, medDb: MedEntry[]): SaveProfilePayload {
+  // A half-typed email would fail `nullable|email` server-side and 422 the
+  // whole autosave — only send it once it is actually a valid address.
+  const email = EMAIL_RE.test(state.account.email || '') ? state.account.email : '';
   return {
-    account: state.account,
+    account: { ...state.account, email },
     profile: {
       age: state.profile.age,
       gender: state.profile.gender,
-      phone: '',
+      phone: state.profile.phone || '',
       pregnant: state.profile.pregnant,
       kidneyDisease: state.profile.kidneyDisease,
       anticoagulants: state.profile.anticoagulants,
@@ -184,6 +207,7 @@ export function wizardToSavePayload(state: WizardState, medDb: MedEntry[]): Save
       customMedCatalog: customMedCatalogFromDb(medDb),
       wellbeingBaseline: state.wellbeingBaseline,
       symptomOnlyMode: state.symptomOnlyMode,
+      symptoms: { custom: state.symptoms.custom, severity: state.symptoms.severity },
       account: { consent: state.account.consent },
       feedback: state.feedback,
       step: state.step,
@@ -197,7 +221,7 @@ export function wizardToProfileResponse(state: WizardState, user: ProfileRespons
     profile: {
       age: state.profile.age,
       gender: state.profile.gender,
-      phone: '',
+      phone: state.profile.phone || '',
       pregnant: state.profile.pregnant,
       kidneyDisease: state.profile.kidneyDisease,
       anticoagulants: state.profile.anticoagulants,
@@ -228,6 +252,7 @@ export function applySavePayload(draft: WizardState, payload: SaveProfilePayload
       ...draft.profile,
       age: String(payload.profile.age ?? draft.profile.age),
       gender: payload.profile.gender ?? draft.profile.gender,
+      phone: payload.profile.phone ?? draft.profile.phone,
       pregnant: payload.profile.pregnant ?? draft.profile.pregnant,
       kidneyDisease: payload.profile.kidneyDisease ?? draft.profile.kidneyDisease,
       anticoagulants: payload.profile.anticoagulants ?? draft.profile.anticoagulants,
