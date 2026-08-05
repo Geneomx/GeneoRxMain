@@ -3,11 +3,13 @@ import { View } from 'react-native';
 import Svg, { Path, Circle, Polygon } from 'react-native-svg';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { HomeScreen } from '@/screens/HomeScreen';
 import { WizardScreen } from '@/screens/wizard/WizardScreen';
 import { ProfileStack } from '@/navigation/ProfileStack';
 import { AppTabBar } from '@/navigation/AppTabBar';
 
 export type AppTabsParamList = {
+  Home: undefined;
   Guided: undefined;
   Profile: undefined;
 };
@@ -15,6 +17,15 @@ export type AppTabsParamList = {
 const Tabs = createBottomTabNavigator<AppTabsParamList>();
 
 const ICON = 22;
+
+const HomeIcon = ({ color }: { color: string }) => (
+  <Svg width={ICON} height={ICON} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2v-9z"
+      stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"
+    />
+  </Svg>
+);
 
 const CompassIcon = ({ color }: { color: string }) => (
   <Svg width={ICON} height={ICON} viewBox="0 0 24 24" fill="none">
@@ -44,6 +55,13 @@ const AppTabsNavigator: React.FC = () => (
       tabBarShowLabel: false,
     }}
   >
+    <Tabs.Screen
+      name="Home"
+      component={HomeScreen}
+      options={{
+        tabBarIcon: ({ color }) => <HomeIcon color={color} />,
+      }}
+    />
     <Tabs.Screen
       name="Guided"
       component={WizardScreen}

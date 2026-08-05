@@ -10,9 +10,10 @@ import { colors, gradients, radius, touchMin } from '@/theme';
 
 type TabKey = keyof AppTabsParamList;
 
-const TAB_ORDER: TabKey[] = ['Guided', 'Profile'];
+const TAB_ORDER: TabKey[] = ['Home', 'Guided', 'Profile'];
 
 const TAB_LABEL_KEYS: Record<TabKey, string> = {
+  Home: 'mobile.tab.home',
   Guided: 'mobile.tab.guided',
   Profile: 'mobile.tab.profile',
 };
