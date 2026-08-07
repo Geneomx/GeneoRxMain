@@ -20,9 +20,10 @@ type Props = {
 export const ReportPickerModal: React.FC<Props> = ({ visible, onClose, preferredIndex, onSuccess }) => {
   const { state } = useWizard();
   const { catalog } = useMedCatalog();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const toast = useToast();
   const [selected, setSelected] = useState(0);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -35,14 +36,22 @@ export const ReportPickerModal: React.FC<Props> = ({ visible, onClose, preferred
   }, [visible, preferredIndex, state.checkins.length]);
 
   async function handleDownload() {
-    const ok = await downloadDoctorReport(state, t, selected, catalog);
-    if (ok) {
-      toast.show(t('toast.report_downloaded'));
+    if (busy) return; // guard double-taps opening two share sheets
+    setBusy(true);
+    try {
+      const ok = await downloadDoctorReport(state, t, selected, catalog, language);
+      if (ok) {
+        toast.show(t('toast.report_downloaded'));
+        onClose();
+        onSuccess?.();
+        return;
+      }
+      // Never fail silently — a bare close is indistinguishable from success
+      toast.show(t('toast.report_failed'), 'error');
       onClose();
-      onSuccess?.();
-      return;
+    } finally {
+      setBusy(false);
     }
-    onClose();
   }
 
   return (

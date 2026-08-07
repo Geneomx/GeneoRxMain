@@ -45,6 +45,13 @@ interface WizardContextValue {
   reset: () => void;
   refresh: () => Promise<void>;
   savePayload: (payload: SaveProfilePayload) => Promise<void>;
+  /**
+   * Ephemeral (not persisted/synced) — which nutrient Results should land on
+   * and auto-expand when navigated to from a spot that names one, e.g. Home's
+   * "See the evidence" button. Consumed and cleared by ResultsStep on read.
+   */
+  focusNutrient: string | null;
+  setFocusNutrient: (nutrient: string | null) => void;
 }
 
 const WizardContext = createContext<WizardContextValue | undefined>(undefined);
@@ -55,6 +62,7 @@ export const WizardProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [state, setState] = useState<WizardState>(defaultWizardState);
   const [hydrated, setHydrated] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [focusNutrient, setFocusNutrient] = useState<string | null>(null);
   const stateRef = useRef(state);
   const catalogRef = useRef<MedEntry[]>(catalog);
   const backendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -230,8 +238,11 @@ export const WizardProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [commit]);
 
   const value = useMemo<WizardContextValue>(
-    () => ({ state, hydrated, syncing, update, setStep, next, prev, reset, refresh, savePayload }),
-    [state, hydrated, syncing, update, setStep, next, prev, reset, refresh, savePayload],
+    () => ({
+      state, hydrated, syncing, update, setStep, next, prev, reset, refresh, savePayload,
+      focusNutrient, setFocusNutrient,
+    }),
+    [state, hydrated, syncing, update, setStep, next, prev, reset, refresh, savePayload, focusNutrient],
   );
 
   return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>;

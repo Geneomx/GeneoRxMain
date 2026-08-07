@@ -9,6 +9,8 @@ import { useAuth } from '@/auth/AuthContext';
 import { useWizard } from '@/store/WizardContext';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import {
+  computeDrugInteractions,
+  computeNutrientScores,
   computeWeeklyCoachMessage,
   fmtDate,
   impactLabel,
@@ -61,6 +63,19 @@ const FlameIcon = ({ color }: { color: string }) => (
   </Svg>
 );
 
+const STALE_CHECKIN_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+function daysSince(dateISO: string, now: Date = new Date()): number {
+  const then = new Date(dateISO);
+  if (Number.isNaN(then.getTime())) return 0;
+  return Math.max(0, Math.round((startOfDay(now) - startOfDay(then)) / DAY_MS));
+}
+
 /** Consecutive weeks (ending this week or last) with at least one check-in. */
 export function weeklyCheckinStreak(dates: string[], now: Date = new Date()): number {
   if (!dates.length) return 0;
@@ -89,7 +104,7 @@ export function weeklyCheckinStreak(dates: string[], now: Date = new Date()): nu
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
-  const { state, setStep, syncing, refresh } = useWizard();
+  const { state, setStep, syncing, refresh, setFocusNutrient } = useWizard();
   const { catalog } = useMedCatalog();
   const { t } = useTranslation();
   const { page, scrollBottom } = useResponsiveLayout();
@@ -104,12 +119,27 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     () => weeklyCheckinStreak(state.checkins.map((c) => c.dateISO)),
     [state.checkins],
   );
+  const topInteraction = useMemo(
+    () => computeDrugInteractions(state, t)[0] ?? null,
+    [state, t],
+  );
+  const topNutrient = useMemo(() => {
+    const scores = computeNutrientScores(state, catalog);
+    return scores.length ? scores[0][0] : null;
+  }, [state, catalog]);
 
   const isEmpty = state.meds.length === 0 && state.checkins.length === 0;
+  const staleDays = last ? daysSince(last.dateISO) : 0;
+  const isStale = !!last && staleDays >= STALE_CHECKIN_DAYS;
 
   const goToStep = (step: number) => {
     setStep(step);
     navigation.navigate('Guided');
+  };
+
+  const goToEvidence = () => {
+    if (topNutrient) setFocusNutrient(topNutrient);
+    goToStep(4);
   };
 
   const lastSymptom = last?.symptoms?.items?.[0];
@@ -143,6 +173,19 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           ) : (
             <>
+              {/* Safety: real drug-interaction alert, only when one exists */}
+              {topInteraction ? (
+                <Pressable style={styles.banner} onPress={() => goToStep(4)}>
+                  <Text style={styles.bannerIcon}>⚠</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.bannerTag}>{t('home.interaction_tag')}</Text>
+                    <Text style={styles.bannerBody}>
+                      {topInteraction.title}: {topInteraction.action}
+                    </Text>
+                  </View>
+                </Pressable>
+              ) : null}
+
               {/* Adherence ring */}
               <View style={styles.ringWrap}>
                 <AdherenceRing pct={last?.adherencePct ?? 0} />
@@ -151,6 +194,17 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 </Text>
               </View>
 
+              {/* Top nutrient signal — the app's core value prop, surfaced on Home */}
+              {topNutrient ? (
+                <Pressable style={styles.nutrientChipWrap} onPress={goToEvidence}>
+                  <View style={styles.nutrientChip}>
+                    <Text style={styles.nutrientChipText}>
+                      {t('home.top_signal_label')} <Text style={styles.nutrientChipName}>{topNutrient}</Text>
+                    </Text>
+                  </View>
+                </Pressable>
+              ) : null}
+
               {/* Today's insight */}
               <View style={styles.insightCard}>
                 <Text style={styles.insightTag}>{t('home.insight_label')}</Text>
@@ -158,25 +212,37 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 {coach.nextBestAction ? (
                   <Text style={styles.insightNext}>{coach.nextBestAction}</Text>
                 ) : null}
-                <Pressable style={styles.insightCta} onPress={() => goToStep(4)}>
+                <Pressable style={styles.insightCta} onPress={goToEvidence}>
                   <Text style={styles.insightCtaText}>{t('home.insight_cta')} →</Text>
                 </Pressable>
               </View>
 
-              {/* Last check-in row */}
+              {/* Last check-in row — turns into a nudge once it's gone stale */}
               {last ? (
-                <Pressable style={styles.checkinRow} onPress={() => goToStep(6)}>
+                <Pressable
+                  style={[styles.checkinRow, isStale && styles.checkinRowStale]}
+                  onPress={() => (isStale ? goToStep(5) : goToStep(6))}
+                >
                   <View style={{ flex: 1 }}>
                     <Text style={styles.checkinLabel}>
-                      {t('home.last_checkin')} · {fmtDate(last.dateISO)}
+                      {t('home.last_checkin')} ·{' '}
+                      <Text style={isStale ? styles.checkinStaleValue : undefined}>
+                        {isStale ? t('home.days_ago', { count: staleDays }) : fmtDate(last.dateISO)}
+                      </Text>
                     </Text>
-                    {lastSymptom ? (
+                    {!isStale && lastSymptom ? (
                       <Text style={styles.checkinDetail}>
                         {lastSymptom.symptom}: {impactLabel(lastSymptom.change, t)}
                       </Text>
                     ) : null}
                   </View>
-                  <Text style={styles.chevron}>›</Text>
+                  {isStale ? (
+                    <View style={styles.checkinNudgeBtn}>
+                      <Text style={styles.checkinNudgeBtnText}>{t('home.checkin_now')}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.chevron}>›</Text>
+                  )}
                 </Pressable>
               ) : (
                 <Button title={t('home.first_checkin_cta')} variant="secondary" onPress={() => goToStep(5)} />
@@ -214,10 +280,37 @@ const styles = StyleSheet.create({
   },
   streakText: { fontSize: 12, fontWeight: '700', color: colors.amber },
 
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.dangerBg,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 113, 133, 0.35)',
+  },
+  bannerIcon: { fontSize: 15, color: colors.danger, marginTop: 1 },
+  bannerTag: { fontSize: 12.5, fontWeight: '700', color: colors.danger, marginBottom: 3 },
+  bannerBody: { fontSize: 13.5, color: colors.text, lineHeight: 19 },
+
   ringWrap: { alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   ringCenter: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   ringPct: { fontSize: 26, fontWeight: '900', color: colors.text },
   ringLabel: { fontSize: 13, color: colors.textMuted },
+
+  nutrientChipWrap: { alignItems: 'center', marginBottom: spacing.sm },
+  nutrientChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(167, 139, 250, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.30)',
+  },
+  nutrientChipText: { fontSize: 13, color: colors.text },
+  nutrientChipName: { color: colors.violet, fontWeight: '700' },
 
   card: { padding: spacing.lg, gap: spacing.sm },
 
@@ -263,6 +356,16 @@ const styles = StyleSheet.create({
   checkinLabel: { fontSize: 13, fontWeight: '700', color: colors.textSoft },
   checkinDetail: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   chevron: { fontSize: 20, color: colors.textDim, fontWeight: '700' },
+
+  checkinRowStale: { backgroundColor: colors.warningBg, borderColor: 'rgba(251, 191, 36, 0.28)' },
+  checkinStaleValue: { color: colors.warning, fontWeight: '800' },
+  checkinNudgeBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    backgroundColor: colors.warning,
+  },
+  checkinNudgeBtnText: { fontSize: 12, fontWeight: '700', color: colors.onPrimary },
 
   emptyCard: { alignItems: 'stretch', gap: spacing.md },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },

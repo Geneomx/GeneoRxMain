@@ -432,6 +432,25 @@
 
     /* Meds */
     .medRow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+
+    /* Medication typeahead — suggestions under the search field */
+    .medRow .col{position:relative}
+    .medSuggest{
+      position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:40;
+      border-radius:12px; border:1px solid rgba(255,255,255,.14);
+      background:rgba(11,16,34,.98); box-shadow:0 18px 48px rgba(0,0,0,.45);
+      overflow:hidden; max-height:280px; overflow-y:auto;
+    }
+    .medSuggest__item{
+      display:block; width:100%; text-align:left; cursor:pointer;
+      padding:10px 12px; background:transparent; border:0;
+      border-bottom:1px solid rgba(255,255,255,.08); color:var(--txt);
+    }
+    .medSuggest__item:last-child{border-bottom:none}
+    .medSuggest__item:hover{background:rgba(40,225,255,.08)}
+    .medSuggest__name{display:block; font-size:14px; font-weight:700}
+    .medSuggest__alias{display:block; font-size:12.5px; color:var(--cyan); margin-top:2px}
+    .medSuggest__empty{padding:10px 12px; font-size:13px; color:var(--muted)}
     .hint{font-size:13px;color:var(--muted);margin-top:8px}
     .covPill{
       display:inline-flex;align-items:center;gap:8px;

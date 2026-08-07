@@ -6,10 +6,11 @@ import { Input } from '@/components/Input';
 import { useWizard } from '@/store/WizardContext';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import type { MedEntry } from '@/content/wizardData';
+import { searchMeds } from '@/wizard/medSearch';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Dose } from '@/wizard/types';
 import { FinePrint, HelpNote, Section, Segmented, Tagline, ToggleRow } from '@/screens/wizard/ui';
-import { colors, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 
 export const MedicationsStep: React.FC = () => {
   const { state, update } = useWizard();
@@ -31,18 +32,28 @@ export const MedicationsStep: React.FC = () => {
   );
 
   const selectedIds = useMemo(() => new Set(state.meds.map((m) => m.medId)), [state.meds]);
-  const dropdownOptions = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = catalog
-      .filter((m) => !selectedIds.has(m.id))
-      .filter((m) => !q || m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
-      .sort((a, b) => a.name.localeCompare(b.name));
 
-    return [
+  const available = useMemo(
+    () => catalog.filter((m) => !selectedIds.has(m.id)),
+    [catalog, selectedIds],
+  );
+
+  /** Ranked matches on generic name, brand name or slug. */
+  const matches = useMemo(() => searchMeds(available, query), [available, query]);
+
+  /** Live suggestions under the search box — only while typing. */
+  const suggestions = useMemo(
+    () => (query.trim().length >= 2 ? matches.slice(0, 6) : []),
+    [matches, query],
+  );
+
+  const dropdownOptions = useMemo(
+    () => [
       { value: '', label: t('common.select') },
-      ...list.map((m) => ({ value: m.id, label: m.name })),
-    ];
-  }, [query, selectedIds, t, catalog]);
+      ...matches.map(({ med }) => ({ value: med.id, label: med.name })),
+    ],
+    [matches, t],
+  );
 
   const addMed = (id: string, dose: Dose, durationMonths: number) => {
     if (!id) return false;
@@ -107,15 +118,40 @@ export const MedicationsStep: React.FC = () => {
           value={query}
           onChangeText={(text) => {
             setQuery(text);
-            if (pickId) {
-              const stillVisible = catalog.some(
-                (m) => m.id === pickId && (!text.trim() || m.name.toLowerCase().includes(text.trim().toLowerCase())),
-              );
-              if (!stillVisible) setPickId('');
+            if (pickId && !searchMeds(available, text).some((r) => r.med.id === pickId)) {
+              setPickId('');
             }
           }}
           autoCapitalize="none"
         />
+
+        {suggestions.length > 0 ? (
+          <View style={styles.suggestions}>
+            {suggestions.map(({ med, matchedAlias }) => (
+              <Pressable
+                key={med.id}
+                onPress={() => {
+                  setPickId(med.id);
+                  setQuery('');
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={med.name}
+                style={({ pressed }) => [styles.suggestion, pressed && styles.suggestionPressed]}
+              >
+                <Text style={styles.suggestionName} numberOfLines={1}>{med.name}</Text>
+                {matchedAlias ? (
+                  <Text style={styles.suggestionAlias} numberOfLines={1}>
+                    {t('meds.also_known_as', { brand: matchedAlias })}
+                  </Text>
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
+        {query.trim().length >= 2 && suggestions.length === 0 ? (
+          <Text style={styles.noMatch}>{t('meds.no_match')}</Text>
+        ) : null}
 
         <DropdownSelect
           label={t('meds.list')}
@@ -204,6 +240,28 @@ export const MedicationsStep: React.FC = () => {
 
 const styles = StyleSheet.create({
   fieldLabel: { fontSize: 15, fontWeight: '700', color: colors.textMuted, marginTop: 4 },
+
+  /* Typeahead results — sits directly under the search field */
+  suggestions: {
+    marginTop: -4,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceAlt,
+    overflow: 'hidden',
+  },
+  suggestion: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    minHeight: 48,
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+  },
+  suggestionPressed: { backgroundColor: colors.primary50 },
+  suggestionName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  suggestionAlias: { fontSize: 12.5, color: colors.primary, marginTop: 2 },
+  noMatch: { fontSize: 13, color: colors.textMuted, marginTop: -4 },
   coveragePill: {
     alignSelf: 'flex-start',
     paddingVertical: 5,

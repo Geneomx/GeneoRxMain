@@ -248,6 +248,12 @@ export function impactLabel(change: string, t: TranslateFn): string {
   return map[change] ? t(map[change]) : String(change || '');
 }
 
+export function tierLabel(tier: Tier | SourceQuality, t: TranslateFn): string {
+  const key = `tier.${String(tier).toLowerCase()}`;
+  const out = t(key);
+  return out !== key ? out : String(tier);
+}
+
 export function successLabel(level: string, t: TranslateFn): string {
   const map: Record<string, string> = {
     Strong: 'success.strong',
@@ -336,7 +342,11 @@ export interface SuccessPrediction {
   reason: string;
 }
 
-export function computeMedicationSuccessPrediction(s: WizardState, t: TranslateFn): SuccessPrediction {
+export function computeMedicationSuccessPrediction(
+  s: WizardState,
+  t: TranslateFn,
+  checkinOverride?: WizardCheckin | null,
+): SuccessPrediction {
   let score = 50;
   if (s.plan.started) score += 10;
   if (s.checkins.length >= 2) score += 10;
@@ -344,7 +354,10 @@ export function computeMedicationSuccessPrediction(s: WizardState, t: TranslateF
   if (s.symptoms.selected.length >= 4) score -= 10;
   score -= computeDrugInteractions(s, t).length * 8;
   score -= computeContraindications(s, t).length * 10;
-  const last = latestCheckin(s);
+  // A report built for an older check-in must score against THAT check-in's
+  // adherence, not always today's — otherwise the success line contradicts
+  // the adherence figure printed a few lines below it in the same document.
+  const last = checkinOverride !== undefined ? checkinOverride : latestCheckin(s);
   if (last) {
     if (last.adherencePct >= 80) score += 15;
     else if (last.adherencePct < 60) score -= 15;
@@ -498,7 +511,11 @@ export function buildRoutineFromSupplements(supps: string[]): Routine {
 /* ---------- coach / check-ins ---------- */
 export function latestCheckin(s: WizardState): WizardCheckin | null {
   if (!s.checkins.length) return null;
-  return s.checkins[s.checkins.length - 1];
+  // Computed by date rather than trusting array order — dedupeCheckins keeps
+  // the array sorted, but this stays correct even if that invariant ever slips.
+  return s.checkins.reduce((best, c) =>
+    new Date(c.dateISO || 0).getTime() > new Date(best.dateISO || 0).getTime() ? c : best,
+  );
 }
 
 export interface CoachMessage {
@@ -579,10 +596,10 @@ export function generateDynamicHealthStory(
   const symptoms = s.symptoms?.selected || [];
   const severity = s.symptoms?.severity || 'mild';
   const patterns = detectHealthPatterns(s, t);
-  const success = computeMedicationSuccessPrediction(s, t);
+  const last = checkinOverride !== undefined ? checkinOverride : latestCheckin(s);
+  const success = computeMedicationSuccessPrediction(s, t, last);
   const interactions = computeDrugInteractions(s, t);
   const contraindications = computeContraindications(s, t);
-  const last = checkinOverride !== undefined ? checkinOverride : latestCheckin(s);
   const nutrientScores = computeNutrientScores(s, catalog);
   const topNutrient = nutrientScores.length ? nutrientScores[0] : null;
   const parts: string[] = [];
@@ -629,9 +646,9 @@ export function generateDynamicHealthStory(
     } else {
       parts.push(t('summary.story.mixed'));
     }
-    parts.push(t('summary.story.success_with_checkin', { score: success.score, level: success.level }));
+    parts.push(t('summary.story.success_with_checkin', { score: success.score, level: successLabel(success.level, t) }));
   } else {
-    parts.push(t('summary.story.success_no_checkin', { score: success.score, level: success.level }));
+    parts.push(t('summary.story.success_no_checkin', { score: success.score, level: successLabel(success.level, t) }));
   }
 
   if (interactions.length || contraindications.length) {
@@ -682,60 +699,65 @@ export function buildClinicianSnapshotText(
   }
 
   const scores = computeNutrientScores(s, catalog);
-  const top = scores.slice(0, 6).map(([n, sc]) => `- ${n}: ${tierFromScore(sc)} signal (${sc}%)`);
-  const interactions = computeDrugInteractions(s, t).map((x) => `- ${x.title} (${x.level})`);
-  const contraindications = computeContraindications(s, t).map((x) => `- ${x.title} (${x.level})`);
-  const success = computeMedicationSuccessPrediction(s, t);
-  const patterns = detectHealthPatterns(s, t).map((x) => `- ${x.title} (${x.confidence})`);
+  const top = scores.slice(0, 6).map(([n, sc]) => `- ${n}: ${tierLabel(tierFromScore(sc), t)} signal (${sc}%)`);
+  const interactions = computeDrugInteractions(s, t).map((x) => `- ${x.title} (${tierLabel(x.level, t)})`);
+  const contraindications = computeContraindications(s, t).map((x) => `- ${x.title} (${tierLabel(x.level, t)})`);
+  // Score against the SAME check-in the rest of this report is about, not
+  // always today's — otherwise this line contradicts the adherence figure
+  // printed a few lines below it.
+  const success = computeMedicationSuccessPrediction(s, t, checkin);
+  const patterns = detectHealthPatterns(s, t).map((x) => `- ${x.title} (${tierLabel(x.confidence, t)})`);
 
   const supp = s.plan.recommendedSupplements || [];
   const adh = checkin ? `${checkin.adherencePct}%` : '—';
   const labs = uniq(scores.slice(0, 5).flatMap(([n]) => LAB_SUGGESTIONS[n] || [])).slice(0, 8);
-  const symptoms = s.symptoms.selected.length ? s.symptoms.selected.join(', ') : 'None selected';
+  const symptoms = s.symptoms.selected.length ? s.symptoms.selected.join(', ') : t('report.empty.none_selected');
   const lastDate = checkin ? fmtDate(checkin.dateISO) : '—';
   const story = generateDynamicHealthStory(s, t, catalog, checkin);
 
   const protocolBlock = [
-    'Current protocol (supplement support):',
-    supp.length ? supp.map((x) => `- ${x}`).join('\n') : '- Not started / none saved',
-    `Adherence (latest check-in): ${adh}`,
+    t('report.protocol_title'),
+    supp.length ? supp.map((x) => `- ${x}`).join('\n') : `- ${t('report.empty.no_protocol')}`,
+    // Not "latest check-in" — this may be an older, explicitly-selected one;
+    // the header above already states which check-in and date this is.
+    `${t('report.adherence_label')}: ${adh}`,
   ].join('\n');
 
   return [
-    'GENEORX — YOUR DOCTOR VISIT SNAPSHOT',
+    t('report.title'),
     '===================================',
     '',
-    `Patient: ${s.account.email || 'Anonymous'} • Age: ${s.profile.age || '—'} • Gender: ${s.profile.gender || '—'}`,
-    `Safety flags: ${flags.length ? flags.join(', ') : 'None reported'}`,
-    `Medication success probability: ${success.score}% (${success.level})`,
+    `${t('report.patient_label')}: ${s.account.email || t('report.anonymous')} • ${t('report.age_label')}: ${s.profile.age || '—'} • ${t('report.gender_label')}: ${s.profile.gender || '—'}`,
+    `${t('report.safety_flags_label')}: ${flags.length ? flags.join(', ') : t('report.empty.none_reported')}`,
+    `${t('report.success_probability_label')}: ${success.score}% (${successLabel(success.level, t)})`,
     '',
-    'Medications:',
-    meds.length ? meds.join('\n') : '- None reported',
+    t('report.medications_label'),
+    meds.length ? meds.join('\n') : `- ${t('report.empty.none_reported')}`,
     '',
-    `Symptoms (recent): ${symptoms}`,
+    `${t('report.symptoms_recent_label')}: ${symptoms}`,
     '',
-    'Detected patterns:',
-    patterns.length ? patterns.join('\n') : '- No strong pattern detected yet',
+    t('report.detected_patterns_label'),
+    patterns.length ? patterns.join('\n') : `- ${t('report.empty.no_patterns')}`,
     '',
-    'Nutrient risk signals (GeneoRx estimate):',
-    top.length ? top.join('\n') : '- No signals yet (add meds/symptoms)',
+    t('report.nutrient_signals_label'),
+    top.length ? top.join('\n') : `- ${t('report.empty.no_signals')}`,
     '',
-    'Drug interactions:',
-    interactions.length ? interactions.join('\n') : '- None identified from current internal rules',
+    t('report.drug_interactions_label'),
+    interactions.length ? interactions.join('\n') : `- ${t('report.empty.no_interactions')}`,
     '',
-    'Contraindications / cautions:',
-    contraindications.length ? contraindications.join('\n') : '- None identified from current safety rules',
+    t('report.contraindications_label'),
+    contraindications.length ? contraindications.join('\n') : `- ${t('report.empty.no_contraindications')}`,
     '',
     protocolBlock,
     '',
-    'Optional labs to consider (clinical context needed):',
+    t('report.optional_labs_label'),
     labs.length ? labs.map((x) => `- ${x}`).join('\n') : '- —',
     '',
-    'Health story:',
+    t('report.health_story_label'),
     story,
     '',
-    `Latest check-in date: ${lastDate}`,
+    `${t('report.checkin_date_label')}: ${lastDate}`,
     '',
-    'Note: Educational guidance with evidence transparency; confirm labs, dosing, and interactions with your clinician.',
+    t('report.footer_note'),
   ].join('\n');
 }

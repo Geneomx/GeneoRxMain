@@ -13,6 +13,7 @@ class Medication extends Model
         'description',
         'symptom_chips',
         'claims',
+        'aliases',
         'is_active',
         'sort_order',
         // User-tracking fields (legacy user records)
@@ -25,6 +26,7 @@ class Medication extends Model
     protected $casts = [
         'symptom_chips' => 'array',
         'claims' => 'array',
+        'aliases' => 'array',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
     ];
@@ -50,6 +52,7 @@ class Medication extends Model
                 'name' => $m->name,
                 'symptomChips' => $m->symptom_chips ?? [],
                 'claims' => $m->claims ?? [],
+                'aliases' => $m->aliases ?? [],
             ])
             ->toArray();
     }

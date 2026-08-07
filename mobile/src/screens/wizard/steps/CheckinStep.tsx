@@ -25,7 +25,13 @@ const CHANGE_VALUES: { value: SymptomChange; score: number }[] = [
 const PROGRESS_STEP = 6;
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Local calendar day, not UTC — toISOString() near midnight can land on
+  // the wrong day depending on the device's timezone offset.
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 type Props = {

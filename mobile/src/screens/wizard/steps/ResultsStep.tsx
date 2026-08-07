@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { useToast } from '@/components/Toast';
@@ -26,6 +26,7 @@ import {
   tierFromScore,
   uniq,
   type Tier,
+  tierLabel,
 } from '@/wizard/engine';
 import type { SourceQuality } from '@/content/wizardData';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -43,12 +44,6 @@ import {
   TierPill,
 } from '@/screens/wizard/ui';
 import { colors, radius, spacing } from '@/theme';
-
-function tierLabel(tier: Tier | SourceQuality, t: (key: string) => string): string {
-  const key = `tier.${String(tier).toLowerCase()}`;
-  const out = t(key);
-  return out !== key ? out : String(tier);
-}
 
 function topInlineCites(
   nutrient: string,
@@ -83,7 +78,7 @@ function topInlineCites(
 }
 
 export const ResultsStep: React.FC = () => {
-  const { state, update } = useWizard();
+  const { state, update, focusNutrient, setFocusNutrient } = useWizard();
   const { catalog } = useMedCatalog();
   const { t, language } = useTranslation();
   const toast = useToast();
@@ -91,7 +86,29 @@ export const ResultsStep: React.FC = () => {
   const [revealOpen, setRevealOpen] = useState(false);
   const [openEvidence, setOpenEvidence] = useState<Record<string, boolean>>({});
 
-  const scores = useMemo(() => computeNutrientScores(state, catalog), [state, catalog]);
+  const rawScores = useMemo(() => computeNutrientScores(state, catalog), [state, catalog]);
+  // Arriving with a target nutrient (e.g. Home's "See the evidence") puts it
+  // first in the list, so the user lands on it without needing to scroll.
+  const scores = useMemo(() => {
+    if (!focusNutrient) return rawScores;
+    const idx = rawScores.findIndex(([nut]) => nut === focusNutrient);
+    if (idx <= 0) return rawScores;
+    const copy = rawScores.slice();
+    const [hit] = copy.splice(idx, 1);
+    copy.unshift(hit);
+    return copy;
+  }, [rawScores, focusNutrient]);
+
+  useEffect(() => {
+    if (!focusNutrient) return;
+    if (rawScores.some(([nut]) => nut === focusNutrient)) {
+      setOpenEvidence((p) => ({ ...p, [focusNutrient]: true }));
+    }
+    // One-shot: consume the target so a later, unrelated visit to Results
+    // doesn't keep reordering the list.
+    setFocusNutrient(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNutrient]);
   const recs = useMemo(() => recommendSupplements(scores), [scores]);
   const claims = useMemo(() => claimsForSelectedMeds(state, catalog), [state, catalog]);
   const evidenceMap = useMemo(() => aggregateEvidenceByNutrient(claims), [claims]);

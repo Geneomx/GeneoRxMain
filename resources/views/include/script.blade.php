@@ -299,12 +299,16 @@ const defaultState = () => ({
 });
 function dedupeCheckins(checkins){
   const seen = new Set();
-  return (checkins || []).filter(c => {
+  const deduped = (checkins || []).filter(c => {
     const key = `${c.dateISO}|${c.adherencePct}|${JSON.stringify(c.wellbeing || {})}|${(c.notes || "").trim()}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+  // Every "latest check-in" lookup elsewhere (reports, the check-in card, the
+  // picker) assumes the array is chronological — a backdated entry must not
+  // silently break that invariant.
+  return deduped.sort((a,b)=> new Date(a.dateISO||0) - new Date(b.dateISO||0));
 }
 let state = load();
 let backendSaveTimer = null;
@@ -479,6 +483,14 @@ async function saveToBackend() {
    ========================================================= */
 function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 function uniq(arr){ return [...new Set(arr)]; }
+function todayLocalISO(){
+  // Local calendar day, not UTC — toISOString() near midnight can land on
+  // the wrong day depending on the browser's timezone offset.
+  const d = new Date();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
 function escapeHtml(s){
   return String(s||"")
     .replaceAll("&","&amp;").replaceAll("<","&lt;")
@@ -871,7 +883,7 @@ function levelClass(level){
   return "alertLow";
 }
 
-function computeMedicationSuccessPrediction(){
+function computeMedicationSuccessPrediction(checkinOverride){
   let score = 50;
   if(state.plan.started) score += 10;
   if(state.checkins.length >= 2) score += 10;
@@ -879,7 +891,10 @@ function computeMedicationSuccessPrediction(){
   if(state.symptoms.selected.length >= 4) score -= 10;
   score -= computeDrugInteractions().length * 8;
   score -= computeContraindications().length * 10;
-  const last = latestCheckin();
+  // A report built for an older check-in must score against THAT check-in's
+  // adherence, not always today's — otherwise the success line contradicts
+  // the adherence figure printed a few lines below it in the same document.
+  const last = checkinOverride !== undefined ? checkinOverride : latestCheckin();
   if(last){
     if(last.adherencePct >= 80) score += 15;
     else if(last.adherencePct < 60) score -= 15;
@@ -970,10 +985,10 @@ function generateDynamicHealthStory(checkinOverride){
   const symptoms = state.symptoms?.selected || [];
   const severity = state.symptoms?.severity || "mild";
   const patterns = detectHealthPatterns();
-  const success = computeMedicationSuccessPrediction();
+  const last = checkinOverride ?? latestCheckin();
+  const success = computeMedicationSuccessPrediction(last);
   const interactions = computeDrugInteractions();
   const contraindications = computeContraindications();
-  const last = checkinOverride ?? latestCheckin();
   const nutrientScores = computeNutrientScores();
   const topNutrient = nutrientScores.length ? nutrientScores[0] : null;
   const parts = [];
@@ -1062,8 +1077,14 @@ function downloadDoctorReport(checkinIndex){
   }
   const checkin = state.checkins[checkinIndex];
   const snapshot = buildClinicianSnapshotText(checkinIndex);
-  const datePart = checkin?.dateISO ? String(checkin.dateISO).slice(0, 10) : "report";
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>GeneoRx Doctor Report</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.45;color:#111}pre{white-space:pre-wrap;font-family:Menlo,monospace;font-size:12px;border:1px solid #ddd;border-radius:12px;padding:16px;background:#fafafa}</style></head><body><h1>GeneoRx Doctor Report</h1><p>Check-in ${checkinIndex + 1} · ${escapeHtml(fmtDate(checkin.dateISO))}</p><pre>${snapshot.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}</pre></body></html>`;
+  // Filesystem-safe: never trust the stored date's shape for a filename.
+  const rawDate = checkin?.dateISO ? String(checkin.dateISO).slice(0, 10) : "report";
+  const datePart = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : rawDate.replace(/[^0-9A-Za-z_-]/g, "_");
+  const docTitle = t("modal.report.doctor_title");
+  const headerBits = [`${t("checkin.label_n")} ${checkinIndex + 1}`, fmtDate(checkin.dateISO)].filter(Boolean);
+  const lang = document.documentElement.lang || "en";
+  const dir = document.documentElement.dir === "rtl" ? "rtl" : "ltr";
+  const html = `<!doctype html><html lang="${escapeHtml(lang)}" dir="${dir}"><head><meta charset="utf-8"><title>${escapeHtml(docTitle)}</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.45;color:#111}pre{white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;border:1px solid #ddd;border-radius:12px;padding:16px;background:#fafafa}</style></head><body><h1>${escapeHtml(docTitle)}</h1><p>${escapeHtml(headerBits.join(" · "))}</p><pre>${escapeHtml(snapshot)}</pre></body></html>`;
   const blob = new Blob([html], {type:'text/html'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1231,7 +1252,13 @@ function buildRoutineFromSupplements(supps){
    ========================================================= */
 function latestCheckin(){
   if(!state.checkins.length) return null;
-  return state.checkins[state.checkins.length-1];
+  // Computed by date rather than trusting array order — dedupeCheckins keeps
+  // the array sorted, but this stays correct even if that invariant ever slips.
+  return state.checkins.reduce((best,c)=> new Date(c.dateISO||0) > new Date(best.dateISO||0) ? c : best);
+}
+function latestCheckinIndex(){
+  const last = latestCheckin();
+  return last ? state.checkins.indexOf(last) : -1;
 }
 
 function checkinStorageNote(){
@@ -1356,61 +1383,66 @@ function buildClinicianSnapshotText(checkinIndex){
   });
 
   const scores = computeNutrientScores();
-  const top = scores.slice(0,6).map(([n,sc]) => `- ${n}: ${tierFromScore(sc)} signal (${sc}%)`);
-  const interactions = computeDrugInteractions().map(x=>`- ${x.title} (${x.level})`);
-  const contraindications = computeContraindications().map(x=>`- ${x.title} (${x.level})`);
-  const success = computeMedicationSuccessPrediction();
+  const top = scores.slice(0,6).map(([n,sc]) => `- ${n}: ${tierLabel(tierFromScore(sc))} signal (${sc}%)`);
+  const interactions = computeDrugInteractions().map(x=>`- ${x.title} (${tierLabel(x.level)})`);
+  const contraindications = computeContraindications().map(x=>`- ${x.title} (${tierLabel(x.level)})`);
+  // Score against the SAME check-in the rest of this report is about, not
+  // always today's — otherwise this line contradicts the adherence figure
+  // printed a few lines below it.
+  const success = computeMedicationSuccessPrediction(checkin);
   const patterns = detectHealthPatterns();
 
   const supp = (state.plan.recommendedSupplements||[]);
-  const adh = checkin ? `${checkin.adherencePct}%` : " ";
+  const adh = checkin ? `${checkin.adherencePct}%` : "—";
   const labs = uniq(scores.slice(0,5).flatMap(([n]) => LAB_SUGGESTIONS[n] || [])).slice(0,8);
-  const symptoms = state.symptoms.selected.length ? state.symptoms.selected.join(", ") : "None selected";
-  const lastDate = checkin ? fmtDate(checkin.dateISO) : " ";
+  const symptoms = state.symptoms.selected.length ? state.symptoms.selected.join(", ") : t("report.empty.none_selected");
+  const lastDate = checkin ? fmtDate(checkin.dateISO) : "—";
   const story = generateDynamicHealthStory(checkin);
 
   const protocolBlock = [
-    "Current protocol (supplement support):",
-    supp.length ? supp.map(x=>`- ${x}`).join("\n") : "- Not started / none saved",
-    `Adherence (latest check-in): ${adh}`,
+    t("report.protocol_title"),
+    supp.length ? supp.map(x=>`- ${x}`).join("\n") : `- ${t("report.empty.no_protocol")}`,
+    // Not "latest check-in" — this may be an older, explicitly-selected one;
+    // the report header already states which check-in and date this is.
+    `${t("report.adherence_label")}: ${adh}`,
   ].join("\n");
 
   return [
-    "GENEORX — YOUR DOCTOR VISIT SNAPSHOT",
+    t("report.title"),
     "===================================",
     "",
-    `Patient: ${state.account.email || "Anonymous"}   Age: ${state.profile.age || " "}   Gender: ${state.profile.gender || " "}`,
-    `Safety flags: ${flags.length ? flags.join(", ") : "None reported"}`,
-    `Medication success probability: ${success.score}% (${success.level})`,
+    `${t("report.patient_label")}: ${state.account.email || t("report.anonymous")} • ${t("report.age_label")}: ${state.profile.age || "—"} • ${t("report.gender_label")}: ${state.profile.gender || "—"}`,
+    `${t("report.safety_flags_label")}: ${flags.length ? flags.join(", ") : t("report.empty.none_reported")}`,
+    `${t("report.success_probability_label")}: ${success.score}% (${successLabel(success.level)})`,
     "",
-    "Medications:",
-    meds.length ? meds.join("\n") : "- None reported",
+    t("report.medications_label"),
+    meds.length ? meds.join("\n") : `- ${t("report.empty.none_reported")}`,
     "",
-    `Symptoms (recent): ${symptoms}`,
+    `${t("report.symptoms_recent_label")}: ${symptoms}`,
     "",
-    "Detected patterns:",
-    patterns.length ? patterns.map(x=>`- ${x.title} (${x.confidence})`).join("\n") : "- No strong pattern detected yet",
+    t("report.detected_patterns_label"),
+    patterns.length ? patterns.map(x=>`- ${x.title} (${tierLabel(x.confidence)})`).join("\n") : `- ${t("report.empty.no_patterns")}`,
     "",
-    "Nutrient risk signals (GeneoRx estimate):",
-    top.length ? top.join("\n") : "- No signals yet (add meds/symptoms)",
+    t("report.nutrient_signals_label"),
+    top.length ? top.join("\n") : `- ${t("report.empty.no_signals")}`,
     "",
-    "Drug interactions:",
-    interactions.length ? interactions.join("\n") : "- None identified from current internal rules",
+    t("report.drug_interactions_label"),
+    interactions.length ? interactions.join("\n") : `- ${t("report.empty.no_interactions")}`,
     "",
-    "Contraindications / cautions:",
-    contraindications.length ? contraindications.join("\n") : "- None identified from current safety rules",
+    t("report.contraindications_label"),
+    contraindications.length ? contraindications.join("\n") : `- ${t("report.empty.no_contraindications")}`,
     "",
     protocolBlock,
     "",
-    "Optional labs to consider (clinical context needed):",
-    labs.length ? labs.map(x=>`- ${x}`).join("\n") : "-  ",
+    t("report.optional_labs_label"),
+    labs.length ? labs.map(x=>`- ${x}`).join("\n") : "- —",
     "",
-    "Health story:",
+    t("report.health_story_label"),
     story,
     "",
-    `Latest check-in date: ${lastDate}`,
+    `${t("report.checkin_date_label")}: ${lastDate}`,
     "",
-    "Note: Educational guidance with evidence transparency; confirm labs, dosing, and interactions with your clinician."
+    t("report.footer_note")
   ].join("\n");
 }
 
@@ -1995,7 +2027,8 @@ function renderMeds(){
     <div class="medRow">
       <div class="col">
         <label>${escapeHtml(t("meds.search"))}</label>
-        <input id="medSearch" placeholder="${escapeHtml(t("meds.search_placeholder"))}" />
+        <input id="medSearch" placeholder="${escapeHtml(t("meds.search_placeholder"))}" autocomplete="off" />
+        <div id="medSuggest" class="medSuggest" hidden></div>
       </div>
 
       <div class="col">
@@ -2054,18 +2087,67 @@ function renderMeds(){
   const covWrap = s1.querySelector("#covWrap");
   const medPick = s1.querySelector("#medPick");
   const medSearch = s1.querySelector("#medSearch");
+  const medSuggest = s1.querySelector("#medSuggest");
   const medCustom = s1.querySelector("#medCustom");
   const medList = s2.querySelector("#medList");
 
   function sortedMedList(){ return MED_DB.slice().sort((a,b)=>a.name.localeCompare(b.name)); }
+
+  /* Search by generic name, brand name or slug — mirrors mobile/src/wizard/medSearch.ts */
+  function normalizeTerm(s){
+    return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"")
+      .replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim();
+  }
+  function rankMed(m, term){
+    const name = normalizeTerm(m.name);
+    if(name.startsWith(term)) return {rank:0};
+    if(name.split(" ").some(w=>w.startsWith(term))) return {rank:1};
+    if(name.includes(term)) return {rank:2};
+    for(const alias of (m.aliases||[])){
+      const a = normalizeTerm(alias);
+      if(a.startsWith(term) || a.split(" ").some(w=>w.startsWith(term))) return {rank:3, alias};
+      if(a.includes(term)) return {rank:4, alias};
+    }
+    if(normalizeTerm(m.id).includes(term)) return {rank:5};
+    return null;
+  }
+  function searchMeds(term){
+    const q = normalizeTerm(term);
+    if(!q) return sortedMedList().map(m=>({med:m}));
+    const out = [];
+    for(const m of MED_DB){
+      const r = rankMed(m, q);
+      if(r) out.push({med:m, rank:r.rank, alias:r.alias});
+    }
+    out.sort((a,b)=> a.rank-b.rank || a.med.name.localeCompare(b.med.name));
+    return out.map(({med,alias})=>({med, alias}));
+  }
+
   function populateSelect(filterText=""){
-    const f = (filterText||"").trim().toLowerCase();
-    const list = sortedMedList().filter(m => !f || m.name.toLowerCase().includes(f) || m.id.toLowerCase().includes(f));
+    const list = searchMeds(filterText).map(r=>r.med);
     const current = medPick.value;
     medPick.innerHTML = `<option value="">${escapeHtml(t("common.select"))}</option>` + list.map(m=>(
       `<option value="${m.id}">${escapeHtml(m.name)}</option>`
     )).join("");
     if(current && list.some(m=>m.id===current)) medPick.value = current;
+  }
+
+  function renderSuggestions(text){
+    const q = (text||"").trim();
+    if(q.length < 2){ medSuggest.hidden = true; medSuggest.innerHTML = ""; return; }
+    const hits = searchMeds(q).slice(0,6);
+    if(!hits.length){
+      medSuggest.hidden = false;
+      medSuggest.innerHTML = `<div class="medSuggest__empty">${escapeHtml(t("meds.no_match"))}</div>`;
+      return;
+    }
+    medSuggest.hidden = false;
+    medSuggest.innerHTML = hits.map(({med,alias})=>(
+      `<button type="button" class="medSuggest__item" data-id="${escapeHtml(med.id)}">
+         <span class="medSuggest__name">${escapeHtml(med.name)}</span>
+         ${alias ? `<span class="medSuggest__alias">${escapeHtml(t("meds.also_known_as").replace("{brand}", alias))}</span>` : ""}
+       </button>`
+    )).join("");
   }
 
   function drawCoverage(){
@@ -2165,7 +2247,22 @@ function renderMeds(){
     toastT("toast.symptom_only");
   });
 
-  medSearch.addEventListener("input", ()=> populateSelect(medSearch.value));
+  medSearch.addEventListener("input", ()=>{
+    populateSelect(medSearch.value);
+    renderSuggestions(medSearch.value);
+  });
+  medSuggest.addEventListener("click", (e)=>{
+    const btn = e.target.closest(".medSuggest__item");
+    if(!btn) return;
+    populateSelect("");
+    medPick.value = btn.dataset.id;
+    medSearch.value = "";
+    medSuggest.hidden = true;
+    medSuggest.innerHTML = "";
+  });
+  medSearch.addEventListener("blur", ()=> setTimeout(()=>{ medSuggest.hidden = true; }, 150));
+  medSearch.addEventListener("focus", ()=> renderSuggestions(medSearch.value));
+
   populateSelect(""); drawList(); drawCoverage();
 
   const nav = navButtons(true,true,"nav.continue");
@@ -2578,7 +2675,7 @@ function renderResults(){
   });
 
   const sd = s2.querySelector("#startDate");
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayLocalISO();
   sd.value = state.plan.startDate ? state.plan.startDate.slice(0,10) : today;
 
   s2.querySelector("#startPlanBtn").addEventListener("click", ()=>{
@@ -2635,7 +2732,7 @@ function renderCheckin(){
   `;
   mainEl.appendChild(s1);
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayLocalISO();
   s1.querySelector("#ciDate").value = today;
 
   /* supplements taken */

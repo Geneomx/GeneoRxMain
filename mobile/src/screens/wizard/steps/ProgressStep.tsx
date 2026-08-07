@@ -73,10 +73,12 @@ export const ProgressStep: React.FC = () => {
   };
 
   const downloadReport = async (idx: number) => {
-    const ok = await downloadDoctorReport(state, t, idx, catalog);
+    const ok = await downloadDoctorReport(state, t, idx, catalog, language);
     if (ok) {
       toast.show(t('toast.report_downloaded'));
       goToDashboard();
+    } else {
+      toast.show(t('toast.report_failed'), 'error');
     }
   };
 

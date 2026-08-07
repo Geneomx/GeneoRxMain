@@ -5,7 +5,7 @@ import { defaultWizardState } from '@/wizard/types';
 
 export function dedupeCheckins(checkins: WizardCheckin[]): WizardCheckin[] {
   const seen = new Set<string>();
-  return (checkins || []).filter((c) => {
+  const deduped = (checkins || []).filter((c) => {
     const key = [
       c.dateISO,
       c.adherencePct,
@@ -18,6 +18,10 @@ export function dedupeCheckins(checkins: WizardCheckin[]): WizardCheckin[] {
     seen.add(key);
     return true;
   });
+  // Every "latest check-in" lookup elsewhere (reports, progress, the picker)
+  // assumes the array is chronological — a backdated local check-in must not
+  // silently break that invariant.
+  return deduped.sort((a, b) => new Date(a.dateISO || 0).getTime() - new Date(b.dateISO || 0).getTime());
 }
 
 export function localHasMeaningfulData(s: WizardState | null | undefined): boolean {

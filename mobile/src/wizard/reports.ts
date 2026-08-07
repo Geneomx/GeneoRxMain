@@ -5,11 +5,15 @@ import type { MedEntry } from '@/content/wizardData';
 import { buildClinicianSnapshotText, fmtDate, type TranslateFn } from '@/wizard/engine';
 import type { WizardState } from '@/wizard/types';
 
+const RTL_LANGS = new Set(['ar', 'ur']);
+
 function escapeHtml(text: string): string {
   return text
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 function buildReportHtml(
@@ -17,10 +21,15 @@ function buildReportHtml(
   checkinIndex: number,
   dateISO: string,
   t: TranslateFn,
+  lang = 'en',
 ): string {
   const title = t('modal.report.doctor_title');
-  const label = `${t('checkin.label_n')} ${checkinIndex + 1} · ${fmtDate(dateISO)}`;
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.45;color:#111}pre{white-space:pre-wrap;font-family:Menlo,monospace;font-size:12px;border:1px solid #ddd;border-radius:12px;padding:16px;background:#fafafa}</style></head><body><h1>${escapeHtml(title)}</h1><p>${escapeHtml(label)}</p><pre>${escapeHtml(snapshot)}</pre></body></html>`;
+  // Filter empties so a missing date doesn't leave a dangling separator
+  const label = [`${t('checkin.label_n')} ${checkinIndex + 1}`, fmtDate(dateISO)]
+    .filter(Boolean)
+    .join(' · ');
+  const dir = RTL_LANGS.has(lang) ? 'rtl' : 'ltr';
+  return `<!doctype html><html lang="${escapeHtml(lang)}" dir="${dir}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.45;color:#111}pre{white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;border:1px solid #ddd;border-radius:12px;padding:16px;background:#fafafa}</style></head><body><h1>${escapeHtml(title)}</h1><p>${escapeHtml(label)}</p><pre>${escapeHtml(snapshot)}</pre></body></html>`;
 }
 
 export async function shareClinicianSnapshot(
@@ -45,6 +54,7 @@ export async function downloadDoctorReport(
   t: TranslateFn,
   checkinIndex?: number,
   catalog?: MedEntry[],
+  lang = 'en',
 ): Promise<boolean> {
   if (!state.checkins.length) return false;
   const idx =
@@ -53,12 +63,20 @@ export async function downloadDoctorReport(
       : state.checkins.length - 1;
   const checkin = state.checkins[idx];
   const snapshot = buildClinicianSnapshotText(state, t, idx, catalog);
-  const datePart = checkin?.dateISO ? String(checkin.dateISO).slice(0, 10) : 'report';
-  const title = `${t('modal.report.doctor_title')} · ${t('checkin.label_n')} ${idx + 1} · ${fmtDate(checkin.dateISO)}`;
+  // Filesystem-safe: this becomes a real file path, so never trust the
+  // stored date's shape.
+  const rawDate = checkin?.dateISO ? String(checkin.dateISO).slice(0, 10) : 'report';
+  const datePart = /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+    ? rawDate
+    : rawDate.replace(/[^0-9A-Za-z_-]/g, '_');
+  const title = [t('modal.report.doctor_title'), `${t('checkin.label_n')} ${idx + 1}`, fmtDate(checkin.dateISO)]
+    .filter(Boolean)
+    .join(' · ');
   const filename = `geneorx_report_checkin_${idx + 1}_${datePart}.html`;
-  const html = buildReportHtml(snapshot, idx, checkin.dateISO, t);
+  const html = buildReportHtml(snapshot, idx, checkin.dateISO, t, lang);
 
   try {
+    if (!FileSystem.cacheDirectory) throw new Error('No cache directory available');
     const path = `${FileSystem.cacheDirectory}${filename}`;
     await FileSystem.writeAsStringAsync(path, html, {
       encoding: FileSystem.EncodingType.UTF8,

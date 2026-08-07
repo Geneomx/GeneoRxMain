@@ -15,6 +15,8 @@ export interface MedEntry {
   name: string;
   symptomChips: string[];
   claims: MedClaim[];
+  /** Brand names / common spellings, so search matches what's on the box. */
+  aliases?: string[];
 }
 
 // Full 20-medication set — mirrors database/seeders/MedicationSeeder.php exactly,
@@ -25,6 +27,7 @@ export const MED_DB: MedEntry[] = [
     id: 'metformin',
     name: 'Metformin',
     symptomChips: ['Fatigue', 'Tingling hands/feet', 'Brain fog', 'Low mood', 'GI discomfort'],
+    aliases: ['Glucophage', 'Glumetza', 'Fortamet', 'Riomet', 'Diabex', 'Metfor', 'Siofor'],
     claims: [
       { nutrient: 'Vitamin B12', source_quality: 'High', citations: ['PMID:26900641'],
         notes: ['Long-term metformin is associated with B12 deficiency risk; consider monitoring if symptoms present.'] },
@@ -34,6 +37,7 @@ export const MED_DB: MedEntry[] = [
     id: 'atorvastatin',
     name: 'Atorvastatin (statin)',
     symptomChips: ['Muscle aches', 'Fatigue', 'Brain fog', 'Sleep changes'],
+    aliases: ['Lipitor', 'Atorlip', 'Sortis', 'Torvast'],
     claims: [
       { nutrient: 'CoQ10', source_quality: 'Moderate', citations: ['PMID:26192349'],
         notes: ['Statins are associated with lower CoQ10 levels; symptom benefit from supplementation varies.'] },
@@ -43,6 +47,7 @@ export const MED_DB: MedEntry[] = [
     id: 'rosuvastatin',
     name: 'Rosuvastatin (statin)',
     symptomChips: ['Muscle aches', 'Fatigue', 'Brain fog', 'Sleep changes'],
+    aliases: ['Crestor', 'Rosulip', 'Ezallor'],
     claims: [
       { nutrient: 'CoQ10', source_quality: 'Moderate', citations: ['PMID:26192349'],
         notes: ['Statins inhibit CoQ10 synthesis via the mevalonate pathway; monitoring is reasonable with myopathy symptoms.'] },
@@ -52,6 +57,7 @@ export const MED_DB: MedEntry[] = [
     id: 'simvastatin',
     name: 'Simvastatin (statin)',
     symptomChips: ['Muscle aches', 'Fatigue', 'Brain fog', 'Sleep changes'],
+    aliases: ['Zocor', 'Simvacor', 'Simlup'],
     claims: [
       { nutrient: 'CoQ10', source_quality: 'Moderate', citations: ['PMID:26192349'],
         notes: ['Higher-potency statin; CoQ10 depletion via mevalonate pathway.'] },
@@ -61,6 +67,7 @@ export const MED_DB: MedEntry[] = [
     id: 'omeprazole',
     name: 'Omeprazole (PPI)',
     symptomChips: ['GI discomfort', 'Fatigue', 'Dizziness', 'Muscle cramps', 'Brain fog'],
+    aliases: ['Prilosec', 'Losec', 'Omez', 'Zegerid'],
     claims: [
       { nutrient: 'Magnesium', source_quality: 'High', citations: ['PMID:22392879'],
         notes: ['Long-term PPI use has a hypomagnesemia safety signal; consider Mg evaluation if symptomatic.'] },
@@ -72,6 +79,7 @@ export const MED_DB: MedEntry[] = [
     id: 'pantoprazole',
     name: 'Pantoprazole (PPI)',
     symptomChips: ['GI discomfort', 'Fatigue', 'Dizziness', 'Muscle cramps'],
+    aliases: ['Protonix', 'Pantoloc', 'Controloc', 'Pantocid'],
     claims: [
       { nutrient: 'Magnesium', source_quality: 'High', citations: ['PMID:22392879'],
         notes: ['Class effect: long-term PPI use reduces gastric acid needed for Mg absorption.'] },
@@ -83,6 +91,7 @@ export const MED_DB: MedEntry[] = [
     id: 'semaglutide',
     name: 'Semaglutide (GLP-1)',
     symptomChips: ['GI discomfort', 'Nausea', 'Constipation', 'Fatigue', 'Hair loss'],
+    aliases: ['Ozempic', 'Wegovy', 'Rybelsus'],
     claims: [
       { nutrient: 'Vitamin D', source_quality: 'Moderate', citations: ['PMID:37596620'],
         notes: ['Significant weight loss alters Vitamin D distribution.'] },
@@ -96,6 +105,7 @@ export const MED_DB: MedEntry[] = [
     id: 'tirzepatide',
     name: 'Tirzepatide (GIP/GLP-1)',
     symptomChips: ['GI discomfort', 'Nausea', 'Constipation', 'Fatigue', 'Hair loss'],
+    aliases: ['Mounjaro', 'Zepbound'],
     claims: [
       { nutrient: 'Vitamin D', source_quality: 'Moderate', citations: ['PMID:37596620'],
         notes: ['Rapid weight loss can alter fat-soluble vitamin distribution.'] },
@@ -109,6 +119,7 @@ export const MED_DB: MedEntry[] = [
     id: 'liraglutide',
     name: 'Liraglutide (GLP-1)',
     symptomChips: ['GI discomfort', 'Nausea', 'Constipation', 'Fatigue'],
+    aliases: ['Victoza', 'Saxenda'],
     claims: [
       { nutrient: 'Vitamin D', source_quality: 'Moderate', citations: ['PMID:37596620'],
         notes: ['Weight loss affects fat-soluble vitamin status.'] },
@@ -120,6 +131,7 @@ export const MED_DB: MedEntry[] = [
     id: 'dulaglutide',
     name: 'Dulaglutide (GLP-1)',
     symptomChips: ['GI discomfort', 'Nausea', 'Constipation', 'Fatigue'],
+    aliases: ['Trulicity'],
     claims: [
       { nutrient: 'Vitamin D', source_quality: 'Moderate', citations: ['PMID:37596620'],
         notes: ['GLP-1 class effect on fat-soluble vitamins.'] },
@@ -131,6 +143,7 @@ export const MED_DB: MedEntry[] = [
     id: 'lisinopril',
     name: 'Lisinopril (ACE inhibitor)',
     symptomChips: ['Dizziness', 'Fatigue', 'Muscle cramps'],
+    aliases: ['Zestril', 'Prinivil', 'Lisodur'],
     claims: [
       { nutrient: 'Zinc', source_quality: 'Moderate', citations: ['PMID:9550460'],
         notes: ['ACE inhibitors contain zinc-binding moieties; long-term use may reduce serum zinc.'] },
@@ -140,6 +153,7 @@ export const MED_DB: MedEntry[] = [
     id: 'enalapril',
     name: 'Enalapril (ACE inhibitor)',
     symptomChips: ['Dizziness', 'Fatigue', 'Muscle cramps'],
+    aliases: ['Vasotec', 'Renitec', 'Enalapril Maleate'],
     claims: [
       { nutrient: 'Zinc', source_quality: 'Moderate', citations: ['PMID:9550460'],
         notes: ['ACE inhibitors have zinc-chelating properties.'] },
@@ -149,6 +163,7 @@ export const MED_DB: MedEntry[] = [
     id: 'losartan',
     name: 'Losartan (ARB)',
     symptomChips: ['Dizziness', 'Fatigue', 'Muscle cramps'],
+    aliases: ['Cozaar', 'Losacar', 'Hyzaar'],
     claims: [
       { nutrient: 'Zinc', source_quality: 'Low', citations: ['PMID:9550460'],
         notes: ['ARBs may share a modest zinc-lowering class effect.'] },
@@ -158,6 +173,7 @@ export const MED_DB: MedEntry[] = [
     id: 'amlodipine',
     name: 'Amlodipine (CCB)',
     symptomChips: ['Swelling', 'Dizziness', 'Fatigue'],
+    aliases: ['Norvasc', 'Amlong', 'Istin', 'Katerzia'],
     claims: [
       { nutrient: 'CoQ10', source_quality: 'Low', citations: ['PMID:15003176'],
         notes: ['Observational data suggest cardiovascular medications may be associated with lower CoQ10.'] },
@@ -167,6 +183,7 @@ export const MED_DB: MedEntry[] = [
     id: 'metoprolol',
     name: 'Metoprolol (beta blocker)',
     symptomChips: ['Fatigue', 'Dizziness', 'Low energy', 'Sleep changes'],
+    aliases: ['Lopressor', 'Toprol', 'Toprol-XL', 'Betaloc', 'Seloken'],
     claims: [
       { nutrient: 'CoQ10', source_quality: 'Low', citations: ['PMID:15003176'],
         notes: ['Beta-blockers observed to reduce CoQ10 in some heart failure patients.'] },
@@ -178,6 +195,7 @@ export const MED_DB: MedEntry[] = [
     id: 'levothyroxine',
     name: 'Levothyroxine (thyroid)',
     symptomChips: ['Fatigue', 'Brain fog', 'Muscle aches', 'Dizziness', 'Hair loss', 'Low energy'],
+    aliases: ['Synthroid', 'Euthyrox', 'Levoxyl', 'Eltroxin', 'Thyronorm', 'Unithroid'],
     claims: [
       { nutrient: 'Selenium', source_quality: 'Moderate', citations: ['PMID:28642112'],
         notes: ['Selenium is required for T4→T3 conversion.'] },
@@ -191,6 +209,7 @@ export const MED_DB: MedEntry[] = [
     id: 'furosemide',
     name: 'Furosemide (loop diuretic)',
     symptomChips: ['Muscle cramps', 'Dizziness', 'Fatigue', 'Heart palpitations', 'Low energy'],
+    aliases: ['Lasix', 'Frusemide', 'Frusol'],
     claims: [
       { nutrient: 'Potassium', source_quality: 'High', citations: ['PMID:17536977'],
         notes: ['Loop diuretics cause significant urinary potassium wasting.'] },
@@ -206,6 +225,7 @@ export const MED_DB: MedEntry[] = [
     id: 'hydrochlorothiazide',
     name: 'Hydrochlorothiazide (HCTZ)',
     symptomChips: ['Muscle cramps', 'Dizziness', 'Fatigue', 'Heart palpitations'],
+    aliases: ['Microzide', 'HCTZ', 'Esidrix', 'Hydrodiuril'],
     claims: [
       { nutrient: 'Potassium', source_quality: 'High', citations: ['PMID:17536977'],
         notes: ['Thiazide diuretics cause potassium wasting.'] },
@@ -219,6 +239,7 @@ export const MED_DB: MedEntry[] = [
     id: 'spironolactone',
     name: 'Spironolactone (K-sparing diuretic)',
     symptomChips: ['Dizziness', 'Fatigue', 'Muscle cramps'],
+    aliases: ['Aldactone', 'CaroSpir', 'Spiractin'],
     claims: [
       { nutrient: 'Potassium', source_quality: 'High', citations: ['PMID:17536977'],
         notes: ['Spironolactone retains potassium; hyperkalemia monitoring required.'] },
@@ -230,6 +251,7 @@ export const MED_DB: MedEntry[] = [
     id: 'warfarin',
     name: 'Warfarin (anticoagulant)',
     symptomChips: ['Fatigue', 'Dizziness', 'Brain fog'],
+    aliases: ['Coumadin', 'Jantoven', 'Marevan'],
     claims: [
       { nutrient: 'Vitamin K', source_quality: 'High', citations: ['PMID:25851918'],
         notes: ['Warfarin blocks Vitamin K recycling. Consistent Vitamin K intake is key — abrupt changes alter INR.'] },

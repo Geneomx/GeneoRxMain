@@ -110,7 +110,7 @@ class HomeController extends Controller
 
                 return [
                     'id' => $c->id,
-                    'dateISO' => $c->date_checked?->toIso8601String(),
+                    'dateISO' => $c->date_checked?->toIso8601String() ?? '',
                     'adherencePct' => (int) ($c->adherence_percentage ?? 0),
                     'notes' => (string) ($c->notes ?? ''),
                 ];
