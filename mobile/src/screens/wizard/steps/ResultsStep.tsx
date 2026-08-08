@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { useToast } from '@/components/Toast';
-import { useWizard } from '@/store/WizardContext';
+import { useWizard, type FocusTarget } from '@/store/WizardContext';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import {
   aggregateEvidenceByNutrient,
@@ -78,37 +78,29 @@ function topInlineCites(
 }
 
 export const ResultsStep: React.FC = () => {
-  const { state, update, focusNutrient, setFocusNutrient } = useWizard();
+  const { state, update, focusTarget, setFocusTarget } = useWizard();
   const { catalog } = useMedCatalog();
   const { t, language } = useTranslation();
   const toast = useToast();
   const [insightOpen, setInsightOpen] = useState(false);
   const [revealOpen, setRevealOpen] = useState(false);
   const [openEvidence, setOpenEvidence] = useState<Record<string, boolean>>({});
+  // What the user tapped on Home to get here. Held locally so the focused card
+  // survives the whole visit; the shared handoff is consumed immediately.
+  const [focused, setFocused] = useState<FocusTarget | null>(null);
 
-  const rawScores = useMemo(() => computeNutrientScores(state, catalog), [state, catalog]);
-  // Arriving with a target nutrient (e.g. Home's "See the evidence") puts it
-  // first in the list, so the user lands on it without needing to scroll.
-  const scores = useMemo(() => {
-    if (!focusNutrient) return rawScores;
-    const idx = rawScores.findIndex(([nut]) => nut === focusNutrient);
-    if (idx <= 0) return rawScores;
-    const copy = rawScores.slice();
-    const [hit] = copy.splice(idx, 1);
-    copy.unshift(hit);
-    return copy;
-  }, [rawScores, focusNutrient]);
+  const scores = useMemo(() => computeNutrientScores(state, catalog), [state, catalog]);
 
   useEffect(() => {
-    if (!focusNutrient) return;
-    if (rawScores.some(([nut]) => nut === focusNutrient)) {
-      setOpenEvidence((p) => ({ ...p, [focusNutrient]: true }));
+    if (!focusTarget) return;
+    setFocused(focusTarget);
+    if (focusTarget.kind === 'nutrient') {
+      setOpenEvidence((p) => ({ ...p, [focusTarget.value]: true }));
     }
-    // One-shot: consume the target so a later, unrelated visit to Results
-    // doesn't keep reordering the list.
-    setFocusNutrient(null);
+    // One-shot: consume so a later, unrelated visit to Results doesn't re-focus.
+    setFocusTarget(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusNutrient]);
+  }, [focusTarget]);
   const recs = useMemo(() => recommendSupplements(scores), [scores]);
   const claims = useMemo(() => claimsForSelectedMeds(state, catalog), [state, catalog]);
   const evidenceMap = useMemo(() => aggregateEvidenceByNutrient(claims), [claims]);
@@ -181,8 +173,62 @@ export const ResultsStep: React.FC = () => {
     ? t('results.action1_focus', { nutrient: topSignal.nutrient })
     : t('results.action1_log_more');
 
+  // A prominent card at the very top of Results when the user arrives from a
+  // Home shortcut — so "See the evidence" / "Possible interaction" land ON the
+  // thing they tapped, instead of the top of a long form they have to scroll.
+  const renderFocused = () => {
+    if (!focused) return null;
+    const head = (label: string) => (
+      <View style={styles.focusHead}>
+        <Text style={styles.focusEyebrow}>{label}</Text>
+        <Pressable onPress={() => setFocused(null)} hitSlop={8}>
+          <Text style={styles.focusDismiss}>{t('results.focus_dismiss')}</Text>
+        </Pressable>
+      </View>
+    );
+
+    if (focused.kind === 'nutrient') {
+      const hit = scores.find(([n]) => n === focused.value);
+      if (!hit) return null;
+      const [nut, sc] = hit;
+      const claimsForNut = evidenceMap[nut] || [];
+      const q = claimsForNut.length ? summarizeSourceQuality(claimsForNut) : ('Pending' as SourceQuality);
+      const ev = evidencePanel(nut, claimsForNut);
+      return (
+        <Section style={styles.focusCard}>
+          {head(t('results.focus_evidence_label'))}
+          <KVItem k={nut}>
+            <Text style={styles.metricStrong}>
+              {tierLabel(tierFromScore(sc), t)} {t('results.signal')} ({sc}%)
+            </Text>
+          </KVItem>
+          <View style={[styles.sourceBadge, q === 'Pending' && styles.sourceBadgePending]}>
+            <Text style={styles.sourceBadgeText}>{t('results.source_quality')} {tierLabel(q, t)}</Text>
+          </View>
+          {ev.citations.length ? (
+            <View style={styles.citeRow}>{ev.citations.map((c) => <CiteChip key={c} token={c} />)}</View>
+          ) : (
+            <FinePrint>{t('results.no_citations')}</FinePrint>
+          )}
+          {ev.noteText ? <Text style={styles.evNote}>{ev.noteText}</Text> : null}
+          {ev.labs.length ? <FinePrint>{t('results.labs_label')} {ev.labs.join(', ')}</FinePrint> : null}
+        </Section>
+      );
+    }
+
+    const alert = interactions.find((a) => a.title === focused.value);
+    if (!alert) return null;
+    return (
+      <Section style={styles.focusCard}>
+        {head(t('results.focus_interaction_label'))}
+        <AlertBox {...alert} />
+      </Section>
+    );
+  };
+
   return (
     <View style={{ gap: spacing.md }}>
+      {renderFocused()}
       {/* AI Coach — matches website coachBox */}
       <Section style={styles.coach}>
         <View style={styles.coachTitleRow}>
@@ -445,6 +491,17 @@ export const ResultsStep: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  focusCard: { borderColor: 'rgba(40, 225, 255, 0.45)', borderWidth: 1.5 },
+  focusHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  focusEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.primary,
+  },
+  focusDismiss: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+
   coach: { backgroundColor: colors.primary50, borderColor: colors.primary100 },
   coachTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   coachSpark: { fontSize: 18, color: colors.primary, marginTop: 2 },

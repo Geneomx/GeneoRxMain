@@ -920,7 +920,10 @@
                 "home.interaction_tag": "Possible interaction",
                 "home.top_signal_label": "Top signal:",
                 "home.checkin_now": "Check in",
-                "home.days_ago": "{count} days ago"
+                "home.days_ago": "{count} days ago",
+                "results.focus_evidence_label": "The evidence you asked about",
+                "results.focus_interaction_label": "The interaction you tapped",
+                "results.focus_dismiss": "Show all results"
         },
         "es": {
                 "lang.all": "All languages",
@@ -1843,7 +1846,10 @@
                 "home.interaction_tag": "Posible interaccion",
                 "home.top_signal_label": "Senal principal:",
                 "home.checkin_now": "Registrar",
-                "home.days_ago": "hace {count} dias"
+                "home.days_ago": "hace {count} dias",
+                "results.focus_evidence_label": "La evidencia que consultaste",
+                "results.focus_interaction_label": "La interaccion que tocaste",
+                "results.focus_dismiss": "Ver todos los resultados"
         },
         "fr": {
                 "lang.all": "All languages",
@@ -2766,7 +2772,10 @@
                 "home.interaction_tag": "Interaction possible",
                 "home.top_signal_label": "Signal principal :",
                 "home.checkin_now": "Suivi",
-                "home.days_ago": "il y a {count} jours"
+                "home.days_ago": "il y a {count} jours",
+                "results.focus_evidence_label": "Les preuves demandees",
+                "results.focus_interaction_label": "L'interaction selectionnee",
+                "results.focus_dismiss": "Voir tous les resultats"
         },
         "ar": {
                 "lang.all": "جميع اللغات",

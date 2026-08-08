@@ -104,7 +104,7 @@ export function weeklyCheckinStreak(dates: string[], now: Date = new Date()): nu
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
-  const { state, setStep, syncing, refresh, setFocusNutrient } = useWizard();
+  const { state, setStep, syncing, refresh, setFocusTarget } = useWizard();
   const { catalog } = useMedCatalog();
   const { t } = useTranslation();
   const { page, scrollBottom } = useResponsiveLayout();
@@ -138,7 +138,12 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const goToEvidence = () => {
-    if (topNutrient) setFocusNutrient(topNutrient);
+    if (topNutrient) setFocusTarget({ kind: 'nutrient', value: topNutrient });
+    goToStep(4);
+  };
+
+  const goToInteraction = () => {
+    if (topInteraction) setFocusTarget({ kind: 'interaction', value: topInteraction.title });
     goToStep(4);
   };
 
@@ -175,7 +180,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <>
               {/* Safety: real drug-interaction alert, only when one exists */}
               {topInteraction ? (
-                <Pressable style={styles.banner} onPress={() => goToStep(4)}>
+                <Pressable style={styles.banner} onPress={goToInteraction}>
                   <Text style={styles.bannerIcon}>⚠</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.bannerTag}>{t('home.interaction_tag')}</Text>

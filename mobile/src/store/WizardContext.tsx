@@ -46,13 +46,18 @@ interface WizardContextValue {
   refresh: () => Promise<void>;
   savePayload: (payload: SaveProfilePayload) => Promise<void>;
   /**
-   * Ephemeral (not persisted/synced) — which nutrient Results should land on
-   * and auto-expand when navigated to from a spot that names one, e.g. Home's
-   * "See the evidence" button. Consumed and cleared by ResultsStep on read.
+   * Ephemeral (not persisted/synced) — what Results should surface at the top
+   * and land the user on, when they arrive from a spot that names something:
+   * Home's "See the evidence" / nutrient chip (kind 'nutrient') or the
+   * interaction banner (kind 'interaction'). Consumed by ResultsStep on mount.
    */
-  focusNutrient: string | null;
-  setFocusNutrient: (nutrient: string | null) => void;
+  focusTarget: FocusTarget | null;
+  setFocusTarget: (target: FocusTarget | null) => void;
 }
+
+export type FocusTarget =
+  | { kind: 'nutrient'; value: string }
+  | { kind: 'interaction'; value: string };
 
 const WizardContext = createContext<WizardContextValue | undefined>(undefined);
 
@@ -62,7 +67,7 @@ export const WizardProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [state, setState] = useState<WizardState>(defaultWizardState);
   const [hydrated, setHydrated] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [focusNutrient, setFocusNutrient] = useState<string | null>(null);
+  const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
   const stateRef = useRef(state);
   const catalogRef = useRef<MedEntry[]>(catalog);
   const backendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -240,9 +245,9 @@ export const WizardProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const value = useMemo<WizardContextValue>(
     () => ({
       state, hydrated, syncing, update, setStep, next, prev, reset, refresh, savePayload,
-      focusNutrient, setFocusNutrient,
+      focusTarget, setFocusTarget,
     }),
-    [state, hydrated, syncing, update, setStep, next, prev, reset, refresh, savePayload, focusNutrient],
+    [state, hydrated, syncing, update, setStep, next, prev, reset, refresh, savePayload, focusTarget],
   );
 
   return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>;
