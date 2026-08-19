@@ -1,29 +1,17 @@
 const puppeteer = require('./node_modules/puppeteer');
 const path = require('path');
 
+// Screen order: 0 = Home dashboard, 1 = Medications, 4 = Results/Insights, 5 = Check-in
+const SCREENS = [0, 1, 4, 5];
+
 // Android phone screenshots (390x844 @3x = 1170x2532)
-const ANDROID = [
-  { s: 1, out: 'phone-screen-1.png', w: 390, h: 844, dpr: 3 },
-  { s: 2, out: 'phone-screen-2.png', w: 390, h: 844, dpr: 3 },
-  { s: 3, out: 'phone-screen-3.png', w: 390, h: 844, dpr: 3 },
-  { s: 4, out: 'phone-screen-4.png', w: 390, h: 844, dpr: 3 },
-];
+const ANDROID = SCREENS.map((s, i) => ({ s, out: `phone-screen-${i + 1}.png`, w: 390, h: 844, dpr: 3 }));
 
 // iPhone 6.9" screenshots (440x956 @3x = 1320x2868) — required for App Store
-const IOS_69 = [
-  { s: 1, out: 'ios-69-screen-1.png', w: 440, h: 956, dpr: 3 },
-  { s: 2, out: 'ios-69-screen-2.png', w: 440, h: 956, dpr: 3 },
-  { s: 3, out: 'ios-69-screen-3.png', w: 440, h: 956, dpr: 3 },
-  { s: 4, out: 'ios-69-screen-4.png', w: 440, h: 956, dpr: 3 },
-];
+const IOS_69 = SCREENS.map((s, i) => ({ s, out: `ios-69-screen-${i + 1}.png`, w: 440, h: 956, dpr: 3 }));
 
 // iPhone 6.5" screenshots (414x896 @3x = 1242x2688) — required for App Store
-const IOS_65 = [
-  { s: 1, out: 'ios-65-screen-1.png', w: 414, h: 896, dpr: 3 },
-  { s: 2, out: 'ios-65-screen-2.png', w: 414, h: 896, dpr: 3 },
-  { s: 3, out: 'ios-65-screen-3.png', w: 414, h: 896, dpr: 3 },
-  { s: 4, out: 'ios-65-screen-4.png', w: 414, h: 896, dpr: 3 },
-];
+const IOS_65 = SCREENS.map((s, i) => ({ s, out: `ios-65-screen-${i + 1}.png`, w: 414, h: 896, dpr: 3 }));
 
 const ALL = [...ANDROID, ...IOS_69, ...IOS_65];
 

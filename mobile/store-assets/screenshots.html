@@ -286,8 +286,66 @@
   .row2 { display: flex; gap: 12px; }
   .row2 > * { flex: 1; }
 
+  /* ─── HOME DASHBOARD (mirrors HomeScreen.tsx) ─── */
+  .home-head { display: flex; align-items: center; justify-content: space-between; }
+  .greeting { font-size: 22px; font-weight: 800; color: var(--txt); letter-spacing: -0.5px; }
+  .streak {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 10px; border-radius: 999px;
+    background: rgba(251, 191, 36, 0.14);
+    border: 1px solid rgba(251, 191, 36, 0.30);
+  }
+  .streak span { font-size: 12px; font-weight: 700; color: #FBBF24; }
+
+  .banner {
+    display: flex; align-items: flex-start; gap: 9px;
+    border-radius: 12px; padding: 12px;
+    background: rgba(251, 113, 133, 0.12);
+    border: 1px solid rgba(251, 113, 133, 0.35);
+  }
+  .banner .b-icon { font-size: 15px; color: #FB7185; margin-top: 1px; }
+  .banner-tag { font-size: 12.5px; font-weight: 700; color: #FB7185; margin-bottom: 3px; }
+  .banner-body { font-size: 13.5px; color: var(--txt); line-height: 19px; }
+
+  .ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 4px 0; }
+  .ring { position: relative; width: 116px; height: 116px; }
+  .ring-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 900; color: var(--txt); }
+  .ring-label { font-size: 13px; color: var(--muted); }
+
+  .nutrient-chip-wrap { display: flex; justify-content: center; }
+  .nutrient-chip {
+    padding: 7px 14px; border-radius: 999px;
+    background: rgba(167, 139, 250, 0.14);
+    border: 1px solid rgba(167, 139, 250, 0.30);
+    font-size: 13px; color: var(--txt);
+  }
+  .nutrient-chip b { color: var(--violet); font-weight: 700; }
+
+  .insight-card {
+    border-radius: 14px; border: 1px solid rgba(40, 225, 255, 0.22);
+    background: rgba(40, 225, 255, 0.10);
+    padding: 16px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .insight-tag { font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--cyan); }
+  .insight-body { font-size: 15px; color: var(--txt); line-height: 22px; }
+  .insight-next { font-size: 13px; color: var(--soft); line-height: 19px; }
+  .insight-cta {
+    align-self: flex-start; margin-top: 4px;
+    padding: 9px 14px; border-radius: 999px;
+    background: var(--cyan); font-size: 13px; font-weight: 800; color: var(--on-primary);
+  }
+
+  .checkin-row {
+    display: flex; align-items: center; gap: 12px;
+    border-radius: 12px; background: rgba(15, 23, 54, 0.50);
+    border: 1px solid var(--border-soft);
+    padding: 12px 16px;
+  }
+  .checkin-label { font-size: 13px; font-weight: 700; color: var(--soft); }
+  .checkin-detail { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
   /* ─── SCREEN VISIBILITY ─── */
-  .s1, .s2, .s3, .s4, .s5, .s6 { display: none; }
+  .s0, .s1, .s2, .s3, .s4, .s5, .s6 { display: none; }
   .wiz-chrome { display: none; }
 
   /* ─── TABLET (activated via ?d=tablet — media queries don't play well with zoom) ─── */
@@ -322,6 +380,54 @@
     <div class="step" data-s="5">Check-in</div>
     <div class="step" data-s="6">Progress</div>
     <div class="step" data-s="8">Summary</div>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN 0 — HOME DASHBOARD ══════════ -->
+<div class="screen s0">
+  <div class="home-head">
+    <div class="greeting">Good morning, Ayaz</div>
+    <div class="streak"><span>🔥 3 week streak</span></div>
+  </div>
+
+  <div class="banner">
+    <div class="b-icon">⚠</div>
+    <div>
+      <div class="banner-tag">Possible interaction</div>
+      <div class="banner-body">Metformin + Atorvastatin: monitor for muscle aches, discuss with your doctor.</div>
+    </div>
+  </div>
+
+  <div class="ring-wrap">
+    <div class="ring">
+      <svg width="116" height="116" viewBox="0 0 116 116">
+        <circle cx="58" cy="58" r="53" stroke="rgba(255,255,255,0.08)" stroke-width="10" fill="none"/>
+        <circle cx="58" cy="58" r="53" stroke="#28E1FF" stroke-width="10" fill="none"
+          stroke-linecap="round" stroke-dasharray="333" stroke-dashoffset="27"
+          transform="rotate(-90 58 58)"/>
+      </svg>
+      <div class="ring-pct">92%</div>
+    </div>
+    <div class="ring-label">Adherence this week</div>
+  </div>
+
+  <div class="nutrient-chip-wrap">
+    <div class="nutrient-chip">Top signal: <b>Vitamin B12</b></div>
+  </div>
+
+  <div class="insight-card">
+    <div class="insight-tag">Today's insight</div>
+    <div class="insight-body">Your fatigue and brain fog pattern matches a possible B12 depletion signal from long-term Metformin use.</div>
+    <div class="insight-next">Consider adding a B12 supplement and rechecking in 2 weeks.</div>
+    <div class="insight-cta">See the evidence →</div>
+  </div>
+
+  <div class="checkin-row">
+    <div style="flex:1">
+      <div class="checkin-label">Last check-in · Aug 4</div>
+      <div class="checkin-detail">Fatigue: slightly better</div>
+    </div>
+    <div class="chevron">›</div>
   </div>
 </div>
 
@@ -534,9 +640,13 @@
 
 <!-- TAB BAR -->
 <div class="tab-bar">
+  <div class="tab" id="tab-home">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2v-9z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="tab-label">Home</span>
+  </div>
   <div class="tab" id="tab-guided">
     <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.9"/><polygon points="15.5,8.5 11,11 8.5,15.5 13,13" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
-    <span class="tab-label">Setup</span>
+    <span class="tab-label">My plan</span>
   </div>
   <div class="tab" id="tab-profile">
     <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.9"/><path d="M4 20c0-3.5 3.5-6 8-6s8 2.5 8 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -551,7 +661,7 @@
   const zoom = parseFloat(params.get('z') || '1');
   if (zoom !== 1) document.body.style.zoom = zoom;
   if (params.get('d') === 'tablet') document.body.classList.add('tablet');
-  const screen = parseInt(params.get('s') || '1');
+  const screen = params.has('s') ? parseInt(params.get('s')) : 1;
   document.querySelector('.s' + screen).style.display = 'flex';
 
   // Wizard chrome for steps 1–5; Account screen (6) has no wizard header/footer
@@ -572,14 +682,16 @@
     document.querySelector('.step[data-s="' + m.step + '"]').classList.add('on');
   }
 
-  // Active tab: Setup for wizard screens, Account for profile
-  document.getElementById(screen === 6 ? 'tab-profile' : 'tab-guided').classList.add('on');
+  // Active tab: Home for screen 0, Account for profile, My plan for wizard screens
+  const activeTab = screen === 0 ? 'tab-home' : screen === 6 ? 'tab-profile' : 'tab-guided';
+  document.getElementById(activeTab).classList.add('on');
   const iconColor = (id, on) => {
     const el = document.getElementById(id);
     el.querySelectorAll('svg').forEach(s => s.style.color = on ? '#061018' : '#A9B4D6');
   };
-  iconColor('tab-guided', screen !== 6);
-  iconColor('tab-profile', screen === 6);
+  iconColor('tab-home', activeTab === 'tab-home');
+  iconColor('tab-guided', activeTab === 'tab-guided');
+  iconColor('tab-profile', activeTab === 'tab-profile');
 </script>
 
 </body>
