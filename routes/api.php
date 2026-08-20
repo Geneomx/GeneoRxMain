@@ -1,13 +1,15 @@
 <?php
 
 use App\Http\Controllers\AccountController;
-use App\Models\Medication;
+use App\Http\Controllers\Api\AiSummaryController;
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\EmailOtpController;
+use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\Api\SocialAuthController as ApiSocialAuthController;
 use App\Http\Controllers\Api\TokenAuthController;
-use App\Http\Controllers\Api\AiSummaryController;
 use App\Http\Controllers\HomeController;
+use App\Models\Medication;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/register', [TokenAuthController::class, 'register']);
@@ -32,9 +34,9 @@ Route::get('/medications/catalog', function () {
 Route::post('/mobile/ai-summary', AiSummaryController::class)->middleware('throttle:10,1');
 
 // ── Product analytics + feedback (guest-friendly; bearer token attaches user) ─
-Route::post('/analytics/track', [\App\Http\Controllers\Api\AnalyticsController::class, 'track'])
+Route::post('/analytics/track', [AnalyticsController::class, 'track'])
     ->middleware('throttle:60,1');
-Route::post('/feedback', [\App\Http\Controllers\Api\FeedbackController::class, 'store'])
+Route::post('/feedback', [FeedbackController::class, 'store'])
     ->middleware('throttle:10,1');
 
 Route::middleware('auth:sanctum')->group(function () {

@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Models\UserPushToken;
+use Firebase\JWT\JWT;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
@@ -89,7 +90,7 @@ Artisan::command('geneorx:generate-apple-secret', function () {
         'sub' => $clientId,
     ];
 
-    $secret = \Firebase\JWT\JWT::encode(
+    $secret = JWT::encode(
         $claims,
         file_get_contents($keyPath),
         'ES256',

@@ -128,8 +128,8 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         $allowed = ['login', 'register', 'home'];
-        $to      = $request->input('redirect_to', 'login');
-        $route   = in_array($to, $allowed) ? $to : 'login';
+        $to = $request->input('redirect_to', 'login');
+        $route = in_array($to, $allowed) ? $to : 'login';
 
         return redirect()->route($route)->with('status', 'Logged out successfully.');
     }

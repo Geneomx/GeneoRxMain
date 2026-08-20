@@ -3,6 +3,8 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminMedicationController;
+use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmailOtpController;
 use App\Http\Controllers\GuestController;
@@ -39,9 +41,9 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/treatments', [HomeController::class, 'treatment'])->name('treatments');
 
 // Portal analytics + feedback (guest-friendly: works with or without a session)
-Route::post('/api/track', [\App\Http\Controllers\Api\AnalyticsController::class, 'track'])
+Route::post('/api/track', [AnalyticsController::class, 'track'])
     ->middleware('throttle:60,1')->name('api.track');
-Route::post('/api/feedback', [\App\Http\Controllers\Api\FeedbackController::class, 'store'])
+Route::post('/api/feedback', [FeedbackController::class, 'store'])
     ->middleware('throttle:10,1')->name('api.feedback');
 
 // Legal pages

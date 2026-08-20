@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Notifications\ResetPasswordNotification;
+use App\Services\EmailOtpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 class TokenAuthController extends Controller
 {
-    public function register(Request $request)
+    public function register(Request $request, EmailOtpService $otps)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -29,7 +30,6 @@ class TokenAuthController extends Controller
             'email' => $validated['email'],
             'password' => $validated['password'],
         ]);
-        $user->forceFill(['email_verified_at' => now()])->save();
 
         if (! empty($validated['phone'])) {
             UserProfile::firstOrCreate(
@@ -37,6 +37,8 @@ class TokenAuthController extends Controller
                 ['phone' => $validated['phone']]
             );
         }
+
+        $otps->send($user, true);
 
         $token = $user->createToken('mobile')->plainTextToken;
 
@@ -46,8 +48,8 @@ class TokenAuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'emailVerified' => true,
-                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+                'emailVerified' => false,
+                'email_verified_at' => null,
             ],
         ], 201);
     }
