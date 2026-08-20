@@ -53,6 +53,10 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('APP_URL').'/auth/google/callback',
+        // Mobile client IDs — used server-side to verify the audience of
+        // access tokens sent by the app to /api/auth/social/google.
+        'android_client_id' => env('GOOGLE_ANDROID_CLIENT_ID'),
+        'ios_client_id' => env('GOOGLE_IOS_CLIENT_ID'),
     ],
 
     /*
@@ -71,6 +75,14 @@ return [
         'client_id' => env('APPLE_CLIENT_ID'),
         'client_secret' => env('APPLE_CLIENT_SECRET'),
         'redirect' => env('APP_URL').'/auth/apple/callback',
+        // iOS app bundle ID — audience check for identity tokens from the app.
+        // Read via config so it survives `php artisan config:cache`.
+        'bundle_id' => env('APPLE_BUNDLE_ID', 'com.geneorx.app'),
+        // Used by `php artisan geneorx:generate-apple-secret` to mint the
+        // client-secret JWT from your Apple Developer key (.p8 file).
+        'team_id' => env('APPLE_TEAM_ID'),
+        'key_id' => env('APPLE_KEY_ID'),
+        'private_key_path' => env('APPLE_PRIVATE_KEY_PATH'),
     ],
 
     'gemini' => [

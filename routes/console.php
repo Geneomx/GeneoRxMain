@@ -49,6 +49,64 @@ Artisan::command('geneorx:prune-push-tokens', function () {
     $this->info("Pruned {$count} expired push token(s) (disabled before {$cutoff->toDateString()}).");
 })->purpose('Remove push tokens disabled more than 30 days ago');
 
+// ── Apple client-secret generation ─────────────────────────────────────────
+// Sign in with Apple (web) requires a client secret that is itself a signed
+// JWT, minted from your Apple Developer key. Referenced by docs/apple-setup.md
+// and .env.example. Apple allows a max validity of 6 months — re-run this
+// command and update APPLE_CLIENT_SECRET in .env before it expires.
+Artisan::command('geneorx:generate-apple-secret', function () {
+    $teamId = config('services.apple.team_id');
+    $keyId = config('services.apple.key_id');
+    $clientId = config('services.apple.client_id');
+    $keyPath = config('services.apple.private_key_path');
+
+    foreach ([
+        'APPLE_TEAM_ID' => $teamId,
+        'APPLE_KEY_ID' => $keyId,
+        'APPLE_CLIENT_ID' => $clientId,
+        'APPLE_PRIVATE_KEY_PATH' => $keyPath,
+    ] as $envName => $value) {
+        if (! $value) {
+            $this->error("Missing {$envName} in .env — set it first (see docs/apple-setup.md).");
+
+            return 1;
+        }
+    }
+
+    if (! is_file($keyPath)) {
+        $this->error("Private key file not found at: {$keyPath}");
+        $this->line('Download the .p8 key from Apple Developer → Certificates, Identifiers & Profiles → Keys.');
+
+        return 1;
+    }
+
+    $now = time();
+    $claims = [
+        'iss' => $teamId,
+        'iat' => $now,
+        'exp' => $now + 15552000, // 180 days (Apple max is 6 months)
+        'aud' => 'https://appleid.apple.com',
+        'sub' => $clientId,
+    ];
+
+    $secret = \Firebase\JWT\JWT::encode(
+        $claims,
+        file_get_contents($keyPath),
+        'ES256',
+        $keyId,
+    );
+
+    $this->info('Apple client secret generated (valid 180 days):');
+    $this->newLine();
+    $this->line($secret);
+    $this->newLine();
+    $this->line('Set this as APPLE_CLIENT_SECRET in your production .env, then run:');
+    $this->line('  php artisan config:cache');
+    $this->warn('Expires: '.date('Y-m-d', $claims['exp']).' — regenerate before then.');
+
+    return 0;
+})->purpose('Generate the Sign in with Apple client-secret JWT for web sign-in');
+
 // ── Admin user management ───────────────────────────────────────────────────
 Artisan::command(
     'geneorx:make-admin {email} {--name=} {--password=} {--create}',

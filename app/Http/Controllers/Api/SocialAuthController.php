@@ -27,6 +27,26 @@ class SocialAuthController extends Controller
     {
         $request->validate(['access_token' => ['required', 'string']]);
 
+        // Audience check: the token must have been issued to one of OUR client
+        // IDs, not just be any valid Google token (prevents token substitution
+        // from an unrelated app).
+        $tokenInfo = Http::get('https://oauth2.googleapis.com/tokeninfo', [
+            'access_token' => (string) $request->string('access_token'),
+        ]);
+
+        $expectedAudiences = array_filter([
+            config('services.google.client_id'),
+            config('services.google.android_client_id'),
+            config('services.google.ios_client_id'),
+        ]);
+
+        if (! $tokenInfo->ok()
+            || ($expectedAudiences && ! in_array($tokenInfo->json('aud'), $expectedAudiences, true))) {
+            return response()->json([
+                'message' => 'Invalid Google token. Please try signing in again.',
+            ], 422);
+        }
+
         $response = Http::withToken($request->string('access_token'))
             ->get('https://www.googleapis.com/oauth2/v3/userinfo');
 
@@ -101,9 +121,10 @@ class SocialAuthController extends Controller
         $keySet = JWK::parseKeySet($jwks);
         $decoded = JWT::decode($identityToken, $keySet);
 
-        // The audience claim must match our iOS bundle ID
+        // The audience claim must match our iOS bundle ID.
+        // config() (not env()) so it works under `php artisan config:cache`.
         $expectedAudiences = array_filter([
-            env('APPLE_BUNDLE_ID', 'com.geneorx.app'),      // iOS native
+            config('services.apple.bundle_id'),              // iOS native
             config('services.apple.client_id'),              // web Services ID (belt+suspenders)
         ]);
 

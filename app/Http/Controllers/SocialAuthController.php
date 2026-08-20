@@ -33,7 +33,11 @@ class SocialAuthController extends Controller
 
     public function redirectToApple(): RedirectResponse
     {
+        // stateless(): Apple returns via a cross-site form POST, which the
+        // SameSite=lax session cookie does not accompany — session-based state
+        // validation would always fail with InvalidStateException.
         return Socialite::driver('apple')
+            ->stateless()
             ->scopes(['name', 'email'])
             ->redirect();
     }
@@ -41,7 +45,7 @@ class SocialAuthController extends Controller
     public function handleAppleCallback(): RedirectResponse
     {
         try {
-            $socialUser = Socialite::driver('apple')->user();
+            $socialUser = Socialite::driver('apple')->stateless()->user();
         } catch (\Throwable $e) {
             return redirect()->route('login')
                 ->withErrors(['email' => 'Apple sign-in was cancelled or failed. Please try again.']);
