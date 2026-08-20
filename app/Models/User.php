@@ -23,10 +23,20 @@ class User extends Authenticatable
         'name',
         'email',
         'is_admin',
+        'role',
         'password',
         'social_provider',
         'social_provider_id',
     ];
+
+    /** Admin role tiers, in descending order of power. */
+    public const ROLE_OWNER = 'owner';
+
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_SUPPORT = 'support';
+
+    public const ROLES = [self::ROLE_OWNER, self::ROLE_ADMIN, self::ROLE_SUPPORT];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -70,5 +80,33 @@ class User extends Authenticatable
     public function checkIns()
     {
         return $this->hasMany(CheckIn::class);
+    }
+
+    // ── Admin role helpers ─────────────────────────────────────────────────
+    // `role` is only meaningful when is_admin is true. Admins created before
+    // roles existed were backfilled as owner by the role migration; any
+    // admin with a null role is treated as full admin (not owner) so new
+    // grants default to the safer tier.
+
+    public function adminRole(): string
+    {
+        return $this->role ?: self::ROLE_ADMIN;
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->is_admin && $this->adminRole() === self::ROLE_OWNER;
+    }
+
+    /** Support tier is read-mostly: may view, may not modify accounts. */
+    public function canWriteAdmin(): bool
+    {
+        return $this->is_admin && $this->adminRole() !== self::ROLE_SUPPORT;
+    }
+
+    /** Destructive account actions: delete users, manage admins, set passwords. */
+    public function canManageAccounts(): bool
+    {
+        return $this->isOwner();
     }
 }

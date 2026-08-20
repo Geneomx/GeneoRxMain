@@ -68,8 +68,8 @@
                 @foreach(array_slice($claims, 0, 3) as $cl)
                   @php
                     $q = $cl['source_quality'] ?? 'Moderate';
-                    $qBg = $q === 'High' ? '#F0FDF4' : ($q === 'Low' ? 'var(--bg-muted)' : '#FFFBEB');
-                    $qColor = $q === 'High' ? '#166534' : ($q === 'Low' ? 'var(--text-muted)' : '#92400E');
+                    $qBg = $q === 'High' ? 'var(--success-bg)' : ($q === 'Low' ? 'var(--bg-muted)' : 'var(--warn-bg)');
+                    $qColor = $q === 'High' ? 'var(--success)' : ($q === 'Low' ? 'var(--text-muted)' : 'var(--warn)');
                     $citeN = count($cl['citations'] ?? []);
                   @endphp
                   <span style="display:inline-flex;align-items:center;gap:4px;background:{{ $qBg }};color:{{ $qColor }};border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:600;margin:2px 2px 2px 0;">

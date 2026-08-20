@@ -22,7 +22,7 @@
     @endif
 
     @if($user->is_admin)
-      <span class="pill pill-admin" style="padding:6px 12px;font-size:13px;">Admin</span>
+      <span class="pill pill-admin" style="padding:6px 12px;font-size:13px;">{{ ucfirst($user->adminRole()) }}</span>
     @endif
   </div>
 </div>
@@ -43,9 +43,9 @@
         <div class="info-label">Email Verified</div>
         <div class="info-value">
           @if($user->email_verified_at)
-            <span style="color:#166534;">✓ {{ $user->email_verified_at->format('M j, Y') }}</span>
+            <span style="color:var(--success);">✓ {{ $user->email_verified_at->format('M j, Y') }}</span>
           @else
-            <span style="color:#92400E;">Not verified</span>
+            <span style="color:var(--warn);">Not verified</span>
           @endif
         </div>
       </div>
@@ -102,7 +102,7 @@
         </form>
       @endif
 
-      @if($user->id !== auth()->id())
+      @if($user->id !== auth()->id() && auth()->user()->canManageAccounts())
         <form method="POST" action="{{ route('admin.delete-user', $user) }}"
               onsubmit="return confirm('Permanently delete {{ addslashes($user->name) }} and ALL their data?\nThis cannot be undone.')">
           @csrf @method('DELETE')
@@ -111,6 +111,23 @@
       @endif
 
     </div>
+
+    {{-- Admin role tier — owners only --}}
+    @if($user->is_admin && $user->id !== auth()->id() && auth()->user()->canManageAccounts())
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">Admin role</div>
+        <form method="POST" action="{{ route('admin.set-role', $user) }}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          @csrf
+          <select name="role" style="min-width:170px;">
+            <option value="owner"   @selected($user->adminRole() === 'owner')>Owner   full control</option>
+            <option value="admin"   @selected($user->adminRole() === 'admin')>Admin   day-to-day</option>
+            <option value="support" @selected($user->adminRole() === 'support')>Support   read-only</option>
+          </select>
+          <button type="submit" class="btn btn-ghost btn-sm">Update role</button>
+          <span style="font-size:12px;color:var(--text-dim);">Owners can delete users, manage admins and set passwords.</span>
+        </form>
+      </div>
+    @endif
   </div>
 </div>
 <style>.ud-hidden { display:none !important; }</style>
@@ -128,7 +145,7 @@
           <label class="field-label">New password</label>
           <input type="password" name="new_password" placeholder="Min 8 characters" required style="width:100%;">
           @error('new_password')
-            <div class="field-hint" style="color:#B91C1C;">{{ $message }}</div>
+            <div class="field-hint" style="color:var(--danger);">{{ $message }}</div>
           @enderror
         </div>
         <div class="field-group" style="margin-bottom:0;">

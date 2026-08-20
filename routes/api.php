@@ -31,6 +31,12 @@ Route::get('/medications/catalog', function () {
 
 Route::post('/mobile/ai-summary', AiSummaryController::class)->middleware('throttle:10,1');
 
+// ── Product analytics + feedback (guest-friendly; bearer token attaches user) ─
+Route::post('/analytics/track', [\App\Http\Controllers\Api\AnalyticsController::class, 'track'])
+    ->middleware('throttle:60,1');
+Route::post('/feedback', [\App\Http\Controllers\Api\FeedbackController::class, 'store'])
+    ->middleware('throttle:10,1');
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [TokenAuthController::class, 'logout']);
     Route::get('/mobile/profile', [HomeController::class, 'getProfile']);

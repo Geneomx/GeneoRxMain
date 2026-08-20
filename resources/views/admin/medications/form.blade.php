@@ -67,8 +67,8 @@
     cursor: pointer; font-family: var(--sans);
     transition: all 0.12s;
   }
-  .quality-btn.active-high { background: #F0FDF4; color: #166534; border-color: #BBF7D0; }
-  .quality-btn.active-moderate { background: #FFFBEB; color: #92400E; border-color: #FDE68A; }
+  .quality-btn.active-high { background: var(--success-bg); color: var(--success); border-color: var(--success-bd); }
+  .quality-btn.active-moderate { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-bd); }
   .quality-btn.active-low { background: var(--bg-muted); color: var(--text-muted); border-color: var(--border); }
 
   .list-rows { display: flex; flex-direction: column; gap: 8px; }

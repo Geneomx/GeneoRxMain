@@ -38,6 +38,12 @@ Route::post('/reset-password', [PasswordController::class, 'resetPassword'])->na
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/treatments', [HomeController::class, 'treatment'])->name('treatments');
 
+// Portal analytics + feedback (guest-friendly: works with or without a session)
+Route::post('/api/track', [\App\Http\Controllers\Api\AnalyticsController::class, 'track'])
+    ->middleware('throttle:60,1')->name('api.track');
+Route::post('/api/feedback', [\App\Http\Controllers\Api\FeedbackController::class, 'store'])
+    ->middleware('throttle:10,1')->name('api.feedback');
+
 // Legal pages
 Route::get('/legal/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
 Route::get('/legal/terms', [LegalController::class, 'terms'])->name('legal.terms');
@@ -61,6 +67,20 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');
+    Route::get('/analytics/export', [AdminController::class, 'exportAnalytics'])->name('analytics.export');
+
+    // ── Feedback inbox ────────────────────────────────────────────────────────
+    Route::get('/feedback', [AdminController::class, 'feedback'])->name('feedback');
+    Route::post('/feedback/{feedback}/status', [AdminController::class, 'updateFeedbackStatus'])->name('feedback.status');
+
+    // ── Subscriptions ─────────────────────────────────────────────────────────
+    Route::get('/subscriptions', [AdminController::class, 'subscriptions'])->name('subscriptions');
+
+    // ── Audit log ─────────────────────────────────────────────────────────────
+    Route::get('/audit', [AdminController::class, 'audit'])->name('audit');
+
+    // ── Roles ─────────────────────────────────────────────────────────────────
+    Route::post('/users/{user}/role', [AdminController::class, 'setRole'])->name('set-role');
     Route::get('/users', [AdminController::class, 'users'])->name('users');
     Route::get('/users/export', [AdminController::class, 'exportUsers'])->name('users.export');
     Route::get('/users/create', [AdminController::class, 'createUser'])->name('users.create');

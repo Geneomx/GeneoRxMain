@@ -35,7 +35,7 @@
 
 {{-- Expiring soon banner --}}
 @if($expiringOverrides->isNotEmpty())
-<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13.5px;color:#92400E;">
+<div style="background:var(--warn-bg);border:1px solid var(--warn-bd);border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13.5px;color:var(--warn);">
   <strong>⚠ Overrides expiring soon:</strong>
   @foreach($expiringOverrides as $sub)
     <span style="margin-left:10px;">{{ $sub->user?->name ?? '—' }} ({{ $sub->admin_override_ends_at->format('M j') }})</span>@if(!$loop->last),@endif
@@ -89,9 +89,9 @@
             <td style="font-size:13px;">
               @if($sub->admin_override_ends_at)
                 @if($sub->admin_override_ends_at->isPast())
-                  <span style="color:#B91C1C;">Expired {{ $sub->admin_override_ends_at->format('M j, Y') }}</span>
+                  <span style="color:var(--danger);">Expired {{ $sub->admin_override_ends_at->format('M j, Y') }}</span>
                 @elseif($sub->admin_override_ends_at->lte(now()->addDays(30)))
-                  <span style="color:#92400E;">{{ $sub->admin_override_ends_at->format('M j, Y') }}</span>
+                  <span style="color:var(--warn);">{{ $sub->admin_override_ends_at->format('M j, Y') }}</span>
                 @else
                   <span style="color:var(--teal);">{{ $sub->admin_override_ends_at->format('M j, Y') }}</span>
                 @endif

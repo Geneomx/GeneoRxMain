@@ -9,27 +9,41 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    /* GeneoRx v2 admin — dark clinical theme, matching the app and website.
+       Token names are kept (--teal*) so every existing view keeps working;
+       only the values change from the old light/teal palette to navy/cyan. */
     :root {
-      --teal:        #0E7C66;
-      --teal-dark:   #075F4F;
-      --teal-50:     #ECF6F3;
-      --teal-100:    #D7EDE7;
+      --teal:        #28E1FF;   /* primary accent (cyan) */
+      --teal-dark:   #5EEBFF;   /* lighter on dark bg, for text on tinted chips */
+      --teal-50:     rgba(40, 225, 255, 0.10);
+      --teal-100:    rgba(40, 225, 255, 0.22);
 
-      --bg:          #FFFFFF;
-      --bg-soft:     #F7FAF9;
-      --bg-muted:    #F1F5F4;
-      --sidebar:     #FFFFFF;
+      --bg:          #0F1736;   /* cards, top bar, inputs */
+      --bg-soft:     #070A12;   /* page background */
+      --bg-muted:    rgba(15, 23, 54, 0.55);
+      --sidebar:     #0B1022;
 
-      --text:        #0F1F1B;
-      --text-soft:   #3C4F4A;
-      --text-muted:  #6B7B77;
-      --text-dim:    #9CA8A4;
+      --text:        #EAF0FF;
+      --text-soft:   #A9B4D6;
+      --text-muted:  #7E8AB8;
+      --text-dim:    #5A6490;
 
-      --border:      #DDE6E3;
-      --border-soft: #E8EDEC;
+      --border:      rgba(255, 255, 255, 0.12);
+      --border-soft: rgba(255, 255, 255, 0.08);
 
-      --shadow-sm: 0 1px 2px rgba(15, 31, 27, 0.04);
-      --shadow:    0 4px 16px rgba(15, 31, 27, 0.06);
+      /* Semantic status colors — dark-friendly alpha tints */
+      --success:     #34D399;
+      --success-bg:  rgba(52, 211, 153, 0.12);
+      --success-bd:  rgba(52, 211, 153, 0.32);
+      --warn:        #FBBF24;
+      --warn-bg:     rgba(251, 191, 36, 0.12);
+      --warn-bd:     rgba(251, 191, 36, 0.32);
+      --danger:      #FB7185;
+      --danger-bg:   rgba(251, 113, 133, 0.12);
+      --danger-bd:   rgba(251, 113, 133, 0.34);
+
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+      --shadow:    0 4px 16px rgba(0, 0, 0, 0.35);
 
       --r:    10px;
       --r-lg: 14px;
@@ -161,14 +175,14 @@
       display: flex; align-items: center; gap: 10px;
     }
     .flash.success {
-      border: 1px solid #BBF7D0;
-      background: #F0FDF4;
-      color: #166534;
+      border: 1px solid var(--success-bd);
+      background: var(--success-bg);
+      color: var(--success);
     }
     .flash.error {
-      border: 1px solid #FECACA;
-      background: #FEF2F2;
-      color: #B91C1C;
+      border: 1px solid var(--danger-bd);
+      background: var(--danger-bg);
+      color: var(--danger);
     }
 
     /* ========== STAT CARDS ========== */
@@ -258,9 +272,9 @@
     }
     .pill-plus     { background: var(--teal-50); color: var(--teal-dark); }
     .pill-free     { background: var(--bg-muted); color: var(--text-muted); }
-    .pill-verified { background: #F0FDF4; color: #166534; }
-    .pill-unverified { background: #FFFBEB; color: #92400E; }
-    .pill-admin    { background: #FEF3C7; color: #92400E; }
+    .pill-verified { background: var(--success-bg); color: var(--success); }
+    .pill-unverified { background: var(--warn-bg); color: var(--warn); }
+    .pill-admin    { background: var(--warn-bg); color: var(--warn); }
 
     /* ========== BUTTONS ========== */
     .btn {
@@ -274,7 +288,7 @@
       text-decoration: none; white-space: nowrap;
     }
     .btn-primary {
-      background: var(--teal); color: #fff;
+      background: var(--teal); color: #061018;
     }
     .btn-primary:hover { background: var(--teal-dark); }
     .btn-ghost {
@@ -283,9 +297,9 @@
     }
     .btn-ghost:hover { background: var(--bg-muted); border-color: var(--text-muted); }
     .btn-danger {
-      background: #FEF2F2; color: #B91C1C; border-color: #FECACA;
+      background: var(--danger-bg); color: var(--danger); border-color: var(--danger-bd);
     }
-    .btn-danger:hover { background: #FEE2E2; }
+    .btn-danger:hover { background: rgba(251, 113, 133, 0.2); }
     .btn-sm { padding: 5px 11px; font-size: 12px; border-radius: 6px; }
 
     /* ========== FORM ========== */
@@ -386,7 +400,7 @@
     }
     .pagination a:hover { background: var(--bg-muted); color: var(--text); }
     .pagination .active {
-      background: var(--teal); border-color: var(--teal); color: #fff;
+      background: var(--teal); border-color: var(--teal); color: #061018;
     }
     .pagination .disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -459,11 +473,35 @@
         </span>
         Medications
       </a>
+      <a href="{{ route('admin.subscriptions') }}" class="sidebar-link {{ request()->routeIs('admin.subscriptions') ? 'active' : '' }}">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        </span>
+        Subscriptions
+      </a>
+
+      <div class="sidebar-label">Insight</div>
       <a href="{{ route('admin.analytics') }}" class="sidebar-link {{ request()->routeIs('admin.analytics') ? 'active' : '' }}">
         <span class="icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 19l5-5 4 4 8-9"/><path d="M14 9h6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         Analytics
+      </a>
+      @php $newFeedback = \App\Models\Feedback::where('status', 'new')->count(); @endphp
+      <a href="{{ route('admin.feedback') }}" class="sidebar-link {{ request()->routeIs('admin.feedback') ? 'active' : '' }}">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        Feedback
+        @if ($newFeedback > 0)
+          <span style="margin-left:auto;background:var(--teal);color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;">{{ $newFeedback }}</span>
+        @endif
+      </a>
+      <a href="{{ route('admin.audit') }}" class="sidebar-link {{ request()->routeIs('admin.audit') ? 'active' : '' }}">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h3"/></svg>
+        </span>
+        Audit log
       </a>
 
       <div class="sidebar-divider"></div>

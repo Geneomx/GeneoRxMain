@@ -22,35 +22,35 @@
 
       {{-- Name --}}
       <div class="field-group">
-        <label class="field-label">Full name <span style="color:#B91C1C;">*</span></label>
+        <label class="field-label">Full name <span style="color:var(--danger);">*</span></label>
         <input type="text" name="name" value="{{ old('name') }}" required
                placeholder="Jane Smith" style="width:100%;">
         @error('name')
-          <div class="field-hint" style="color:#B91C1C;">{{ $message }}</div>
+          <div class="field-hint" style="color:var(--danger);">{{ $message }}</div>
         @enderror
       </div>
 
       {{-- Email --}}
       <div class="field-group">
-        <label class="field-label">Email address <span style="color:#B91C1C;">*</span></label>
+        <label class="field-label">Email address <span style="color:var(--danger);">*</span></label>
         <input type="email" name="email" value="{{ old('email') }}" required
                placeholder="jane@example.com" style="width:100%;">
         @error('email')
-          <div class="field-hint" style="color:#B91C1C;">{{ $message }}</div>
+          <div class="field-hint" style="color:var(--danger);">{{ $message }}</div>
         @enderror
       </div>
 
       {{-- Password --}}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="field-group">
         <div>
-          <label class="field-label">Password <span style="color:#B91C1C;">*</span></label>
+          <label class="field-label">Password <span style="color:var(--danger);">*</span></label>
           <input type="password" name="password" required placeholder="Min 8 characters" style="width:100%;">
           @error('password')
-            <div class="field-hint" style="color:#B91C1C;">{{ $message }}</div>
+            <div class="field-hint" style="color:var(--danger);">{{ $message }}</div>
           @enderror
         </div>
         <div>
-          <label class="field-label">Confirm password <span style="color:#B91C1C;">*</span></label>
+          <label class="field-label">Confirm password <span style="color:var(--danger);">*</span></label>
           <input type="password" name="password_confirmation" required placeholder="Repeat password" style="width:100%;">
         </div>
       </div>

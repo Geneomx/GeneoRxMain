@@ -334,6 +334,24 @@ function load(){
     return defaultState();
   } catch(e){ return defaultState(); }
 }
+/**
+ * Fire-and-forget product analytics. Never blocks or breaks the UI: a failed
+ * beacon is silently ignored. Server-side allow-list decides what is stored.
+ */
+function track(name, properties){
+  try {
+    fetch("/api/track", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content || ""
+      },
+      body: JSON.stringify({ name, properties: properties || {} }),
+      keepalive: true
+    }).catch(()=>{});
+  } catch(e){ /* analytics must never surface an error to the user */ }
+}
+
 function scheduleBackendSave(){
   if (IS_GUEST) return;
   clearTimeout(backendSaveTimer);
@@ -1072,6 +1090,7 @@ function computePopulationInsights(){
 
 function downloadDoctorReport(checkinIndex){
   if (!state.checkins.length) return;
+  track("report_downloaded", { checkins: state.checkins.length });
   if (typeof checkinIndex !== "number" || checkinIndex < 0 || checkinIndex >= state.checkins.length) {
     checkinIndex = state.checkins.length - 1;
   }
@@ -1699,8 +1718,14 @@ function profileNeedsCompletion(){
 }
 
 function setStep(n){
+  const prev = state.step;
   state.step = normalizeStep(clamp(n, 0, STEP_COUNT - 1));
   save();
+  if (state.step !== prev) {
+    track("wizard_step_viewed", { step: state.step, label: stepLabel(state.step) });
+    if (state.step === 4) track("results_viewed", {});
+    if (state.step === 8) track("wizard_completed", {});
+  }
 }
 
 function renderSteps(){
@@ -2189,6 +2214,7 @@ function renderMeds(){
     if(!medId) return false;
     if(state.meds.some(x => x.medId === medId)) return true;
     state.meds.push({medId, dose, durationMonths});
+    track("medication_added", { medId, dose, durationMonths, total: state.meds.length });
     return true;
   }
 
@@ -2682,6 +2708,7 @@ function renderResults(){
     const scoresNow = computeNutrientScores();
     const recNow = recommendSupplements(scoresNow);
     state.plan.started = true;
+    track("plan_started", { supplements: (state.plan.recommendedSupplements || []).length });
     state.plan.startDate = new Date((sd.value || today) + "T00:00:00").toISOString();
     state.plan.recommendedSupplements = recNow.map(x => x.supplement);
     state.plan.routine = buildRoutineFromSupplements(state.plan.recommendedSupplements);
@@ -2856,6 +2883,7 @@ function renderCheckin(){
     const improvementScore = items.reduce((acc,x)=>acc + (x.changeScore||0), 0);
 
     state.checkins.push({ dateISO, adherencePct, supplementsTaken:[...taken], wellbeing, symptoms:{items, improvementScore}, sideEffects, notes });
+    track("checkin_saved", { index: state.checkins.length, adherencePct, symptoms: items.length });
     state.checkins = dedupeCheckins(state.checkins);
     save();
     toastT(IS_GUEST ? "toast.checkin_guest" : "toast.checkin_saved");
@@ -3155,11 +3183,21 @@ function mountFeedbackForm(parent){
     closeFeedbackModal();
     toastT("toast.saved");
 
-    const subj = encodeURIComponent(`GeneoRx Portal Feedback (${type})`);
-    const body = encodeURIComponent(
-      `Type: ${type}\nFrom: ${email}\nCan we contact you?: ${canContact ? "Yes" : "No"}\n\nMessage:\n${message}\n`
-    );
-    window.location.href = `mailto:info@geneorx.com?subject=${subj}&body=${body}`;
+    // Send to the team's feedback inbox (visible in admin).
+    fetch("/api/feedback", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content || ""
+      },
+      body: JSON.stringify({
+        type,
+        message,
+        can_contact: canContact,
+        contact_email: email !== "anonymous" ? email : null,
+        source: "web"
+      })
+    }).catch(() => { /* non-blocking: local copy already saved */ });
   });
 }
 

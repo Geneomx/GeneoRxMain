@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminAuditLog;
 use App\Models\Medication;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,12 @@ use Illuminate\View\View;
 
 class AdminMedicationController extends Controller
 {
+    /** Support tier is read-only; admin and owner may edit the catalog. */
+    private function requireWrite(): void
+    {
+        abort_unless(auth()->user()->canWriteAdmin(), 403, 'Support role is read-only.');
+    }
+
     // ── List ──────────────────────────────────────────────────────────────────
     public function index(Request $request): View
     {
@@ -40,9 +47,13 @@ class AdminMedicationController extends Controller
     // ── Store ─────────────────────────────────────────────────────────────────
     public function store(Request $request): RedirectResponse
     {
+        $this->requireWrite();
+
         $data = $this->validate($request);
 
-        Medication::create($data);
+        $medication = Medication::create($data);
+
+        AdminAuditLog::record('medication.create', $medication, [], $medication->name);
 
         return redirect()->route('admin.medications')
             ->with('success', "Medication \"{$data['name']}\" created.");
@@ -57,9 +68,13 @@ class AdminMedicationController extends Controller
     // ── Update ────────────────────────────────────────────────────────────────
     public function update(Request $request, Medication $medication): RedirectResponse
     {
+        $this->requireWrite();
+
         $data = $this->validate($request, $medication->id);
 
         $medication->update($data);
+
+        AdminAuditLog::record('medication.update', $medication, [], $medication->name);
 
         return redirect()->route('admin.medications')
             ->with('success', "Medication \"{$medication->name}\" updated.");
@@ -68,8 +83,12 @@ class AdminMedicationController extends Controller
     // ── Toggle active ─────────────────────────────────────────────────────────
     public function toggle(Medication $medication): RedirectResponse
     {
+        $this->requireWrite();
+
         $medication->update(['is_active' => ! $medication->is_active]);
         $state = $medication->is_active ? 'activated' : 'deactivated';
+
+        AdminAuditLog::record('medication.toggle', $medication, ['state' => $state], $medication->name);
 
         return back()->with('success', "\"{$medication->name}\" {$state}.");
     }
@@ -77,7 +96,12 @@ class AdminMedicationController extends Controller
     // ── Destroy ───────────────────────────────────────────────────────────────
     public function destroy(Medication $medication): RedirectResponse
     {
+        $this->requireWrite();
+
         $name = $medication->name;
+
+        AdminAuditLog::record('medication.delete', $medication, ['slug' => $medication->slug], $name);
+
         $medication->delete();
 
         return redirect()->route('admin.medications')

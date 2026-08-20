@@ -32,11 +32,12 @@
     display: flex; align-items: flex-end; gap: 4px;
     height: 100px; overflow-x: auto;
   }
-  .chart-bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 22px; }
+  .chart-bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; min-width: 22px; height: 100%; }
   .chart-bar {
     width: 100%; background: var(--teal-100); border-radius: 4px 4px 0 0;
     transition: background 0.2s;
     position: relative;
+    flex: none;
   }
   .chart-bar:hover { background: var(--teal); }
   .chart-bar-label { font-size: 9px; color: var(--text-dim); transform: rotate(-45deg); white-space: nowrap; }
@@ -75,9 +76,37 @@
 <div class="page-head">
   <div>
     <h1>Analytics</h1>
-    <p class="sub">Event tracking   last 30 days</p>
+    <p class="sub">
+      {{ $from->format('M j, Y') }} &ndash; {{ $to->format('M j, Y') }}@if($event) &middot; {{ $event }} @endif
+    </p>
   </div>
+  <a href="{{ route('admin.analytics.export', request()->query()) }}" class="btn btn-ghost btn-sm">Export CSV</a>
 </div>
+
+{{-- ── Filters ─────────────────────────────────────────────────────── --}}
+<form method="GET" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:22px;">
+  <div>
+    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:5px;">From</label>
+    <input type="date" name="from" value="{{ $from->toDateString() }}">
+  </div>
+  <div>
+    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:5px;">To</label>
+    <input type="date" name="to" value="{{ $to->toDateString() }}">
+  </div>
+  <div>
+    <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:5px;">Event</label>
+    <select name="event" style="min-width:190px;">
+      <option value="">All events</option>
+      @foreach ($eventNames as $name)
+        <option value="{{ $name }}" @selected($event === $name)>{{ $name }}</option>
+      @endforeach
+    </select>
+  </div>
+  <button type="submit" class="btn btn-primary">Apply</button>
+  @if (request()->hasAny(['from', 'to', 'event']))
+    <a href="{{ route('admin.analytics') }}" class="btn btn-ghost">Reset</a>
+  @endif
+</form>
 
 {{-- ── Stat strip ──────────────────────────────────────────────────── --}}
 <div class="an-stats">
@@ -94,11 +123,11 @@
   <div class="an-stat">
     <div class="an-stat-label">Unique users</div>
     <div class="an-stat-value">{{ number_format($uniqueUsers30d) }}</div>
-    <div class="an-stat-sub">Last 30 days</div>
+    <div class="an-stat-sub">In selected range</div>
   </div>
   <div class="an-stat">
     <div class="an-stat-label">Event types</div>
-    <div class="an-stat-value">{{ $topEvents->count() }}</div>
+    <div class="an-stat-value">{{ number_format($eventTypeCount) }}</div>
     <div class="an-stat-sub">Distinct names</div>
   </div>
 </div>
@@ -121,9 +150,13 @@
       @else
         <div class="chart-bars">
           @foreach ($dailyCounts as $day)
-            @php $pct = round(($day->count / $maxCount) * 100); @endphp
+            @php
+              // Pixel height, not %: a percentage would resolve against an
+              // auto-height parent and collapse the bar to nothing.
+              $barPx = max((int) round(($day->count / $maxCount) * 76), 3);
+            @endphp
             <div class="chart-bar-col" title="{{ $day->date }}: {{ $day->count }} events">
-              <div class="chart-bar" style="height: {{ max($pct, 4) }}%;"></div>
+              <div class="chart-bar" style="height: {{ $barPx }}px;"></div>
               <div class="chart-bar-label">{{ \Illuminate\Support\Carbon::parse($day->date)->format('M d') }}</div>
             </div>
           @endforeach
