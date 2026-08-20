@@ -6,6 +6,7 @@ use App\Models\AdminAuditLog;
 use App\Models\Medication;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -20,7 +21,7 @@ class AdminMedicationController extends Controller
     // ── List ──────────────────────────────────────────────────────────────────
     public function index(Request $request): View
     {
-        $query = Medication::query();
+        $query = Medication::catalog();
 
         if ($search = $request->input('q')) {
             $query->where('name', 'like', "%{$search}%")
@@ -35,7 +36,33 @@ class AdminMedicationController extends Controller
 
         $medications = $query->orderBy('sort_order')->orderBy('name')->paginate(25)->withQueryString();
 
-        return view('admin.medications.index', compact('medications'));
+        $topTracked = $this->mostTrackedMedications();
+
+        return view('admin.medications.index', compact('medications', 'topTracked'));
+    }
+
+    /**
+     * How many patients currently have each medication in their active tracked list
+     * (medications table rows with a user_id — distinct from the catalog above).
+     * Resolves catalog slugs to display names; custom (patient-added) medications
+     * show their raw entry since there's no shared catalog name for them.
+     */
+    private function mostTrackedMedications()
+    {
+        $counts = Medication::whereNotNull('user_id')
+            ->select('medication_name', DB::raw('COUNT(*) as uses'))
+            ->groupBy('medication_name')
+            ->orderByDesc('uses')
+            ->get();
+
+        $catalogNames = Medication::catalog()->pluck('name', 'slug');
+
+        return $counts->map(fn ($row) => [
+            'medId' => $row->medication_name,
+            'name' => $catalogNames->get($row->medication_name, $row->medication_name),
+            'isCustom' => ! $catalogNames->has($row->medication_name),
+            'uses' => $row->uses,
+        ]);
     }
 
     // ── Create form ───────────────────────────────────────────────────────────

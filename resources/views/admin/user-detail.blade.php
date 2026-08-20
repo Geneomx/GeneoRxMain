@@ -187,6 +187,42 @@
   </div>
 </div>
 
+<!-- TRACKED MEDICATIONS -->
+<div class="admin-card">
+  <div class="admin-card-hd">
+    <div>
+      <h2>Tracked Medications</h2>
+      <p>This patient's current active list (separate from the admin medication catalog).</p>
+    </div>
+  </div>
+  @if($trackedMedications->isNotEmpty())
+    <div class="admin-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Medication</th>
+            <th>Dosage</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($trackedMedications as $m)
+            <tr>
+              <td>{{ $m['name'] }}</td>
+              <td style="color:var(--text-muted);">{{ $m['dosage'] ?: '—' }}</td>
+              <td style="color:var(--text-muted);">{{ $m['durationMonths'] ? $m['durationMonths'] . ' mo' : '—' }}</td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+  @else
+    <div class="admin-card-bd" style="text-align:center;padding:28px;color:var(--text-muted);">
+      No medications tracked yet.
+    </div>
+  @endif
+</div>
+
 <!-- RECENT CHECK-INS -->
 @if($user->checkIns->isNotEmpty())
   <div class="admin-card">
@@ -202,13 +238,19 @@
           <tr>
             <th>Date</th>
             <th>Status</th>
-            <th>Medications</th>
+            <th>Supplements taken</th>
             <th>Symptoms</th>
             <th>Adherence</th>
           </tr>
         </thead>
         <tbody>
           @foreach($user->checkIns as $ci)
+            @php
+              // The client stores the full check-in payload in `data`; the top-level
+              // medications/symptoms columns are never written by saveProfile().
+              $ciSupplements = data_get($ci->data, 'supplementsTaken', []);
+              $ciSymptoms = array_column(data_get($ci->data, 'symptoms.items', []), 'symptom');
+            @endphp
             <tr>
               <td style="white-space:nowrap;color:var(--text-muted);">{{ $ci->created_at->format('M j, Y') }}</td>
               <td>
@@ -217,15 +259,15 @@
                 </span>
               </td>
               <td style="color:var(--text-muted);font-size:12.5px;">
-                {{ is_array($ci->medications) ? implode(', ', array_slice($ci->medications, 0, 3)) : ' ' }}
-                @if(is_array($ci->medications) && count($ci->medications) > 3)
-                  <span style="color:var(--text-muted);"> +{{ count($ci->medications) - 3 }}</span>
+                {{ implode(', ', array_slice($ciSupplements, 0, 3)) ?: '—' }}
+                @if(count($ciSupplements) > 3)
+                  <span style="color:var(--text-muted);"> +{{ count($ciSupplements) - 3 }}</span>
                 @endif
               </td>
               <td style="color:var(--text-muted);font-size:12.5px;">
-                {{ is_array($ci->symptoms) ? implode(', ', array_slice($ci->symptoms, 0, 3)) : ' ' }}
-                @if(is_array($ci->symptoms) && count($ci->symptoms) > 3)
-                  <span style="color:var(--text-muted);"> +{{ count($ci->symptoms) - 3 }}</span>
+                {{ implode(', ', array_slice($ciSymptoms, 0, 3)) ?: '—' }}
+                @if(count($ciSymptoms) > 3)
+                  <span style="color:var(--text-muted);"> +{{ count($ciSymptoms) - 3 }}</span>
                 @endif
               </td>
               <td style="color:var(--text-muted);">

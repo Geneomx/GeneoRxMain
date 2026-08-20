@@ -10,6 +10,47 @@
   <a href="{{ route('admin.medications.create') }}" class="btn btn-primary">+ Add medication with evidence</a>
 </div>
 
+{{-- MOST TRACKED BY PATIENTS --}}
+<div class="admin-card" style="margin-bottom:20px;">
+  <div class="admin-card-hd">
+    <div>
+      <h2>Most tracked by patients</h2>
+      <p>How many patients currently have each medication in their active list, across {{ $topTracked->sum('uses') }} tracked {{ Str::plural('entry', $topTracked->sum('uses')) }}.</p>
+    </div>
+  </div>
+  @if($topTracked->isNotEmpty())
+    <div class="admin-table-wrap" style="max-height:360px;overflow-y:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:32px;">#</th>
+            <th>Medication</th>
+            <th style="text-align:right;">Patients tracking it</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($topTracked as $i => $row)
+            <tr>
+              <td style="color:var(--text-muted);font-size:12px;">{{ $i + 1 }}</td>
+              <td>
+                {{ $row['name'] }}
+                @if($row['isCustom'])
+                  <span class="pill pill-free" style="margin-left:6px;font-size:10.5px;padding:2px 8px;">Patient-added</span>
+                @endif
+              </td>
+              <td style="text-align:right;font-weight:600;">{{ $row['uses'] }}</td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+    </div>
+  @else
+    <div class="admin-card-bd" style="text-align:center;padding:28px;color:var(--text-muted);">
+      No patients have tracked any medications yet.
+    </div>
+  @endif
+</div>
+
 {{-- SEARCH / FILTER --}}
 <form method="GET" action="{{ route('admin.medications') }}"
       style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:flex-end;">

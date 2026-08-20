@@ -6,6 +6,7 @@ use App\Models\AdminAuditLog;
 use App\Models\AnalyticsEvent;
 use App\Models\CheckIn;
 use App\Models\Feedback;
+use App\Models\Medication;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -77,9 +78,21 @@ class AdminController extends Controller
 
     public function userDetail(User $user)
     {
-        $user->load(['profile', 'checkIns' => fn ($q) => $q->latest()->take(10)]);
+        $user->load([
+            'profile',
+            'medications',
+            'checkIns' => fn ($q) => $q->latest()->take(10),
+        ]);
 
-        return view('admin.user-detail', compact('user'));
+        // medication_name stores a catalog slug or a "custom_..." id, not a display name.
+        $catalogNames = Medication::catalog()->pluck('name', 'slug');
+        $trackedMedications = $user->medications->map(fn ($m) => [
+            'name' => $catalogNames->get($m->medication_name, $m->medication_name),
+            'dosage' => $m->dosage,
+            'durationMonths' => $m->duration_months,
+        ]);
+
+        return view('admin.user-detail', compact('user', 'trackedMedications'));
     }
 
     public function verifyEmail(User $user)

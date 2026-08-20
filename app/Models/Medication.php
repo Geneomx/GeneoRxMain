@@ -36,6 +36,23 @@ class Medication extends Model
         return $query->where('is_active', true);
     }
 
+    /** Admin-managed catalog rows only — excludes users' personal tracked medications. */
+    public function scopeCatalog($query)
+    {
+        return $query->whereNull('user_id');
+    }
+
+    /**
+     * Route-model binding for admin catalog routes (edit/update/toggle/destroy)
+     * must never resolve a user's personal tracking row just because the ID matches.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        return $this->whereNull('user_id')
+            ->where($field ?? $this->getRouteKeyName(), $value)
+            ->firstOrFail();
+    }
+
     /**
      * Return the JS-ready MED_DB array for injection into the frontend.
      */

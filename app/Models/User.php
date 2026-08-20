@@ -82,6 +82,19 @@ class User extends Authenticatable
         return $this->hasMany(CheckIn::class);
     }
 
+    /**
+     * Get the user's tracked medications (personal list, not the admin catalog).
+     */
+    public function medications()
+    {
+        return $this->hasMany(Medication::class);
+    }
+
+    public function symptoms()
+    {
+        return $this->hasMany(Symptom::class);
+    }
+
     // ── Admin role helpers ─────────────────────────────────────────────────
     // `role` is only meaningful when is_admin is true. Admins created before
     // roles existed were backfilled as owner by the role migration; any
