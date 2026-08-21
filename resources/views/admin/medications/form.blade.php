@@ -6,6 +6,7 @@
   $isEdit = !is_null($medication);
   $action = $isEdit ? route('admin.medications.update', $medication) : route('admin.medications.store');
   $symptomText = $isEdit ? implode("\n", $medication->symptom_chips ?? []) : '';
+  $aliasText = $isEdit ? implode("\n", $medication->aliases ?? []) : '';
 
   $claimsInitial = [];
   if (old('claims_json')) {
@@ -190,6 +191,14 @@
                   style="width:100%;font-size:13.5px;">{{ old('symptom_chips', $symptomText) }}</textarea>
         <div class="field-hint">Preview:</div>
         <div class="symptom-preview" id="symptomPreview"></div>
+      </div>
+
+      <div class="field-group" style="margin-bottom:0;margin-top:18px;">
+        <label class="field-label">Also known as / brand names (one per line)</label>
+        <textarea name="aliases" id="aliasInput" rows="4"
+                  placeholder="Glucophage&#10;Fortamet&#10;Riomet"
+                  style="width:100%;font-size:13.5px;">{{ old('aliases', $aliasText) }}</textarea>
+        <div class="field-hint">Alternate names users might search for. Matched when someone looks up this medication.</div>
       </div>
     </div>
   </div>

@@ -147,16 +147,13 @@ class AdminMedicationController extends Controller
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'nullable|boolean',
             'symptom_chips' => 'nullable|string',
+            'aliases' => 'nullable|string',
             'claims_json' => 'nullable|string',
         ]);
 
-        // Parse textarea JSON fields
-        $symptomChips = [];
-        if (! empty($validated['symptom_chips'])) {
-            $symptomChips = array_filter(
-                array_map('trim', explode("\n", $validated['symptom_chips']))
-            );
-        }
+        // Parse newline-delimited textarea fields into arrays.
+        $symptomChips = $this->linesToArray($validated['symptom_chips'] ?? '');
+        $aliases = $this->linesToArray($validated['aliases'] ?? '');
 
         $claims = [];
         if (! empty($validated['claims_json'])) {
@@ -176,8 +173,18 @@ class AdminMedicationController extends Controller
             'description' => $validated['description'] ?? null,
             'sort_order' => (int) ($validated['sort_order'] ?? 0),
             'is_active' => (bool) ($validated['is_active'] ?? true),
-            'symptom_chips' => array_values($symptomChips),
+            'symptom_chips' => $symptomChips,
+            'aliases' => $aliases,
             'claims' => $claims,
         ];
+    }
+
+    /** Split a newline-delimited textarea value into a trimmed, non-empty list. */
+    private function linesToArray(string $value): array
+    {
+        return array_values(array_filter(
+            array_map('trim', explode("\n", $value)),
+            fn ($line) => $line !== '',
+        ));
     }
 }

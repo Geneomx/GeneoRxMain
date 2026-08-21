@@ -254,8 +254,14 @@
             <tr>
               <td style="white-space:nowrap;color:var(--text-muted);">{{ $ci->created_at->format('M j, Y') }}</td>
               <td>
-                <span class="pill {{ $ci->status === 'complete' ? 'pill-verified' : 'pill-free' }}">
-                  {{ ucfirst($ci->status ?? 'draft') }}
+                @php
+                  // A saved check-in is stored with status "active"; treat that
+                  // (and the legacy "complete") as a finished record so the pill
+                  // is not permanently stuck on the grey "draft" branch.
+                  $ciDone = in_array($ci->status, ['active', 'complete'], true);
+                @endphp
+                <span class="pill {{ $ciDone ? 'pill-verified' : 'pill-free' }}">
+                  {{ $ciDone ? 'Complete' : ucfirst($ci->status ?? 'draft') }}
                 </span>
               </td>
               <td style="color:var(--text-muted);font-size:12.5px;">
