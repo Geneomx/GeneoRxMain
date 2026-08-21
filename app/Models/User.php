@@ -22,6 +22,10 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        // Social sign-in, admin verification toggles and admin user creation all
+        // set this by mass assignment; without it here those writes are silently
+        // dropped and the account stays unverified forever.
+        'email_verified_at',
         'is_admin',
         'role',
         'password',

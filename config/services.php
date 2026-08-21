@@ -83,6 +83,29 @@ return [
         'team_id' => env('APPLE_TEAM_ID'),
         'key_id' => env('APPLE_KEY_ID'),
         'private_key_path' => env('APPLE_PRIVATE_KEY_PATH'),
+
+        // The Socialite Apple package reads `private_key` — NOT the
+        // `private_key_path` above, which it never sees (see its
+        // additionalConfigKeys()). When this points at a readable .p8 the
+        // package mints a fresh, short-lived client secret on every request,
+        // so APPLE_CLIENT_SECRET stops mattering and its 180-day expiry can no
+        // longer take web Apple sign-in down.
+        //
+        // The path must be ABSOLUTE: the package calls bare file_exists(), and
+        // under php-fpm the working directory is public/, not the project root.
+        // Falls back to null (i.e. the static APPLE_CLIENT_SECRET) if the key
+        // is missing, so a bad path degrades instead of breaking sign-in.
+        'private_key' => (static function (): ?string {
+            $path = env('APPLE_PRIVATE_KEY_PATH');
+
+            if (! $path) {
+                return null;
+            }
+
+            $absolute = is_file($path) ? $path : base_path($path);
+
+            return is_file($absolute) ? $absolute : null;
+        })(),
     ],
 
     'gemini' => [

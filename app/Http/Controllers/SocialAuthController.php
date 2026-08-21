@@ -22,11 +22,20 @@ class SocialAuthController extends Controller
         try {
             $socialUser = Socialite::driver('google')->user();
         } catch (\Throwable $e) {
+            // Without this the real cause (bad client secret, redirect_uri
+            // mismatch) is invisible and every failure looks like "cancelled".
+            report($e);
+
             return redirect()->route('login')
                 ->withErrors(['email' => 'Google sign-in was cancelled or failed. Please try again.']);
         }
 
-        return $this->loginOrCreate('google', $socialUser->getId(), $socialUser->getEmail(), $socialUser->getName());
+        return $this->loginOrCreate(
+            'google',
+            $socialUser->getId(),
+            $this->verifiedEmail($socialUser),
+            $socialUser->getName(),
+        );
     }
 
     // ── Apple ──────────────────────────────────────────────────────────────
@@ -47,6 +56,10 @@ class SocialAuthController extends Controller
         try {
             $socialUser = Socialite::driver('apple')->stateless()->user();
         } catch (\Throwable $e) {
+            // Apple's invalid_client (expired/malformed client secret) surfaces
+            // here; log it rather than reporting a generic "cancelled".
+            report($e);
+
             return redirect()->route('login')
                 ->withErrors(['email' => 'Apple sign-in was cancelled or failed. Please try again.']);
         }
@@ -55,7 +68,27 @@ class SocialAuthController extends Controller
             ?: ($socialUser->user['name']['firstName'] ?? null)
             ?: 'Apple User';
 
-        return $this->loginOrCreate('apple', $socialUser->getId(), $socialUser->getEmail(), $name);
+        return $this->loginOrCreate('apple', $socialUser->getId(), $this->verifiedEmail($socialUser), $name);
+    }
+
+    /**
+     * The provider-confirmed email address, or null when the provider has not
+     * verified it. Only a verified address may be used to find or link an
+     * existing account — otherwise someone could claim an address they do not
+     * control. Both Google's userinfo and Apple's identity token always carry
+     * `email_verified`; Apple sends it as the string "true".
+     */
+    private function verifiedEmail(\Laravel\Socialite\Contracts\User $socialUser): ?string
+    {
+        $raw = $socialUser->getRaw();
+
+        $verified = filter_var(
+            $raw['email_verified'] ?? null,
+            FILTER_VALIDATE_BOOL,
+            FILTER_NULL_ON_FAILURE,
+        );
+
+        return $verified === true ? $socialUser->getEmail() : null;
     }
 
     // ── Shared: find-or-create and log in ──────────────────────────────────

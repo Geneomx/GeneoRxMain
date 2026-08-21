@@ -58,8 +58,14 @@ class SocialAuthController extends Controller
 
         $profile = $response->json();
         $googleId = $profile['sub'] ?? null;
-        $email = $profile['email'] ?? null;
         $name = $profile['name'] ?? null;
+
+        // Only a provider-verified address may be used to find or link an
+        // existing account — an unverified one would let someone claim an
+        // address they do not control.
+        $email = $this->boolClaim($profile['email_verified'] ?? null)
+            ? ($profile['email'] ?? null)
+            : null;
 
         if (! $googleId) {
             return response()->json([
@@ -84,29 +90,47 @@ class SocialAuthController extends Controller
         $request->validate(['identity_token' => ['required', 'string']]);
 
         try {
-            $appleId = $this->verifyAppleToken($request->string('identity_token'));
+            $claims = $this->verifyAppleToken($request->string('identity_token'));
         } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Apple identity token could not be verified. Please try again.',
             ], 422);
         }
 
-        $email = $request->string('email') ?: null;
+        // The email MUST come from the signed token. Taking it from the request
+        // body would let anyone holding a valid Apple token of their own claim
+        // another user's account simply by naming their address.
+        $email = $this->boolClaim($claims->email_verified ?? null)
+            ? ($claims->email ?? null)
+            : null;
+
+        // The display name is not part of the token (Apple sends it once, in the
+        // authorization response) and is not security-sensitive.
         $name = $request->string('name') ?: null;
 
-        return $this->loginOrCreate('apple', $appleId, $email, $name);
+        return $this->loginOrCreate('apple', $claims->sub, $email, $name);
+    }
+
+    /** Apple and Google both send `email_verified` as either a bool or "true"/"false". */
+    private function boolClaim(mixed $value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) === true;
     }
 
     // ── Apple JWT verification ─────────────────────────────────────────────
 
     /**
-     * Verify an Apple identity token (JWT) against Apple's public JWK set.
-     * Returns the Apple `sub` (permanent unique user ID).
+     * Verify an Apple identity token (JWT) against Apple's public JWK set and
+     * return its decoded claims — `sub` (permanent user ID), and `email` /
+     * `email_verified` when Apple includes them.
+     *
+     * Callers must treat these claims as the ONLY trustworthy source of
+     * identity; anything in the request body is attacker-controlled.
      *
      * Apple's keys rotate infrequently   we cache them for 1 hour to avoid
      * a round-trip to Apple on every request.
      */
-    private function verifyAppleToken(string $identityToken): string
+    private function verifyAppleToken(string $identityToken): object
     {
         // Cache Apple's public key set for 1 hour
         $jwks = Cache::remember('apple_jwks', 3600, function () {
@@ -138,7 +162,11 @@ class SocialAuthController extends Controller
             throw new \RuntimeException('Apple token issuer mismatch.');
         }
 
-        return $decoded->sub; // Apple user ID
+        if (empty($decoded->sub)) {
+            throw new \RuntimeException('Apple token is missing a subject.');
+        }
+
+        return $decoded;
     }
 
     // ── Shared: find-or-create and return a Sanctum token ─────────────────
