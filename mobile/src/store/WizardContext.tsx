@@ -214,7 +214,12 @@ export const WizardProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!isGuest && token) {
         setSyncing(true);
         try {
-          await saveProfile(wizardToSavePayload(draft, catalogRef.current));
+          const built = wizardToSavePayload(draft, catalogRef.current);
+          // The rebuilt payload is derived from state and so cannot carry these
+          // intent flags; forward them from the caller's payload explicitly.
+          if (payload.deleted_checkins?.length) built.deleted_checkins = payload.deleted_checkins;
+          if (payload.replace_all) built.replace_all = true;
+          await saveProfile(built);
         } catch {
           emitSyncError();
         } finally {

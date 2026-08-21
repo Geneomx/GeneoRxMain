@@ -31,7 +31,7 @@ type Props = {
 };
 
 export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
-  const { state, update, setStep } = useWizard();
+  const { state, update, setStep, savePayload } = useWizard();
   const { isGuest } = useAuth();
   const { t } = useTranslation();
   const toast = useToast();
@@ -120,9 +120,17 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
         text: t('checkin.delete_last'),
         style: 'destructive',
         onPress: () => {
+          // Capture the server id (carried on the check-in at runtime) so the
+          // deletion is sent explicitly — a merge save alone would leave the
+          // row on the server.
+          const removed = state.checkins[state.checkins.length - 1] as { id?: string | number } | undefined;
+          const removedId = removed?.id;
           update((d) => {
             d.checkins.pop();
           });
+          if (removedId != null) {
+            void savePayload({ deleted_checkins: [removedId] }).catch(() => undefined);
+          }
           toast.show(t('toast.deleted'));
         },
       },

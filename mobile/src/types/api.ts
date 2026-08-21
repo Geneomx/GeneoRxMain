@@ -83,4 +83,11 @@ export interface SaveProfilePayload {
   checkins?: CheckIn[];
   plan?: unknown;
   portal_state?: Record<string, unknown>;
+  /**
+   * Check-in ids to delete. The server merges check-ins (absence never
+   * deletes), so removals must be sent explicitly.
+   */
+  deleted_checkins?: Array<string | number>;
+  /** Full wipe of check-in history — only the account-reset path sets this. */
+  replace_all?: boolean;
 }

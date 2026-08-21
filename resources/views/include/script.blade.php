@@ -337,6 +337,11 @@ let backendSaveTimer = null;
 let profileModalOpen = false;
 let profileModalCommit = null;
 
+// Check-in ids the user deleted since the last successful sync. The server
+// merges check-ins now (absence never deletes), so deletions must be sent
+// explicitly. Flushed and cleared by saveToBackend().
+let pendingDeletedCheckins = [];
+
 function save(opts){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   scheduleBackendSave();
@@ -496,6 +501,7 @@ async function saveToBackend() {
           symptoms: state.symptoms.selected,
           plan: state.plan,
           checkins: state.checkins,
+          deleted_checkins: pendingDeletedCheckins,
           portal_state: {
             plan: state.plan,
             customMedCatalog: customMedCatalog,
@@ -507,7 +513,10 @@ async function saveToBackend() {
         };
       })())
     });
-    if(!response.ok) {
+    if(response.ok) {
+      // Deletions are now durably applied; stop resending them.
+      pendingDeletedCheckins = [];
+    } else {
       let message = "GeneoRx could not save your latest change.";
       try { const data = await response.json(); message = data.message || message; } catch(e) {}
       showToast(message);
@@ -2918,7 +2927,10 @@ function renderCheckin(){
 
   sSave.querySelector("#ciDeleteLast").addEventListener("click", ()=>{
     if(!state.checkins.length) return alertT("checkin.no_delete_alert");
-    state.checkins.pop();
+    const removed = state.checkins.pop();
+    // Tell the server to actually delete it — a merge save alone would leave
+    // the row in place.
+    if (removed && removed.id != null) pendingDeletedCheckins.push(removed.id);
     save(); toastT("toast.deleted");
   });
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CheckIn;
 use App\Models\Medication;
 use App\Models\Symptom;
+use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\AnalyticsService;
 use App\Support\IntroSlides;
@@ -144,6 +145,12 @@ class HomeController extends Controller
             'checkins' => 'nullable|array',
             'plan' => 'nullable|array',
             'portal_state' => 'nullable|array',
+            // Check-in history is merged, not replaced, so a stale or empty
+            // client array can no longer wipe it. Deletion is explicit:
+            //  - deleted_checkins: ids the client intentionally removed
+            //  - replace_all: the one legitimate full wipe (account reset)
+            'deleted_checkins' => 'nullable|array',
+            'replace_all' => 'nullable|boolean',
         ]);
 
         $dob = null;
@@ -233,31 +240,113 @@ class HomeController extends Controller
         }
 
         if (array_key_exists('checkins', $validated) && is_array($validated['checkins'])) {
-            DB::transaction(function () use ($user, $validated, $profile) {
-                CheckIn::where('user_id', $user->id)->delete();
-                foreach ($validated['checkins'] as $row) {
-                    if (! is_array($row)) {
-                        continue;
-                    }
-                    $data = $row;
-                    $dateStr = $data['dateISO'] ?? null;
-                    $dateChecked = $dateStr ? Carbon::parse((string) $dateStr) : now();
-                    Arr::forget($data, 'id');
-
-                    CheckIn::create([
-                        'user_id' => $user->id,
-                        'date_checked' => $dateChecked,
-                        'adherence_percentage' => (int) ($data['adherencePct'] ?? 0),
-                        'notes' => (string) ($data['notes'] ?? ''),
-                        'data' => $data,
-                        'status' => 'active',
-                    ]);
-                }
-                $profile->update(['check_ins_count' => count($validated['checkins'])]);
-            });
+            $this->syncCheckins($user, $profile, $validated);
         }
 
         return response()->json(['success' => true, 'message' => 'Profile saved successfully']);
+    }
+
+    /**
+     * Merge the client's check-in list into stored history instead of wiping
+     * and recreating it. This is the fix for silent data loss: a stale or empty
+     * client array (from a failed hydrate, an old app version, or a torn sync)
+     * used to delete every check-in the user had.
+     *
+     * Rules:
+     *  - Rows are matched by server `id` first, then by a content signature so
+     *    an id-less re-save does not duplicate an existing row.
+     *  - A matched row is UPDATED; an unmatched incoming row is INSERTED.
+     *  - Rows present on the server but ABSENT from the payload are PRESERVED —
+     *    absence is never treated as deletion.
+     *  - Deletion is explicit via `deleted_checkins` (ids), or the whole history
+     *    is replaced when `replace_all` is true (the account-reset path).
+     */
+    private function syncCheckins(User $user, UserProfile $profile, array $validated): void
+    {
+        $incoming = array_values(array_filter($validated['checkins'], 'is_array'));
+        $replaceAll = (bool) ($validated['replace_all'] ?? false);
+        $deletedIds = array_map('strval', $validated['deleted_checkins'] ?? []);
+
+        DB::transaction(function () use ($user, $profile, $incoming, $replaceAll, $deletedIds) {
+            if ($replaceAll) {
+                CheckIn::where('user_id', $user->id)->delete();
+            } elseif ($deletedIds !== []) {
+                CheckIn::where('user_id', $user->id)->whereIn('id', $deletedIds)->delete();
+            }
+
+            // Existing rows, indexed both by id and by content signature so an
+            // incoming row can be matched either way.
+            $existing = CheckIn::where('user_id', $user->id)->get();
+            $byId = $existing->keyBy('id');
+            $bySignature = [];
+            foreach ($existing as $row) {
+                $bySignature[$this->checkinSignature($row->date_checked, (int) $row->adherence_percentage, (string) $row->notes)] ??= $row;
+            }
+
+            $matchedIds = [];
+
+            foreach ($incoming as $row) {
+                // A row the client also listed for deletion must not be
+                // re-created just because a stale copy lingered in the array.
+                if (isset($row['id']) && in_array((string) $row['id'], $deletedIds, true)) {
+                    continue;
+                }
+
+                $dateStr = $row['dateISO'] ?? null;
+                $dateChecked = $dateStr ? Carbon::parse((string) $dateStr) : now();
+                $adherence = (int) ($row['adherencePct'] ?? 0);
+                $notes = (string) ($row['notes'] ?? '');
+
+                $data = $row;
+                Arr::forget($data, 'id');
+
+                $attributes = [
+                    'date_checked' => $dateChecked,
+                    'adherence_percentage' => $adherence,
+                    'notes' => $notes,
+                    'data' => $data,
+                    'status' => 'active',
+                ];
+
+                $rowId = isset($row['id']) ? (string) $row['id'] : null;
+                $signature = $this->checkinSignature($dateChecked, $adherence, $notes);
+
+                $match = ($rowId !== null && $byId->has($rowId))
+                    ? $byId->get($rowId)
+                    : ($bySignature[$signature] ?? null);
+
+                // Never resurrect a row the client just asked to delete.
+                if ($match && in_array((string) $match->id, $deletedIds, true)) {
+                    $match = null;
+                }
+
+                if ($match && ! in_array($match->id, $matchedIds, true)) {
+                    $match->update($attributes);
+                    $matchedIds[] = $match->id;
+                } else {
+                    $created = CheckIn::create($attributes + ['user_id' => $user->id]);
+                    $matchedIds[] = $created->id;
+                }
+            }
+
+            $profile->update([
+                'check_ins_count' => CheckIn::where('user_id', $user->id)->count(),
+            ]);
+        });
+    }
+
+    /**
+     * Stable content signature for a check-in, used to match an id-less client
+     * row to a stored one. Mirrors the client-side dedupe key (date + adherence
+     * + notes) so a plain re-save updates in place rather than duplicating.
+     */
+    private function checkinSignature(mixed $dateChecked, int $adherence, string $notes): string
+    {
+        $day = $dateChecked instanceof \DateTimeInterface
+            ? $dateChecked->format('Y-m-d')
+            : (string) Carbon::parse((string) $dateChecked)->format('Y-m-d');
+
+        return $day.'|'.$adherence.'|'.trim($notes);
     }
 
     private function calculateAge($dob)

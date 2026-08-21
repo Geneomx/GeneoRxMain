@@ -90,7 +90,10 @@ export const ProfileScreen: React.FC = () => {
               // Wipe the server copy first, while we still have a valid token —
               // resetWizard() alone only schedules a debounced save that would
               // fire after sign-out and silently 401.
-              await save(wizardToSavePayload(defaultWizardState(), []));
+              // replace_all makes the server actually wipe check-in history —
+              // a plain merge save would preserve it, since absence no longer
+              // means deletion.
+              await save({ ...wizardToSavePayload(defaultWizardState(), []), replace_all: true });
             } catch {
               // offline — local wipe still proceeds
             }
