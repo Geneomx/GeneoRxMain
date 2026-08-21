@@ -16,6 +16,10 @@ const ACCOUNT_SETTINGS_URL = "{{ route('account.settings') }}";
 function portalLang(){
   try {
     const code = localStorage.getItem("geneorx_language_v1") || "en";
+    // A gated language (one removed from the picker) must not stick — fall back
+    // to English rather than render a half-translated UI.
+    const enabled = window.GENEORX_ENABLED_LANGS;
+    if (Array.isArray(enabled) && enabled.length && !enabled.includes(code)) return "en";
     if (window.GENEORX_I18N && window.GENEORX_I18N[code]) return code;
   } catch (e) {}
   return "en";

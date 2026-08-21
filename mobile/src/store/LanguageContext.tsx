@@ -2,9 +2,10 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { I18nManager } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  APP_LANGUAGES,
   DEFAULT_LANGUAGE_CODE,
+  ENABLED_LANGUAGES,
   findLanguage,
+  isLanguageEnabled,
   type AppLanguage,
 } from '@/content/languages';
 
@@ -37,7 +38,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     (async () => {
       try {
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
-        if (mounted && saved && APP_LANGUAGES.some((l) => l.code === saved)) {
+        // Ignore a stored preference for a now-gated language so the user is not
+        // stranded on a half-translated UI they can no longer change away from.
+        if (mounted && saved && isLanguageEnabled(saved)) {
           setCode(saved);
         }
       } finally {
@@ -59,7 +62,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const value = useMemo(
     () => ({
       language: findLanguage(code),
-      languages: APP_LANGUAGES,
+      languages: ENABLED_LANGUAGES,
       setLanguageCode,
       ready,
     }),

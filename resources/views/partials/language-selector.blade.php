@@ -1,6 +1,8 @@
 @php
     use App\Support\AppLanguages;
-    $appLanguages = AppLanguages::all();
+    // Only offer languages whose translation is complete; ar/ur/sw are gated
+    // until their packs are done (see resources/data/languages.php).
+    $appLanguages = AppLanguages::enabled();
 @endphp
 
 @once
@@ -144,6 +146,10 @@
 <script>
   window.GENEORX_I18N = @json(\App\Support\SiteTranslations::all());
   window.GENEORX_RTL = @json(\App\Support\SiteTranslations::rtlCodes());
+  // Codes that are complete enough to use — a stored preference for a gated
+  // language (e.g. a user who picked Arabic before it was gated) falls back to
+  // English rather than showing a half-translated UI.
+  window.GENEORX_ENABLED_LANGS = @json(array_column(\App\Support\AppLanguages::enabled(), 'code'));
 </script>
 <div id="langSelectToast" aria-live="polite"></div>
 <script src="{{ asset('js/language-selector.js') }}" defer></script>

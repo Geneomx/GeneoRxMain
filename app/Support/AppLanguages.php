@@ -21,6 +21,31 @@ class AppLanguages
         return [];
     }
 
+    /**
+     * Languages that are complete enough to offer in the pickers. Anything
+     * without an explicit `enabled => false` is treated as enabled, so older
+     * config that predates the flag keeps working.
+     */
+    public static function enabled(): array
+    {
+        return array_values(array_filter(
+            self::all(),
+            fn ($lang) => ($lang['enabled'] ?? true) !== false,
+        ));
+    }
+
+    /** Whether a given language code is enabled (unknown codes are not). */
+    public static function isEnabled(?string $code): bool
+    {
+        foreach (self::enabled() as $lang) {
+            if (($lang['code'] ?? '') === $code) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static function find(?string $code): array
     {
         $languages = self::all();
