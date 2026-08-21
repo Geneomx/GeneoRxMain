@@ -1,6 +1,7 @@
 import { Share } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { track } from '@/api/analytics';
 import type { MedEntry } from '@/content/wizardData';
 import { buildClinicianSnapshotText, fmtDate, type TranslateFn } from '@/wizard/engine';
 import type { WizardState } from '@/wizard/types';
@@ -57,6 +58,10 @@ export async function downloadDoctorReport(
   lang = 'en',
 ): Promise<boolean> {
   if (!state.checkins.length) return false;
+  // Tracked here rather than at each call site so both the report picker and
+  // the progress screen are covered by one seam. Matches the web portal, which
+  // tracks after its own empty-checkins guard.
+  track('report_downloaded', { checkins: state.checkins.length });
   const idx =
     typeof checkinIndex === 'number' && checkinIndex >= 0 && checkinIndex < state.checkins.length
       ? checkinIndex

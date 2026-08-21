@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { track } from '@/api/analytics';
 import { Button } from '@/components/Button';
 import { DropdownSelect } from '@/components/DropdownSelect';
 import { Input } from '@/components/Input';
@@ -57,12 +58,18 @@ export const MedicationsStep: React.FC = () => {
 
   const addMed = (id: string, dose: Dose, durationMonths: number) => {
     if (!id) return false;
+    // Only counts a genuinely new medication, matching the web portal, which
+    // tracks after its duplicate-medId early return.
+    const isNew = !state.meds.some((m) => m.medId === id);
     update((d) => {
       if (!d.meds.some((m) => m.medId === id)) {
         d.meds.push({ medId: id, dose, durationMonths });
       }
       d.symptomOnlyMode = false;
     });
+    if (isNew) {
+      track('medication_added', { medId: id, dose, durationMonths, total: state.meds.length + 1 });
+    }
     return true;
   };
 

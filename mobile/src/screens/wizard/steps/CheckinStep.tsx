@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { track } from '@/api/analytics';
 import { Button } from '@/components/Button';
 import { CheckinDetailModal } from '@/components/CheckinDetailModal';
 import { Chip } from '@/components/Chip';
@@ -98,6 +99,11 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
         notes,
       });
       d.checkins = dedupeCheckins(d.checkins);
+    });
+    track('checkin_saved', {
+      index: state.checkins.length + 1,
+      adherencePct: adherence,
+      symptoms: items.length,
     });
     toast.show(t(isGuest ? 'toast.checkin_guest' : 'toast.checkin_saved'));
     setSideEffects('');

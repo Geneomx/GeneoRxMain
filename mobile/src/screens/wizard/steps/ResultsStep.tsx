@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { track } from '@/api/analytics';
 import { Button } from '@/components/Button';
 import { useToast } from '@/components/Toast';
 import { useWizard, type FocusTarget } from '@/store/WizardContext';
@@ -166,6 +167,7 @@ export const ResultsStep: React.FC = () => {
       d.plan.recommendedSupplements = supps;
       d.plan.routine = buildRoutineFromSupplements(supps);
     });
+    track('plan_started', { supplements: supps.length });
     toast.show(t('toast.plan_saved'));
   };
 

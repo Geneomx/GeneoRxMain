@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { track } from '@/api/analytics';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
 import { useAuth } from '@/auth/AuthContext';
@@ -54,6 +55,21 @@ export const WizardScreen: React.FC = () => {
   useEffect(() => {
     if (step !== state.step) setStep(step);
   }, [step, state.step, setStep]);
+
+  // Wizard funnel, mirroring the web portal's three events and their names.
+  // Keyed off the NORMALIZED step so tab presses, Back/Continue and direct
+  // setStep calls are all covered by this one seam; the ref makes it fire only
+  // on an actual change (a language switch re-runs the effect but must not
+  // re-log the step).
+  const lastTrackedStep = useRef<number | null>(null);
+  useEffect(() => {
+    if (lastTrackedStep.current === step) return;
+    lastTrackedStep.current = step;
+
+    track('wizard_step_viewed', { step, label: t(`step.${step}`) });
+    if (step === 4) track('results_viewed');
+    if (step === 8) track('wizard_completed');
+  }, [step, t]);
 
   const confirmReset = () =>
     Alert.alert(t('mobile.reset.title'), t('mobile.reset.body'), [

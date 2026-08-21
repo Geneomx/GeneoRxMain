@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Linking, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
+import { sendFeedback, toFeedbackType } from '@/api/feedback';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { useWizard } from '@/store/WizardContext';
@@ -41,11 +42,16 @@ export const FeedbackStep: React.FC = () => {
     update((d) => {
       d.feedback.push({ dateISO: new Date().toISOString(), type, message: msg, canContact, email });
     });
-    const subj = encodeURIComponent(`${t('feedback.title')} (${type})`);
-    const body = encodeURIComponent(
-      `${t('feedback.type')}: ${type}\n${t('account.email')}: ${email}\n${t('feedback.contact')}: ${canContact ? t('common.yes') : t('common.no')}\n\n${t('feedback.message')}:\n${msg}\n`,
-    );
-    void Linking.openURL(`mailto:info@geneorx.com?subject=${subj}&body=${body}`).catch(() => undefined);
+
+    // Reaches the admin feedback inbox; fire-and-forget so a network failure
+    // never blocks the user leaving this step.
+    void sendFeedback({
+      type: toFeedbackType(type),
+      message: msg,
+      canContact,
+      contactEmail: state.account.email || null,
+    }).catch(() => undefined);
+
     finish();
   };
 

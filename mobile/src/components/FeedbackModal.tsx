@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { sendFeedback, toFeedbackType } from '@/api/feedback';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { useWizard } from '@/store/WizardContext';
@@ -46,11 +47,17 @@ export const FeedbackModal: React.FC<Props> = ({ visible, onClose }) => {
     update((d) => {
       d.feedback.push({ dateISO: new Date().toISOString(), type, message: msg, canContact, email });
     });
-    const subj = encodeURIComponent(`${t('feedback.title')} (${type})`);
-    const body = encodeURIComponent(
-      `${t('feedback.type')}: ${type}\n${t('account.email')}: ${email}\n${t('feedback.contact')}: ${canContact ? t('common.yes') : t('common.no')}\n\n${t('feedback.message')}:\n${msg}\n`,
-    );
-    void Linking.openURL(`mailto:info@geneorx.com?subject=${subj}&body=${body}`).catch(() => undefined);
+
+    // Reaches the admin feedback inbox. Fire-and-forget so a network failure
+    // never blocks the check-in flow this modal appears in; the local copy
+    // above is still kept either way.
+    void sendFeedback({
+      type: toFeedbackType(type),
+      message: msg,
+      canContact,
+      contactEmail: state.account.email || null,
+    }).catch(() => undefined);
+
     setMessage('');
     onClose();
   }
