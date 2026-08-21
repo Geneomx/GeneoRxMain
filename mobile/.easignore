@@ -1,10 +1,18 @@
-# Keep EAS upload archives small and fast.
-play-service-account.json
+# Keep the EAS upload archive small and fast — exclude everything the build
+# does not need. Marketing/store assets and local build artifacts are the big
+# offenders (they pushed the archive to ~85 MB and stalled uploads).
 node_modules/
+.git/
 .expo/
 .expo-shared/
-.git/
-store-assets/*.png
-store-assets/node_modules/
-../mobile/.expo-tmp-export/
+.expo-tmp-export/
+
+# Store listing + marketing assets — screenshots, zips, iPad captures.
+# Never part of the app binary.
+store-assets/
+
+# Secrets / service accounts that must never be uploaded.
+play-service-account.json
+
+# Stray large asset outside the app.
 ../public/logo-master.png
