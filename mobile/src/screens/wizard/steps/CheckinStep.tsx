@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { track } from '@/api/analytics';
+import { isoFromCalendarDate, todayISO } from '@/wizard/calendarDate';
 import { Button } from '@/components/Button';
 import { CheckinDetailModal } from '@/components/CheckinDetailModal';
 import { Chip } from '@/components/Chip';
@@ -25,16 +26,6 @@ const CHANGE_VALUES: { value: SymptomChange; score: number }[] = [
 ];
 const PROGRESS_STEP = 6;
 
-function todayISO(): string {
-  // Local calendar day, not UTC — toISOString() near midnight can land on
-  // the wrong day depending on the device's timezone offset.
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 type Props = {
   advanceToProgress?: boolean;
 };
@@ -47,6 +38,7 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [detailIndex, setDetailIndex] = useState<number | null>(null);
   const [checkinDate, setCheckinDate] = useState(todayISO());
+  const [dateError, setDateError] = useState<string | null>(null);
   const [adherence, setAdherence] = useState(70);
   const [taken, setTaken] = useState<Set<string>>(new Set(state.plan.recommendedSupplements));
   const [changes, setChanges] = useState<Record<string, SymptomChange>>({});
@@ -75,10 +67,16 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
   const clearSupplements = () => setTaken(new Set());
 
   const save = () => {
-    const dateStr = checkinDate.trim() || todayISO();
-    const dateISO = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
-      ? new Date(`${dateStr}T12:00:00`).toISOString()
-      : new Date().toISOString();
+    // A shape-valid but impossible date ("2026-13-45") used to reach
+    // new Date(...).toISOString() and throw RangeError, losing the check-in;
+    // an invalid one ("2026-02-30") silently rolled over to another day.
+    // Refuse both explicitly rather than storing a date the user did not pick.
+    const dateISO = isoFromCalendarDate(checkinDate.trim() || todayISO());
+    if (!dateISO) {
+      setDateError(t('checkin.date_invalid'));
+      return;
+    }
+    setDateError(null);
 
     const items: CheckinSymptomItem[] = symptomsToRate.map((symptom) => {
       const change = changes[symptom] ?? 'No change';
@@ -142,9 +140,16 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
         <Input
           label={t('checkin.date')}
           value={checkinDate}
-          onChangeText={setCheckinDate}
+          onChangeText={(v) => {
+            setCheckinDate(v);
+            if (dateError) setDateError(null);
+          }}
           placeholder="YYYY-MM-DD"
           autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="numbers-and-punctuation"
+          maxLength={10}
+          error={dateError ?? undefined}
         />
 
         <Input
