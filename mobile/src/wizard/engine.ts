@@ -17,6 +17,14 @@ export type TranslateFn = (key: string, vars?: Record<string, string | number>) 
 export type Tier = 'High' | 'Moderate' | 'Low';
 export type AlertLevel = 'High' | 'Moderate' | 'Low';
 
+/**
+ * Supplements that warrant a clinician review when the profile flags
+ * anticoagulant use. Matched case-insensitively against recommended supplement
+ * text in computeContraindications(). Mirrors ANTICOAG_REVIEW_NUTRIENTS in
+ * resources/views/include/script.blade.php.
+ */
+const ANTICOAG_REVIEW_NUTRIENTS = ['coq10', 'vitamin k'];
+
 /* ---------- util ---------- */
 export function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
@@ -324,7 +332,15 @@ export function computeContraindications(s: WizardState, t: TranslateFn): AlertI
       action: t('engine.contra.kidney.action'),
     });
   }
-  if (s.profile.anticoagulants && s.plan.recommendedSupplements.some((x) => String(x).toLowerCase().includes('coq10'))) {
+  // Vitamin K is included deliberately: warfarin is the only medication that
+  // depletes it, so anyone seeing that recommendation is by definition
+  // anticoagulated and must not change vitamin K intake unsupervised.
+  if (
+    s.profile.anticoagulants &&
+    s.plan.recommendedSupplements.some((x) =>
+      ANTICOAG_REVIEW_NUTRIENTS.some((n) => String(x).toLowerCase().includes(n)),
+    )
+  ) {
     flags.push({
       title: t('engine.contra.anticoag_supplement.title'),
       level: 'Moderate',

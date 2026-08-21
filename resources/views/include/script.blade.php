@@ -259,6 +259,9 @@ const GENERIC_SYMPTOMS = [
   "Heart palpitations","Muscle aches","Swelling","Anxiety","Nausea"
 ];
 
+// Every nutrient that can be scored MUST have an entry in both maps. A missing
+// key returns an empty array in recommendSupplements(), so the user is shown
+// "High depletion" with no advice and concludes the app is broken.
 const SUPPLEMENT_MAP = {
   "CoQ10": ["CoQ10 (ubiquinol)"],
   "Vitamin D": ["Vitamin D3 (consider K2)"],
@@ -267,6 +270,14 @@ const SUPPLEMENT_MAP = {
   "Potassium": ["Electrolytes / potassium foods"],
   "Calcium": ["Calcium + bone support"],
   "B vitamins": ["B-complex (methylated)"],
+  "Zinc": ["Zinc (picolinate or citrate)", "Pair with copper if taken beyond a few weeks"],
+  "Iron": ["Iron (ferrous bisglycinate) — only with lab-confirmed deficiency"],
+  "Selenium": ["Selenium (selenomethionine)"],
+  "Melatonin": ["Melatonin (low dose, taken before bed)"],
+  // Vitamin K is claimed ONLY by warfarin, whose whole mechanism is blocking
+  // vitamin K recycling. Recommending a K2 supplement here would work against
+  // the user's anticoagulation, so the guidance is stability, not intake.
+  "Vitamin K": ["Keep vitamin K intake steady — do not start or stop supplements without your clinician"],
 };
 
 const LAB_SUGGESTIONS = {
@@ -277,7 +288,17 @@ const LAB_SUGGESTIONS = {
   "Calcium": ["Calcium", "Albumin", "PTH (if abnormal)"],
   "CoQ10": ["No standard routine lab; consider symptom tracking + clinician guidance"],
   "B vitamins": ["CBC", "Homocysteine (optional)", "B12 + Folate"],
+  "Zinc": ["Zinc (plasma or serum)", "Copper (if supplementing long-term)", "Alkaline phosphatase (zinc-dependent enzyme)"],
+  "Iron": ["Ferritin", "Iron studies (serum iron, TIBC, transferrin saturation)", "CBC"],
+  "Selenium": ["Selenium (serum or plasma)", "Thyroid panel (TSH, free T4)"],
+  "Melatonin": ["No standard routine lab; track sleep quality with your clinician"],
+  "Vitamin K": ["PT / INR (essential while anticoagulated)", "Vitamin K1 (phylloquinone, rarely required)"],
 };
+
+// Supplements that warrant a clinician review when the profile flags
+// anticoagulant use. Matched case-insensitively against recommended supplement
+// text in computeContraindications().
+const ANTICOAG_REVIEW_NUTRIENTS = ["coq10", "vitamin k"];
 
 
 /* =========================================================
@@ -883,7 +904,10 @@ function computeContraindications(){
       action: t('engine.contra.kidney.action'),
     });
   }
-  if(state.profile.anticoagulants && state.plan.recommendedSupplements.some(x=>String(x).toLowerCase().includes('coq10'))){
+  // Vitamin K is included deliberately: warfarin is the only medication that
+  // depletes it, so anyone seeing that recommendation is by definition
+  // anticoagulated and must not change vitamin K intake unsupervised.
+  if(state.profile.anticoagulants && state.plan.recommendedSupplements.some(x=>ANTICOAG_REVIEW_NUTRIENTS.some(n=>String(x).toLowerCase().includes(n)))){
     flags.push({
       title: t('engine.contra.anticoag_supplement.title'),
       level:'Moderate',

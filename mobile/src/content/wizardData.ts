@@ -265,6 +265,9 @@ export const GENERIC_SYMPTOMS: string[] = [
   'Heart palpitations', 'Muscle aches', 'Swelling', 'Anxiety', 'Nausea',
 ];
 
+// Must stay in lockstep with SUPPLEMENT_MAP / LAB_SUGGESTIONS in
+// resources/views/include/script.blade.php — the two engines are duplicated,
+// and a nutrient missing here shows "High depletion" with no advice.
 export const SUPPLEMENT_MAP: Record<string, string[]> = {
   CoQ10: ['CoQ10 (ubiquinol)'],
   'Vitamin D': ['Vitamin D3 (consider K2)'],
@@ -273,6 +276,14 @@ export const SUPPLEMENT_MAP: Record<string, string[]> = {
   Potassium: ['Electrolytes / potassium foods'],
   Calcium: ['Calcium + bone support'],
   'B vitamins': ['B-complex (methylated)'],
+  Zinc: ['Zinc (picolinate or citrate)', 'Pair with copper if taken beyond a few weeks'],
+  Iron: ['Iron (ferrous bisglycinate) — only with lab-confirmed deficiency'],
+  Selenium: ['Selenium (selenomethionine)'],
+  Melatonin: ['Melatonin (low dose, taken before bed)'],
+  // Vitamin K is claimed ONLY by warfarin, whose whole mechanism is blocking
+  // vitamin K recycling. Recommending a K2 supplement here would work against
+  // the user's anticoagulation, so the guidance is stability, not intake.
+  'Vitamin K': ['Keep vitamin K intake steady — do not start or stop supplements without your clinician'],
 };
 
 export const LAB_SUGGESTIONS: Record<string, string[]> = {
@@ -283,6 +294,11 @@ export const LAB_SUGGESTIONS: Record<string, string[]> = {
   Calcium: ['Calcium', 'Albumin', 'PTH (if abnormal)'],
   CoQ10: ['No standard routine lab; consider symptom tracking + clinician guidance'],
   'B vitamins': ['CBC', 'Homocysteine (optional)', 'B12 + Folate'],
+  Zinc: ['Zinc (plasma or serum)', 'Copper (if supplementing long-term)', 'Alkaline phosphatase (zinc-dependent enzyme)'],
+  Iron: ['Ferritin', 'Iron studies (serum iron, TIBC, transferrin saturation)', 'CBC'],
+  Selenium: ['Selenium (serum or plasma)', 'Thyroid panel (TSH, free T4)'],
+  Melatonin: ['No standard routine lab; track sleep quality with your clinician'],
+  'Vitamin K': ['PT / INR (essential while anticoagulated)', 'Vitamin K1 (phylloquinone, rarely required)'],
 };
 
 export const STEP_LABELS = [
