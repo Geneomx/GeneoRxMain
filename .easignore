@@ -1,0 +1,24 @@
+# EAS archives from the GIT ROOT, and this is a monorepo (eas.json lives in
+# mobile/), so the exclusion list must be root-relative and lives here — a
+# mobile/.easignore is never consulted for the upload archive.
+#
+# Without this the archive ballooned to ~85MB (untracked store-assets/node_modules
+# and marketing zips) and the upload kept dropping. The app build needs only the
+# mobile/ source + its lockfile.
+
+# Dependencies and VCS (node_modules is gitignored, but store-assets/ has its
+# own untracked node_modules that leaked in).
+**/node_modules/
+vendor/
+.git/
+
+# Marketing / store-listing assets and local build artifacts — never in the app.
+mobile/store-assets/
+mobile/.expo-tmp-export/
+mobile/.expo/
+mobile/.expo-shared/
+
+# Secrets that must never be uploaded.
+mobile/play-service-account.json
+.env
+.env.*
