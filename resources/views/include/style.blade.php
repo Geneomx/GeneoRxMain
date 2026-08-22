@@ -493,6 +493,10 @@
       padding:14px;
     }
     .coachTitle{display:flex;align-items:center;gap:10px}
+    .trend-chart{width:100%;margin-top:4px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(0,0,0,.12);overflow:hidden}
+    .trend-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+    .trend-leg{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted,#a9b4d6)}
+    .trend-sw{width:10px;height:10px;border-radius:3px;display:inline-block}
     .spark{
       width:28px;height:28px;border-radius:10px;
       background: rgba(255,255,255,.10);

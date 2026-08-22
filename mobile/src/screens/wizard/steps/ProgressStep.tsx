@@ -15,10 +15,14 @@ import {
   latestCheckin,
 } from '@/wizard/engine';
 import { shareClinicianSnapshot, downloadDoctorReport } from '@/wizard/reports';
+import { buildTrendSeries } from '@/wizard/trends';
+import { TrendChart, type TrendLine } from '@/components/TrendChart';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
 import { Divider, FinePrint, HelpNote, NoteBox, Section, Tagline } from '@/screens/wizard/ui';
 import { colors, radius, spacing } from '@/theme';
+
+const SYMPTOM_COLORS = ['#22d3ee', '#f472b6', '#fbbf24', '#a78bfa', '#34d399', '#fb923c'];
 
 export const ProgressStep: React.FC = () => {
   const { state } = useWizard();
@@ -32,6 +36,7 @@ export const ProgressStep: React.FC = () => {
 
   const coach = useMemo(() => computeWeeklyCoachMessage(state, t, catalog), [state, language, t, catalog]);
   const last = useMemo(() => latestCheckin(state), [state]);
+  const trends = useMemo(() => buildTrendSeries(state.checkins), [state.checkins]);
   const snapshot = useMemo(() => buildClinicianSnapshotText(state, t, undefined, catalog), [state, language, t, catalog]);
 
   const base = state.wellbeingBaseline;
@@ -164,6 +169,52 @@ export const ProgressStep: React.FC = () => {
         ) : null}
       </Section>
 
+      {trends.window && trends.points.length ? (
+        <Section>
+          <Tagline title={t('progress.trends_title')} body={t('progress.trends_sub')} />
+          <Text style={styles.chartLabel}>{t('progress.trends_wellbeing')}</Text>
+          <TrendChart
+            fromT={trends.window.fromT}
+            toT={trends.window.toT}
+            yMax={10}
+            yCaption="0-10"
+            lines={[
+              { label: t('wellbeing.energy').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.amber, points: trends.points.map((p) => [p.t, p.energy] as [number, number]) },
+              { label: t('wellbeing.mood').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.pink, points: trends.points.map((p) => [p.t, p.mood] as [number, number]) },
+              { label: t('wellbeing.sleep').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.primary, points: trends.points.map((p) => [p.t, p.sleep] as [number, number]) },
+              { label: t('wellbeing.focus').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.violet, points: trends.points.map((p) => [p.t, p.focus] as [number, number]) },
+            ]}
+          />
+          <Text style={styles.chartLabel}>{t('checkin.adherence')}</Text>
+          <TrendChart
+            fromT={trends.window.fromT}
+            toT={trends.window.toT}
+            yMax={100}
+            yCaption="0-100%"
+            lines={[
+              { label: t('checkin.adherence'), color: colors.success, points: trends.points.map((p) => [p.t, p.adherence] as [number, number]) },
+            ]}
+          />
+          {Object.keys(trends.symptoms).length ? (
+            <>
+              <Text style={styles.chartLabel}>{t('progress.trends_symptoms')}</Text>
+              <TrendChart
+                fromT={trends.window.fromT}
+                toT={trends.window.toT}
+                yMax={10}
+                yCaption="0-10"
+                lines={Object.entries(trends.symptoms).slice(0, 6).map(([name, series], i): TrendLine => ({
+                  label: name,
+                  color: SYMPTOM_COLORS[i % SYMPTOM_COLORS.length],
+                  points: series.map((pt) => [pt.t, pt.severity] as [number, number]),
+                }))}
+              />
+              <FinePrint>{t('progress.trends_symptoms_hint')}</FinePrint>
+            </>
+          ) : null}
+        </Section>
+      ) : null}
+
       {state.checkins.length ? (
         <Section>
           <Tagline title={t('progress.timeline_title')} body={t('progress.timeline_sub')} />
@@ -229,6 +280,7 @@ const styles = StyleSheet.create({
   metaVal: { fontSize: 15, fontWeight: '700', color: colors.text },
   changeVal: { fontSize: 14, fontWeight: '700', color: colors.text, flexShrink: 1, textAlign: 'right' },
 
+  chartLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginTop: 10, marginBottom: 2 },
   timelineItem: { gap: 2, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
   tlTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
   tlBody: { fontSize: 13, color: colors.textSoft },

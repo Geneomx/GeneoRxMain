@@ -256,6 +256,11 @@ $en = [
     'progress.timeline_sub' => 'See how your check-ins build a story over time.',
     'progress.timeline_none' => 'No timeline yet.',
     'progress.symptoms_tracked' => 'Symptoms tracked:',
+    'progress.trends_title' => 'Trends',
+    'progress.trends_sub' => 'Your last 6 weeks of check-ins.',
+    'progress.trends_wellbeing' => 'Wellbeing (energy, mood, sleep, focus)',
+    'progress.trends_symptoms' => 'Symptom severity',
+    'progress.trends_symptoms_hint' => 'Only symptoms you tracked appear; lines are sparse where a symptom was not logged.',
     'progress.download_report' => 'Download doctor report',
 
     // Citations

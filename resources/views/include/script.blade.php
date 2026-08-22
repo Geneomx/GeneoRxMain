@@ -2942,6 +2942,53 @@ function renderCheckin(){
 }
 
 /* ===== TAB 6: PROGRESS (SNAPSHOT BUTTON LIVES HERE ✅) ===== */
+
+/* ===== 6-week trend series + inline SVG chart (mirrors mobile trends.ts) ===== */
+function buildTrendSeries(checkins, days){
+  days = days || 42;
+  const DAY = 86400000;
+  const dayTs = (iso)=>{ if(!iso) return null; const d=new Date(iso); if(isNaN(d.getTime())) return null; return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); };
+  const dayStr = (t)=>{ const d=new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+  const cl = (n,max)=> Math.max(0, Math.min(max, (typeof n==="number" && isFinite(n))?n:0));
+  const dated = (checkins||[]).map(c=>({c,t:dayTs(c && c.dateISO)})).filter(x=>x.t!==null).sort((a,b)=>a.t-b.t);
+  if(!dated.length) return {points:[],symptoms:{},window:null};
+  const toT = dated[dated.length-1].t, fromT = toT-(days-1)*DAY;
+  const byDay = new Map();
+  dated.filter(x=>x.t>=fromT).forEach(({c,t})=>byDay.set(t,c));
+  const points = [...byDay.entries()].sort((a,b)=>a[0]-b[0]).map(([t,c])=>({
+    date:dayStr(t), t, adherence:cl(c.adherencePct,100),
+    energy:cl(c.wellbeing&&c.wellbeing.energy,10), mood:cl(c.wellbeing&&c.wellbeing.mood,10),
+    sleep:cl(c.wellbeing&&c.wellbeing.sleep,10), focus:cl(c.wellbeing&&c.wellbeing.focus,10),
+  }));
+  const symptoms = {};
+  for(const [t,c] of byDay){
+    ((c.symptoms&&c.symptoms.items)||[]).forEach(it=>{
+      if(typeof (it&&it.severityNow)!=="number") return;
+      (symptoms[it.symptom] = symptoms[it.symptom]||[]).push({date:dayStr(t),t,severity:cl(it.severityNow,10)});
+    });
+  }
+  Object.keys(symptoms).forEach(k=>symptoms[k].sort((a,b)=>a.t-b.t));
+  return {points,symptoms,window:{fromT,toT}};
+}
+
+function trendChartSvg(lines, win, yMax, caption){
+  const W=520,H=150,PADX=8,PADY=12;
+  const span=Math.max(1,win.toT-win.fromT), plotW=W-PADX*2, plotH=H-PADY*2;
+  const x=(t)=>PADX+((t-win.fromT)/span)*plotW;
+  const y=(v)=>PADY+(1-Math.max(0,Math.min(yMax,v))/yMax)*plotH;
+  const grid=[0,0.5,1].map(f=>`<line x1="${PADX}" x2="${W-PADX}" y1="${PADY+f*plotH}" y2="${PADY+f*plotH}" stroke="var(--border-soft,#2a3550)" stroke-width="1"/>`).join("");
+  const paths=lines.map(l=>{
+    if(!l.points.length) return "";
+    if(l.points.length===1){ const [t,v]=l.points[0]; return `<circle cx="${x(t).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3" fill="${l.color}"/>`; }
+    const pts=l.points.map(([t,v])=>`${x(t).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    return `<polyline points="${pts}" fill="none" stroke="${l.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }).join("");
+  const cap = caption ? `<text x="${PADX}" y="${PADY}" font-size="10" fill="var(--text-dim,#8a97b8)">${escapeHtml(caption)}</text>` : "";
+  const legend = lines.map(l=>`<span class="trend-leg"><span class="trend-sw" style="background:${l.color}"></span>${escapeHtml(l.label)}</span>`).join("");
+  const svg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:150px;display:block">${grid}${paths}${cap}</svg>`;
+  return `<div class="trend-chart">${svg}</div><div class="trend-legend">${legend}</div>`;
+}
+
 function renderProgress(){
   const last = latestCheckin();
   const base = state.wellbeingBaseline;
@@ -2973,6 +3020,39 @@ function renderProgress(){
   const symScore = last.symptoms?.improvementScore ?? 0;
 
   const coach = computeWeeklyCoachMessage();
+
+  // 6-week trend charts (mirrors the mobile Progress screen).
+  const trends = buildTrendSeries(state.checkins);
+  let trendsBlock = "";
+  if (trends.window && trends.points.length) {
+    const symColors = ["#22d3ee","#f472b6","#fbbf24","#a78bfa","#34d399","#fb923c"];
+    const clean = (k)=> t(k).replace(/\s*\([^)]*\)\s*$/,"");
+    const wellbeing = trendChartSvg([
+      {label:clean("wellbeing.energy"),color:"#fbbf24",points:trends.points.map(p=>[p.t,p.energy])},
+      {label:clean("wellbeing.mood"),color:"#f472b6",points:trends.points.map(p=>[p.t,p.mood])},
+      {label:clean("wellbeing.sleep"),color:"#22d3ee",points:trends.points.map(p=>[p.t,p.sleep])},
+      {label:clean("wellbeing.focus"),color:"#a78bfa",points:trends.points.map(p=>[p.t,p.focus])},
+    ], trends.window, 10, "0-10");
+    const adherence = trendChartSvg([
+      {label:t("checkin.adherence"),color:"#34d399",points:trends.points.map(p=>[p.t,p.adherence])},
+    ], trends.window, 100, "0-100%");
+    const symNames = Object.keys(trends.symptoms).slice(0,6);
+    const symptoms = symNames.length ? trendChartSvg(
+      symNames.map((n,i)=>({label:n,color:symColors[i%symColors.length],points:trends.symptoms[n].map(pt=>[pt.t,pt.severity])})),
+      trends.window, 10, "0-10"
+    ) : "";
+    trendsBlock = `
+      <div style="height:14px"></div>
+      <div class="coachBox">
+        <div class="v"><strong>${escapeHtml(t("progress.trends_title"))}</strong></div>
+        <div class="fineprint" style="margin-bottom:6px">${escapeHtml(t("progress.trends_sub"))}</div>
+        <div class="fineprint">${escapeHtml(t("progress.trends_wellbeing"))}</div>
+        ${wellbeing}
+        <div class="fineprint" style="margin-top:10px">${escapeHtml(t("checkin.adherence"))}</div>
+        ${adherence}
+        ${symptoms ? `<div class="fineprint" style="margin-top:10px">${escapeHtml(t("progress.trends_symptoms"))}</div>${symptoms}<div class="fineprint">${escapeHtml(t("progress.trends_symptoms_hint"))}</div>` : ""}
+      </div>`;
+  }
 
   s1.innerHTML = `
     <div class="coachBox">
@@ -3029,6 +3109,7 @@ function renderProgress(){
         <div class="v"><strong>${last.adherencePct}%</strong> ${escapeHtml(t("progress.adherence_sub"))}</div>
       </div>
     </div>
+    ${trendsBlock}
   `;
   mainEl.appendChild(s1);
 
