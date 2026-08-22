@@ -1,0 +1,64 @@
+# Automated iOS build → App Store Connect (via EAS), run on GitHub's runners so
+# the project upload never depends on a local connection.
+#
+# Triggers:
+#   • Manually: GitHub → Actions → "iOS Release" → Run workflow (choose whether
+#     to also submit to App Store Connect)
+#   • Automatically: push a tag like ios-v1.0.1  →  builds (no auto-submit)
+#
+# One-time setup required (see mobile/APPSTORE_DEPLOY.md):
+#   1. GitHub repo → Settings → Secrets and variables → Actions → add EXPO_TOKEN
+#      (create it at https://expo.dev/accounts/mtayyedd/settings/access-tokens)
+#   2. iOS distribution credentials (cert + provisioning profile) already live on
+#      EAS, so builds run non-interactively.
+#   3. Submitting additionally needs an App Store Connect API key on EAS
+#      (eas credentials, or submit.ios in eas.json). Until that is set, leave
+#      "submit" off and run `eas submit` yourself — the build artifact is ready
+#      either way.
+
+name: iOS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      submit:
+        description: "Also submit to App Store Connect after the build"
+        type: boolean
+        default: false
+  push:
+    tags: ["ios-v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (+ optional submit)
+        run: |
+          # Manual runs can opt into submission; tag pushes only build.
+          if [ "${{ github.event.inputs.submit }}" = "true" ]; then
+            eas build --platform ios --profile production --non-interactive --auto-submit
+          else
+            eas build --platform ios --profile production --non-interactive --no-wait
+          fi
