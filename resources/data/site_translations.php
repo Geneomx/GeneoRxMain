@@ -142,6 +142,7 @@ $en = [
     // Tabs
     'mobile.tab.home' => 'Home',
     'mobile.tab.guided' => 'Setup',
+    'mobile.tab.assistant' => 'Ask',
     'mobile.tab.meds' => 'Medicines',
     'mobile.tab.checkin' => 'Check-in',
     'mobile.tab.insights' => 'Insights',

@@ -5,12 +5,14 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { HomeScreen } from '@/screens/HomeScreen';
 import { WizardScreen } from '@/screens/wizard/WizardScreen';
+import { AssistantScreen } from '@/screens/AssistantScreen';
 import { ProfileStack } from '@/navigation/ProfileStack';
 import { AppTabBar } from '@/navigation/AppTabBar';
 
 export type AppTabsParamList = {
   Home: undefined;
   Guided: undefined;
+  Assistant: undefined;
   Profile: undefined;
 };
 
@@ -47,6 +49,15 @@ const PersonIcon = ({ color }: { color: string }) => (
   </Svg>
 );
 
+const SparkIcon = ({ color }: { color: string }) => (
+  <Svg width={ICON} height={ICON} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"
+      stroke={color} strokeWidth={1.7} strokeLinejoin="round"
+    />
+  </Svg>
+);
+
 const AppTabsNavigator: React.FC = () => (
   <Tabs.Navigator
     tabBar={(props) => <AppTabBar {...props} />}
@@ -67,6 +78,13 @@ const AppTabsNavigator: React.FC = () => (
       component={WizardScreen}
       options={{
         tabBarIcon: ({ color }) => <CompassIcon color={color} />,
+      }}
+    />
+    <Tabs.Screen
+      name="Assistant"
+      component={AssistantScreen}
+      options={{
+        tabBarIcon: ({ color }) => <SparkIcon color={color} />,
       }}
     />
     <Tabs.Screen
