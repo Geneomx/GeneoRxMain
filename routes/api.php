@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Api\AiSummaryController;
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\EmailOtpController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\PushTokenController;
@@ -32,6 +33,11 @@ Route::get('/medications/catalog', function () {
 });
 
 Route::post('/mobile/ai-summary', AiSummaryController::class)->middleware('throttle:10,1');
+
+// Ask GeneoRx conversational assistant (guest-friendly; bearer attaches the
+// user's own grounding context).
+Route::post('/mobile/assistant', AssistantController::class)
+    ->middleware('throttle:20,1');
 
 // ── Product analytics + feedback (guest-friendly; bearer token attaches user) ─
 Route::post('/analytics/track', [AnalyticsController::class, 'track'])
