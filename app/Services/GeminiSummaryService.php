@@ -10,7 +10,9 @@ class GeminiSummaryService
     public function summarize(array $facts): ?string
     {
         $key = config('services.gemini.key');
-        $model = config('services.gemini.model', 'gemini-2.0-flash');
+        // Fall back to the same default as config/services.php so the model is
+        // consistent whether or not GEMINI_MODEL is set.
+        $model = config('services.gemini.model') ?: 'gemini-2.5-flash-lite';
 
         if (! $key) {
             return null;

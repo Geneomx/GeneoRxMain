@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -10,12 +10,15 @@ import { useWizard } from '@/store/WizardContext';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import {
   computeDrugInteractions,
+  computeInsightEngine,
   computeNutrientScores,
   computeWeeklyCoachMessage,
   fmtDate,
   impactLabel,
   latestCheckin,
 } from '@/wizard/engine';
+import { MED_DB } from '@/content/wizardData';
+import { fetchAiSummary } from '@/api/aiSummary';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { AppTabsParamList } from '@/navigation/AppTabs';
@@ -106,7 +109,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const { state, setStep, syncing, refresh, setFocusTarget } = useWizard();
   const { catalog } = useMedCatalog();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { page, scrollBottom } = useResponsiveLayout();
 
   const firstName = (user?.name || '').trim().split(/\s+/)[0] || t('mobile.profile.your_account');
@@ -115,6 +118,40 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     () => computeWeeklyCoachMessage(state, t, catalog),
     [state, t, catalog],
   );
+
+  // AI Weekly Digest: reuse the hardened /mobile/ai-summary endpoint to rewrite
+  // the rule-engine insight into prose. Only surfaced when the model actually
+  // responds (source==='ai'); with no GEMINI_API_KEY the endpoint returns
+  // fallback text and this card stays hidden — so the no-key state is unchanged.
+  const [aiDigest, setAiDigest] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!last) {
+      setAiDigest(null);
+      return;
+    }
+    const db = catalog?.length ? catalog : MED_DB;
+    const insight = computeInsightEngine(state, t, catalog);
+    const medNames = state.meds.map((m) => db.find((x) => x.id === m.medId)?.name ?? m.medId);
+    fetchAiSummary({
+      medications: medNames,
+      symptoms: state.symptoms.selected ?? [],
+      summary: insight.summary,
+      meaning: insight.meaning,
+      doctorPrompt: insight.doctorPrompt,
+      language,
+    })
+      .then((res) => {
+        if (!cancelled) setAiDigest(res.source === 'ai' && res.summary ? res.summary : null);
+      })
+      .catch(() => {
+        if (!cancelled) setAiDigest(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [last?.dateISO, language]);
   const streak = useMemo(
     () => weeklyCheckinStreak(state.checkins.map((c) => c.dateISO)),
     [state.checkins],
@@ -208,6 +245,15 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                     </Text>
                   </View>
                 </Pressable>
+              ) : null}
+
+              {/* AI Weekly Digest — violet = AI, distinct from the cyan engine cards.
+                  Hidden unless the model actually responded. */}
+              {aiDigest ? (
+                <View style={styles.digestCard}>
+                  <Text style={styles.digestTag}>✦ {t('home.digest_label')}</Text>
+                  <Text style={styles.digestBody}>{aiDigest}</Text>
+                </View>
               ) : null}
 
               {/* Today's insight */}
@@ -319,6 +365,17 @@ const styles = StyleSheet.create({
 
   card: { padding: spacing.lg, gap: spacing.sm },
 
+  digestCard: {
+    borderWidth: 1,
+    borderColor: colors.violet,
+    borderRadius: radius.card,
+    backgroundColor: 'rgba(167,139,250,0.10)',
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    gap: 6,
+  },
+  digestTag: { fontSize: 12, fontWeight: '800', color: colors.violet, letterSpacing: 0.3 },
+  digestBody: { fontSize: 14, lineHeight: 20, color: colors.text },
   insightCard: {
     borderRadius: 14,
     borderWidth: 1,
