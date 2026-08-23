@@ -497,6 +497,17 @@
     .trend-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
     .trend-leg{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted,#a9b4d6)}
     .trend-sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+    .assistant-panel{border:1px solid rgba(167,139,250,.35)}
+    .assistant-log{display:flex;flex-direction:column;gap:8px;margin:12px 0;max-height:340px;overflow-y:auto}
+    .assistant-bubble{max-width:88%;padding:10px 12px;border-radius:14px;font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:break-word}
+    .assistant-user{align-self:flex-end;background:rgba(40,225,255,.12)}
+    .assistant-ai{align-self:flex-start;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.35)}
+    .assistant-notice{background:rgba(255,200,80,.12);border-color:rgba(255,200,80,.35)}
+    .assistant-suggests{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+    .assistant-chip{border:1px solid rgba(167,139,250,.5);background:rgba(167,139,250,.08);color:inherit;border-radius:999px;padding:8px 12px;font-size:13px;cursor:pointer}
+    .assistant-disc{margin:6px 0 8px}
+    .assistant-inputrow{display:flex;gap:8px;align-items:flex-end}
+    .assistant-inputrow textarea{flex:1;resize:none;min-height:44px;max-height:120px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.15);color:inherit;padding:12px;font:inherit}
     .spark{
       width:28px;height:28px;border-radius:10px;
       background: rgba(255,255,255,.10);

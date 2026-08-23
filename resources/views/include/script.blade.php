@@ -3253,7 +3253,89 @@ function renderSummaryTab(){
   }
 
   mainEl.appendChild(s1);
+  mountAssistantPanel(mainEl);
   mainEl.appendChild(summaryExitButtons());
+}
+
+/* ===== ASK GENEORX (web assistant panel) ===== */
+function mountAssistantPanel(parent){
+  const messages = [];
+  const sec = document.createElement("div");
+  sec.className = "section assistant-panel";
+  sec.innerHTML = `
+    <div class="tagline"><strong>✦ ${escapeHtml(t("assistant.title"))}</strong><br>${escapeHtml(t("assistant.subtitle"))}</div>
+    <div class="assistant-log" id="assistantLog"></div>
+    <div class="assistant-suggests" id="assistantSuggests"></div>
+    <div class="fineprint assistant-disc">${escapeHtml(t("assistant.disclaimer"))}</div>
+    <div class="assistant-inputrow">
+      <textarea id="assistantInput" rows="1" placeholder="${escapeHtml(t("assistant.placeholder"))}"></textarea>
+      <button type="button" class="primary" id="assistantSend">${escapeHtml(t("assistant.send"))}</button>
+    </div>
+  `;
+  parent.appendChild(sec);
+
+  const log = sec.querySelector("#assistantLog");
+  const input = sec.querySelector("#assistantInput");
+  const sendBtn = sec.querySelector("#assistantSend");
+  const suggestsWrap = sec.querySelector("#assistantSuggests");
+
+  [t("assistant.prompt_why_score"), t("assistant.prompt_interactions"), t("assistant.prompt_what_changed")].forEach(sug=>{
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "assistant-chip";
+    chip.textContent = sug;
+    chip.addEventListener("click", ()=> send(sug));
+    suggestsWrap.appendChild(chip);
+  });
+
+  function addBubble(role, text){
+    const b = document.createElement("div");
+    b.className = "assistant-bubble " + (role === "user" ? "assistant-user" : "assistant-ai");
+    b.textContent = text;
+    log.appendChild(b);
+    log.scrollTop = log.scrollHeight;
+    return b;
+  }
+
+  let busy = false;
+  async function send(text){
+    const content = (text || "").trim();
+    if(!content || busy) return;
+    busy = true;
+    suggestsWrap.style.display = "none";
+    addBubble("user", content);
+    messages.push({ role:"user", content });
+    input.value = "";
+    const pending = addBubble("ai", "…");
+    try {
+      const res = await fetch("/api/assistant", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content || "" },
+        body: JSON.stringify({
+          messages,
+          context: { medications: state.meds.map(m=>{ const md = MED_DB.find(x=>x.id===m.medId); return md?md.name:m.medId; }), symptoms: state.symptoms.selected || [] },
+          language: portalLang(),
+        }),
+      });
+      const data = await res.json().catch(()=>({}));
+      if(res.ok && data.source === "ai" && data.reply){
+        pending.textContent = data.reply;
+        messages.push({ role:"assistant", content: data.reply });
+      } else {
+        pending.textContent = t("assistant.unavailable");
+        pending.classList.add("assistant-notice");
+      }
+    } catch(e){
+      pending.textContent = t("assistant.unavailable");
+      pending.classList.add("assistant-notice");
+    } finally {
+      busy = false;
+      log.scrollTop = log.scrollHeight;
+    }
+  }
+
+  sendBtn.addEventListener("click", ()=> send(input.value));
+  input.addEventListener("keydown", (e)=>{ if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); send(input.value); } });
 }
 
 /* ===== FEEDBACK (modal) ===== */
