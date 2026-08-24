@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminMedicationController;
+use App\Http\Controllers\Api\AiSummaryController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\FeedbackController;
@@ -50,6 +51,10 @@ Route::post('/api/feedback', [FeedbackController::class, 'store'])
 // Ask GeneoRx assistant (same handler as the mobile API; session-authed here).
 Route::post('/api/assistant', AssistantController::class)
     ->middleware('throttle:20,1')->name('api.assistant');
+
+// AI summary — powers the doctor-report AI visit summary (and the weekly digest).
+Route::post('/api/ai-summary', AiSummaryController::class)
+    ->middleware('throttle:10,1')->name('api.ai-summary');
 
 // Legal pages
 Route::get('/legal/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');

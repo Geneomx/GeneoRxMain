@@ -1117,7 +1117,28 @@ function computePopulationInsights(){
   };
 }
 
-function downloadDoctorReport(checkinIndex){
+// Fetch an AI-written visit summary (overview + what it may mean + 1-2 questions
+// for the clinician) to enrich the doctor report. Returns "" on any failure or
+// when no key is configured, so the report always generates either way.
+async function fetchAiVisitSummary(){
+  try {
+    const insight = computeInsightEngine();
+    const meds = state.meds.map(m=>{ const md = MED_DB.find(x=>x.id===m.medId); return md?md.name:m.medId; });
+    const ctrl = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), 12000);
+    const res = await fetch("/api/ai-summary", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content || "" },
+      body: JSON.stringify({ medications: meds, symptoms: state.symptoms.selected || [], summary: insight.summary, meaning: insight.meaning, doctor_prompt: insight.doctorPrompt, language: portalLang() }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    const data = await res.json().catch(()=>({}));
+    return (res.ok && data.source === "ai" && data.summary) ? String(data.summary) : "";
+  } catch(e){ return ""; }
+}
+
+async function downloadDoctorReport(checkinIndex){
   if (!state.checkins.length) return;
   track("report_downloaded", { checkins: state.checkins.length });
   if (typeof checkinIndex !== "number" || checkinIndex < 0 || checkinIndex >= state.checkins.length) {
@@ -1125,6 +1146,7 @@ function downloadDoctorReport(checkinIndex){
   }
   const checkin = state.checkins[checkinIndex];
   const snapshot = buildClinicianSnapshotText(checkinIndex);
+  const aiSummary = await fetchAiVisitSummary();
   // Filesystem-safe: never trust the stored date's shape for a filename.
   const rawDate = checkin?.dateISO ? String(checkin.dateISO).slice(0, 10) : "report";
   const datePart = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : rawDate.replace(/[^0-9A-Za-z_-]/g, "_");
@@ -1132,7 +1154,10 @@ function downloadDoctorReport(checkinIndex){
   const headerBits = [`${t("checkin.label_n")} ${checkinIndex + 1}`, fmtDate(checkin.dateISO)].filter(Boolean);
   const lang = document.documentElement.lang || "en";
   const dir = document.documentElement.dir === "rtl" ? "rtl" : "ltr";
-  const html = `<!doctype html><html lang="${escapeHtml(lang)}" dir="${dir}"><head><meta charset="utf-8"><title>${escapeHtml(docTitle)}</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.45;color:#111}pre{white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;border:1px solid #ddd;border-radius:12px;padding:16px;background:#fafafa}</style></head><body><h1>${escapeHtml(docTitle)}</h1><p>${escapeHtml(headerBits.join(" · "))}</p><pre>${escapeHtml(snapshot)}</pre></body></html>`;
+  const aiBlock = aiSummary
+    ? `<h2 style="font-size:15px;margin-top:24px">${escapeHtml(t("report.ai_summary_title"))}</h2><p style="font-size:11px;color:#666;margin:2px 0 8px">${escapeHtml(t("report.ai_summary_note"))}</p><pre>${escapeHtml(aiSummary)}</pre>`
+    : "";
+  const html = `<!doctype html><html lang="${escapeHtml(lang)}" dir="${dir}"><head><meta charset="utf-8"><title>${escapeHtml(docTitle)}</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.45;color:#111}pre{white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;border:1px solid #ddd;border-radius:12px;padding:16px;background:#fafafa}</style></head><body><h1>${escapeHtml(docTitle)}</h1><p>${escapeHtml(headerBits.join(" · "))}</p><pre>${escapeHtml(snapshot)}</pre>${aiBlock}</body></html>`;
   const blob = new Blob([html], {type:'text/html'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

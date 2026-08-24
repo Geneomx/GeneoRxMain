@@ -3,7 +3,9 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { track } from '@/api/analytics';
 import type { MedEntry } from '@/content/wizardData';
-import { buildClinicianSnapshotText, fmtDate, type TranslateFn } from '@/wizard/engine';
+import { buildClinicianSnapshotText, computeInsightEngine, fmtDate, type TranslateFn } from '@/wizard/engine';
+import { MED_DB } from '@/content/wizardData';
+import { fetchAiSummary } from '@/api/aiSummary';
 import type { WizardState } from '@/wizard/types';
 
 const RTL_LANGS = new Set(['ar', 'ur']);
@@ -23,6 +25,7 @@ function buildReportHtml(
   dateISO: string,
   t: TranslateFn,
   lang = 'en',
+  aiSummary = '',
 ): string {
   const title = t('modal.report.doctor_title');
   // Filter empties so a missing date doesn't leave a dangling separator
@@ -30,7 +33,10 @@ function buildReportHtml(
     .filter(Boolean)
     .join(' · ');
   const dir = RTL_LANGS.has(lang) ? 'rtl' : 'ltr';
-  return `<!doctype html><html lang="${escapeHtml(lang)}" dir="${dir}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.45;color:#111}pre{white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;border:1px solid #ddd;border-radius:12px;padding:16px;background:#fafafa}</style></head><body><h1>${escapeHtml(title)}</h1><p>${escapeHtml(label)}</p><pre>${escapeHtml(snapshot)}</pre></body></html>`;
+  const aiBlock = aiSummary
+    ? `<h2 style="font-size:15px;margin-top:24px">${escapeHtml(t('report.ai_summary_title'))}</h2><p style="font-size:11px;color:#666;margin:2px 0 8px">${escapeHtml(t('report.ai_summary_note'))}</p><pre>${escapeHtml(aiSummary)}</pre>`
+    : '';
+  return `<!doctype html><html lang="${escapeHtml(lang)}" dir="${dir}"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.45;color:#111}pre{white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;border:1px solid #ddd;border-radius:12px;padding:16px;background:#fafafa}</style></head><body><h1>${escapeHtml(title)}</h1><p>${escapeHtml(label)}</p><pre>${escapeHtml(snapshot)}</pre>${aiBlock}</body></html>`;
 }
 
 export async function shareClinicianSnapshot(
@@ -47,6 +53,35 @@ export async function shareClinicianSnapshot(
     return result.action === Share.sharedAction;
   } catch {
     return false;
+  }
+}
+
+/**
+ * AI visit summary (overview + meaning + clinician questions) for the doctor
+ * report. Returns '' on any failure / when no key is configured, so the report
+ * always generates either way.
+ */
+async function fetchVisitSummary(
+  state: WizardState,
+  t: TranslateFn,
+  catalog: MedEntry[] | undefined,
+  lang: string,
+): Promise<string> {
+  try {
+    const db = catalog?.length ? catalog : MED_DB;
+    const insight = computeInsightEngine(state, t, catalog);
+    const meds = state.meds.map((m) => db.find((x) => x.id === m.medId)?.name ?? m.medId);
+    const res = await fetchAiSummary({
+      medications: meds,
+      symptoms: state.symptoms.selected ?? [],
+      summary: insight.summary,
+      meaning: insight.meaning,
+      doctorPrompt: insight.doctorPrompt,
+      language: lang,
+    });
+    return res.source === 'ai' && res.summary ? res.summary : '';
+  } catch {
+    return '';
   }
 }
 
@@ -68,6 +103,7 @@ export async function downloadDoctorReport(
       : state.checkins.length - 1;
   const checkin = state.checkins[idx];
   const snapshot = buildClinicianSnapshotText(state, t, idx, catalog);
+  const aiSummary = await fetchVisitSummary(state, t, catalog, lang);
   // Filesystem-safe: this becomes a real file path, so never trust the
   // stored date's shape.
   const rawDate = checkin?.dateISO ? String(checkin.dateISO).slice(0, 10) : 'report';
@@ -78,7 +114,7 @@ export async function downloadDoctorReport(
     .filter(Boolean)
     .join(' · ');
   const filename = `geneorx_report_checkin_${idx + 1}_${datePart}.html`;
-  const html = buildReportHtml(snapshot, idx, checkin.dateISO, t, lang);
+  const html = buildReportHtml(snapshot, idx, checkin.dateISO, t, lang, aiSummary);
 
   try {
     if (!FileSystem.cacheDirectory) throw new Error('No cache directory available');
@@ -99,7 +135,11 @@ export async function downloadDoctorReport(
   }
 
   try {
-    const result = await Share.share({ title: `${title} (${datePart})`, message: snapshot });
+    const shareText = aiSummary ? `${snapshot}
+
+${t('report.ai_summary_title')}
+${aiSummary}` : snapshot;
+    const result = await Share.share({ title: `${title} (${datePart})`, message: shareText });
     return result.action === Share.sharedAction;
   } catch {
     return false;
