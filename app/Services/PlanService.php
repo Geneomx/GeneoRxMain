@@ -2,10 +2,20 @@
 
 namespace App\Services;
 
+use App\Models\Subscription;
 use App\Models\User;
 
 class PlanService
 {
+    /**
+     * The user's current subscription record, or null. BillingController::show()
+     * calls this; without it that route fatals with "Call to undefined method".
+     */
+    public function subscriptionFor(User $user): ?Subscription
+    {
+        return $user->subscription;
+    }
+
     public function stateFor(User $user): array
     {
         return [

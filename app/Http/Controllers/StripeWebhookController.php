@@ -8,6 +8,7 @@ use App\Notifications\BillingStatusNotification;
 use App\Services\AnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 
 class StripeWebhookController extends Controller
 {
@@ -136,7 +137,12 @@ class StripeWebhookController extends Controller
     {
         $secret = config('services.stripe.webhook_secret');
         if (! $secret) {
-            return true;
+            // No secret configured means we cannot verify the caller — REJECT.
+            // Returning true here made this an open subscription-mutation
+            // endpoint that anyone could POST to.
+            Log::warning('Stripe webhook rejected: no webhook secret configured.');
+
+            return false;
         }
 
         $signature = (string) $request->header('Stripe-Signature');

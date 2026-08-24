@@ -17,7 +17,8 @@ class BillingController extends Controller
 
         return view('billing.index', [
             'subscription' => $plans->stateFor($request->user()),
-            'hasBillingPortal' => (bool) $subscription->provider_customer_id,
+            // Null-safe: a user with no subscription record yet has no portal.
+            'hasBillingPortal' => (bool) $subscription?->provider_customer_id,
             'stripeKey' => config('services.stripe.key'),
         ]);
     }
