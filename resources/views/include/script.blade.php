@@ -304,6 +304,26 @@ const LAB_SUGGESTIONS = {
 // text in computeContraindications().
 const ANTICOAG_REVIEW_NUTRIENTS = ["coq10", "vitamin k"];
 
+// Drug-interaction and contraindication rules as DATA, not hardcoded branches.
+// Adding a medication now means adding its rows here (mirrored in the mobile
+// engine.ts). Each `key` maps to engine.interaction.<key>.{title,note,action}
+// or engine.contra.<key>.{...} translation keys.
+//
+// SAFETY: these are the only interaction/contraindication rules that exist.
+// They are NOT a substitute for a licensed interaction dataset — expanding the
+// catalog requires real, sourced rules here, never invented ones.
+const INTERACTION_RULES = [
+  { meds: ["metformin", "omeprazole"], level: "Moderate", key: "metformin_omeprazole" },
+  { meds: ["lisinopril", "losartan"], level: "High", key: "lisinopril_losartan" },
+  { meds: ["amlodipine", "metoprolol"], level: "Moderate", key: "amlodipine_metoprolol" },
+];
+
+const CONTRA_RULES = [
+  { condition: "pregnant", anyMed: ["lisinopril", "losartan"], level: "High", key: "pregnancy_ace_arb" },
+  { condition: "kidneyDisease", anyMed: ["metformin", "lisinopril", "losartan"], level: "High", key: "kidney" },
+  { condition: "anticoagulants", anySupplementNutrient: ANTICOAG_REVIEW_NUTRIENTS, level: "Moderate", key: "anticoag_supplement" },
+];
+
 
 /* =========================================================
    ===== STATE =====
@@ -870,65 +890,37 @@ function addCustomSymptom(sym){
 
 function computeDrugInteractions(){
   const ids = state.meds.map(m=>m.medId);
-  const interactions = [];
-  if(ids.includes('metformin') && ids.includes('omeprazole')){
-    interactions.push({
-      title: t('engine.interaction.metformin_omeprazole.title'),
-      level:'Moderate',
-      note: t('engine.interaction.metformin_omeprazole.note'),
-      action: t('engine.interaction.metformin_omeprazole.action'),
-    });
-  }
-  if(ids.includes('lisinopril') && ids.includes('losartan')){
-    interactions.push({
-      title: t('engine.interaction.lisinopril_losartan.title'),
-      level:'High',
-      note: t('engine.interaction.lisinopril_losartan.note'),
-      action: t('engine.interaction.lisinopril_losartan.action'),
-    });
-  }
-  if(ids.includes('amlodipine') && ids.includes('metoprolol')){
-    interactions.push({
-      title: t('engine.interaction.amlodipine_metoprolol.title'),
-      level:'Moderate',
-      note: t('engine.interaction.amlodipine_metoprolol.note'),
-      action: t('engine.interaction.amlodipine_metoprolol.action'),
-    });
-  }
-  return interactions;
+  return INTERACTION_RULES
+    .filter(r => r.meds.every(m => ids.includes(m)))
+    .map(r => ({
+      title: t(`engine.interaction.${r.key}.title`),
+      level: r.level,
+      note: t(`engine.interaction.${r.key}.note`),
+      action: t(`engine.interaction.${r.key}.action`),
+    }));
 }
 
 function computeContraindications(){
   const ids = state.meds.map(m=>m.medId);
-  const flags = [];
-  if(state.profile.pregnant && (ids.includes('lisinopril') || ids.includes('losartan'))){
-    flags.push({
-      title: t('engine.contra.pregnancy_ace_arb.title'),
-      level:'High',
-      note: t('engine.contra.pregnancy_ace_arb.note'),
-      action: t('engine.contra.pregnancy_ace_arb.action'),
-    });
-  }
-  if(state.profile.kidneyDisease && (ids.includes('metformin') || ids.includes('lisinopril') || ids.includes('losartan'))){
-    flags.push({
-      title: t('engine.contra.kidney.title'),
-      level:'High',
-      note: t('engine.contra.kidney.note'),
-      action: t('engine.contra.kidney.action'),
-    });
-  }
-  // Vitamin K is included deliberately: warfarin is the only medication that
-  // depletes it, so anyone seeing that recommendation is by definition
-  // anticoagulated and must not change vitamin K intake unsupervised.
-  if(state.profile.anticoagulants && state.plan.recommendedSupplements.some(x=>ANTICOAG_REVIEW_NUTRIENTS.some(n=>String(x).toLowerCase().includes(n)))){
-    flags.push({
-      title: t('engine.contra.anticoag_supplement.title'),
-      level:'Moderate',
-      note: t('engine.contra.anticoag_supplement.note'),
-      action: t('engine.contra.anticoag_supplement.action'),
-    });
-  }
-  return flags;
+  const supps = state.plan.recommendedSupplements || [];
+  // Vitamin K is covered via anySupplementNutrient deliberately: warfarin is the
+  // only medication that depletes it, so anyone seeing that recommendation is by
+  // definition anticoagulated and must not change vitamin K intake unsupervised.
+  return CONTRA_RULES
+    .filter(r => {
+      if(!state.profile[r.condition]) return false;
+      const medMatch = r.anyMed ? r.anyMed.some(m => ids.includes(m)) : false;
+      const suppMatch = r.anySupplementNutrient
+        ? supps.some(x => r.anySupplementNutrient.some(n => String(x).toLowerCase().includes(n)))
+        : false;
+      return medMatch || suppMatch;
+    })
+    .map(r => ({
+      title: t(`engine.contra.${r.key}.title`),
+      level: r.level,
+      note: t(`engine.contra.${r.key}.note`),
+      action: t(`engine.contra.${r.key}.action`),
+    }));
 }
 
 

@@ -25,6 +25,41 @@ export type AlertLevel = 'High' | 'Moderate' | 'Low';
  */
 const ANTICOAG_REVIEW_NUTRIENTS = ['coq10', 'vitamin k'];
 
+// Drug-interaction and contraindication rules as DATA, not hardcoded branches.
+// Mirrors INTERACTION_RULES / CONTRA_RULES in the web portal
+// (resources/views/include/script.blade.php). Adding a medication means adding
+// rows here. Each `key` maps to engine.interaction.<key> / engine.contra.<key>
+// translation keys.
+//
+// SAFETY: these are the ONLY interaction/contraindication rules that exist —
+// not a substitute for a licensed dataset. Expanding the catalog requires real,
+// sourced rules here, never invented ones.
+interface InteractionRule {
+  meds: string[];
+  level: AlertLevel;
+  key: string;
+}
+
+interface ContraRule {
+  condition: 'pregnant' | 'kidneyDisease' | 'anticoagulants';
+  anyMed?: string[];
+  anySupplementNutrient?: string[];
+  level: AlertLevel;
+  key: string;
+}
+
+const INTERACTION_RULES: InteractionRule[] = [
+  { meds: ['metformin', 'omeprazole'], level: 'Moderate', key: 'metformin_omeprazole' },
+  { meds: ['lisinopril', 'losartan'], level: 'High', key: 'lisinopril_losartan' },
+  { meds: ['amlodipine', 'metoprolol'], level: 'Moderate', key: 'amlodipine_metoprolol' },
+];
+
+const CONTRA_RULES: ContraRule[] = [
+  { condition: 'pregnant', anyMed: ['lisinopril', 'losartan'], level: 'High', key: 'pregnancy_ace_arb' },
+  { condition: 'kidneyDisease', anyMed: ['metformin', 'lisinopril', 'losartan'], level: 'High', key: 'kidney' },
+  { condition: 'anticoagulants', anySupplementNutrient: ANTICOAG_REVIEW_NUTRIENTS, level: 'Moderate', key: 'anticoag_supplement' },
+];
+
 /* ---------- util ---------- */
 export function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
@@ -285,70 +320,33 @@ export interface AlertItem {
 
 export function computeDrugInteractions(s: WizardState, t: TranslateFn): AlertItem[] {
   const ids = s.meds.map((m) => m.medId);
-  const out: AlertItem[] = [];
-  if (ids.includes('metformin') && ids.includes('omeprazole')) {
-    out.push({
-      title: t('engine.interaction.metformin_omeprazole.title'),
-      level: 'Moderate',
-      note: t('engine.interaction.metformin_omeprazole.note'),
-      action: t('engine.interaction.metformin_omeprazole.action'),
-    });
-  }
-  if (ids.includes('lisinopril') && ids.includes('losartan')) {
-    out.push({
-      title: t('engine.interaction.lisinopril_losartan.title'),
-      level: 'High',
-      note: t('engine.interaction.lisinopril_losartan.note'),
-      action: t('engine.interaction.lisinopril_losartan.action'),
-    });
-  }
-  if (ids.includes('amlodipine') && ids.includes('metoprolol')) {
-    out.push({
-      title: t('engine.interaction.amlodipine_metoprolol.title'),
-      level: 'Moderate',
-      note: t('engine.interaction.amlodipine_metoprolol.note'),
-      action: t('engine.interaction.amlodipine_metoprolol.action'),
-    });
-  }
-  return out;
+  return INTERACTION_RULES.filter((r) => r.meds.every((m) => ids.includes(m))).map((r) => ({
+    title: t(`engine.interaction.${r.key}.title`),
+    level: r.level,
+    note: t(`engine.interaction.${r.key}.note`),
+    action: t(`engine.interaction.${r.key}.action`),
+  }));
 }
 
 export function computeContraindications(s: WizardState, t: TranslateFn): AlertItem[] {
   const ids = s.meds.map((m) => m.medId);
-  const flags: AlertItem[] = [];
-  if (s.profile.pregnant && (ids.includes('lisinopril') || ids.includes('losartan'))) {
-    flags.push({
-      title: t('engine.contra.pregnancy_ace_arb.title'),
-      level: 'High',
-      note: t('engine.contra.pregnancy_ace_arb.note'),
-      action: t('engine.contra.pregnancy_ace_arb.action'),
-    });
-  }
-  if (s.profile.kidneyDisease && (ids.includes('metformin') || ids.includes('lisinopril') || ids.includes('losartan'))) {
-    flags.push({
-      title: t('engine.contra.kidney.title'),
-      level: 'High',
-      note: t('engine.contra.kidney.note'),
-      action: t('engine.contra.kidney.action'),
-    });
-  }
-  // Vitamin K is included deliberately: warfarin is the only medication that
-  // depletes it, so anyone seeing that recommendation is by definition
-  // anticoagulated and must not change vitamin K intake unsupervised.
-  if (
-    s.profile.anticoagulants &&
-    s.plan.recommendedSupplements.some((x) =>
-      ANTICOAG_REVIEW_NUTRIENTS.some((n) => String(x).toLowerCase().includes(n)),
-    )
-  ) {
-    flags.push({
-      title: t('engine.contra.anticoag_supplement.title'),
-      level: 'Moderate',
-      note: t('engine.contra.anticoag_supplement.note'),
-      action: t('engine.contra.anticoag_supplement.action'),
-    });
-  }
-  return flags;
+  const supps = s.plan.recommendedSupplements || [];
+  // Vitamin K is covered via anySupplementNutrient deliberately: warfarin is the
+  // only medication that depletes it, so anyone seeing that recommendation is by
+  // definition anticoagulated and must not change vitamin K intake unsupervised.
+  return CONTRA_RULES.filter((r) => {
+    if (!s.profile[r.condition]) return false;
+    const medMatch = r.anyMed ? r.anyMed.some((m) => ids.includes(m)) : false;
+    const suppMatch = r.anySupplementNutrient
+      ? supps.some((x) => r.anySupplementNutrient!.some((n) => String(x).toLowerCase().includes(n)))
+      : false;
+    return medMatch || suppMatch;
+  }).map((r) => ({
+    title: t(`engine.contra.${r.key}.title`),
+    level: r.level,
+    note: t(`engine.contra.${r.key}.note`),
+    action: t(`engine.contra.${r.key}.action`),
+  }));
 }
 
 /* ---------- predictions / patterns / insight ---------- */
