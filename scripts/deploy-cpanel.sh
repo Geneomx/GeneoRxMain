@@ -17,7 +17,21 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
+# --- maintenance-mode guard -------------------------------------------------
+# `set -e` aborts this script the moment any step below fails. Without a guard,
+# that leaves the app in maintenance mode indefinitely: a failed deploy took the
+# production site down with a permanent 503 until it was cleared by hand.
+# Always restore the app if we exit before reaching the `artisan up` below.
+maintenance_guard() {
+  local code=$?
+  if [[ $code -ne 0 ]]; then
+    echo "ERROR: deploy failed (exit $code) — restoring the app from maintenance mode." >&2
+    $PHP_BIN artisan up 2>/dev/null || true
+  fi
+}
+
 $PHP_BIN artisan down --refresh=60 --retry=60 2>/dev/null || true
+trap maintenance_guard EXIT
 
 if command -v "$COMPOSER_BIN" &>/dev/null; then
   "$COMPOSER_BIN" install --no-dev --optimize-autoloader --no-interaction
