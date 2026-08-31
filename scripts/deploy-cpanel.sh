@@ -7,7 +7,7 @@ APP_DIR="${DEPLOYPATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$APP_DIR"
 
 PHP_BIN="${PHP_BIN:-php}"
-COMPOSER_BIN="${COMPOSER_BIN:-composer}"
+COMPOSER_BIN="${COMPOSER_BIN:-}"
 
 echo "==> GeneoRx deploy: $APP_DIR"
 
@@ -33,10 +33,42 @@ maintenance_guard() {
 $PHP_BIN artisan down --refresh=60 --retry=60 2>/dev/null || true
 trap maintenance_guard EXIT
 
-if command -v "$COMPOSER_BIN" &>/dev/null; then
-  "$COMPOSER_BIN" install --no-dev --optimize-autoloader --no-interaction
+# Locate composer. cPanel does not put it on PATH for deploy/cron shells, and the
+# previous fallback ran `$PHP_BIN composer`, which fails with
+# "Could not open input file: composer" — that is what aborted the deploy and
+# left the site in maintenance mode. Search the known cPanel locations instead.
+resolve_composer() {
+  if [[ -n "${COMPOSER_BIN:-}" && "$COMPOSER_BIN" != "composer" ]]; then
+    printf '%s
+' "$COMPOSER_BIN"
+    return 0
+  fi
+  if command -v composer &>/dev/null; then
+    command -v composer
+    return 0
+  fi
+  local candidate
+  for candidate in /opt/cpanel/composer/bin/composer                    /opt/alt/php82/usr/bin/composer                    /opt/alt/php83/usr/bin/composer                    /usr/local/bin/composer                    "$HOME/composer.phar"                    "$APP_DIR/composer.phar"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s
+' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+COMPOSER_CMD="$(resolve_composer || true)"
+if [[ -z "$COMPOSER_CMD" ]]; then
+  echo "ERROR: composer not found. Set COMPOSER_BIN=/full/path/to/composer and re-run." >&2
+  exit 1
+fi
+echo "==> composer: $COMPOSER_CMD"
+
+if [[ "$COMPOSER_CMD" == *.phar || ! -x "$COMPOSER_CMD" ]]; then
+  $PHP_BIN "$COMPOSER_CMD" install --no-dev --optimize-autoloader --no-interaction
 else
-  $PHP_BIN "$COMPOSER_BIN" install --no-dev --optimize-autoloader --no-interaction
+  "$COMPOSER_CMD" install --no-dev --optimize-autoloader --no-interaction
 fi
 
 $PHP_BIN artisan migrate --force --no-interaction
