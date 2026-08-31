@@ -30,7 +30,8 @@
         "backgroundColor": "#000000"
       },
       "permissions": [
-        "INTERNET"
+        "INTERNET",
+        "POST_NOTIFICATIONS"
       ],
       "playStoreUrl": "https://play.google.com/store/apps/details?id=com.geneorx.app"
     },
@@ -40,7 +41,13 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "color": "#070A12"
+        }
+      ]
     ],
     "extra": {
       "apiBaseUrl": "https://geneorx.com/api",

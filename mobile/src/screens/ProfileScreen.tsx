@@ -18,6 +18,8 @@ import { useProfile } from '@/store/ProfileContext';
 import { useAuth } from '@/auth/AuthContext';
 import { clearToken } from '@/auth/tokenStorage';
 import { useWizard } from '@/store/WizardContext';
+import { setReminderPreference } from '@/api/profile';
+import { enablePushNotifications, disablePushNotifications } from '@/notifications/push';
 import { wizardToSavePayload } from '@/wizard/sync';
 import { defaultWizardState } from '@/wizard/types';
 import { AmbientBackground } from '@/components/AmbientBackground';
@@ -46,6 +48,8 @@ export const ProfileScreen: React.FC = () => {
   const [anticoagulants, setAnticoagulants] = useState(false);
   const [consent, setConsent] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [reminders, setReminders] = useState(false);
+  const [remindersBusy, setRemindersBusy] = useState(false);
 
   useEffect(() => {
     if (!data) return;
@@ -56,7 +60,39 @@ export const ProfileScreen: React.FC = () => {
     setKidneyDisease(!!data.profile?.kidneyDisease);
     setAnticoagulants(!!data.profile?.anticoagulants);
     setConsent(!!data.account?.consent);
+    const prefs = (data.portal_state as { reminderPreferences?: { enabled?: boolean } } | undefined)?.reminderPreferences;
+    setReminders(!!prefs?.enabled);
   }, [data]);
+
+  async function toggleReminders(next: boolean) {
+    setRemindersBusy(true);
+    try {
+      if (next) {
+        // Requesting the OS permission + registering the token must succeed
+        // before we record the opt-in, so the cron never targets a device that
+        // can't actually receive.
+        const ok = await enablePushNotifications();
+        if (!ok) {
+          Alert.alert(t('mobile.reminders.denied_title'), t('mobile.reminders.denied_body'));
+          setReminders(false);
+          return;
+        }
+        await setReminderPreference(true);
+        setReminders(true);
+      } else {
+        await disablePushNotifications();
+        await setReminderPreference(false);
+        setReminders(false);
+      }
+    } catch (err) {
+      Alert.alert(
+        t('mobile.profile.save_error_title'),
+        err instanceof Error ? err.message : t('mobile.profile.save_error_body'),
+      );
+    } finally {
+      setRemindersBusy(false);
+    }
+  }
 
   async function onSave() {
     setSaving(true);
@@ -228,6 +264,20 @@ export const ProfileScreen: React.FC = () => {
             description={t('mobile.profile.consent_desc')}
             value={consent}
             onValueChange={setConsent}
+          />
+        </View>
+
+        {/* REMINDERS */}
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionTitle}>{t('mobile.reminders.title')}</Text>
+            <Text style={styles.sectionSub}>{t('mobile.reminders.sub')}</Text>
+          </View>
+          <Toggle
+            label={t('mobile.reminders.weekly_label')}
+            description={t('mobile.reminders.weekly_desc')}
+            value={reminders}
+            onValueChange={remindersBusy ? () => undefined : toggleReminders}
           />
         </View>
 

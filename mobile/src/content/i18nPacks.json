@@ -970,7 +970,13 @@
         "wellbeing.sleep": "Sleep (0–10)",
         "wizard.help_title": "How this step works",
         "wizard.scale_best": "Best",
-        "wizard.scale_worst": "Worst"
+        "wizard.scale_worst": "Worst",
+        "mobile.reminders.title": "Reminders",
+        "mobile.reminders.sub": "Weekly nudges to keep your check-ins on track.",
+        "mobile.reminders.weekly_label": "Weekly check-in reminder",
+        "mobile.reminders.weekly_desc": "Get a notification once a week to log how you feel.",
+        "mobile.reminders.denied_title": "Notifications are off",
+        "mobile.reminders.denied_body": "Enable notifications for GeneoRx in your device settings to receive weekly reminders."
     },
     "es": {
         "account.age": "Edad",
@@ -1943,7 +1949,13 @@
         "wellbeing.sleep": "Sueño (0–10)",
         "wizard.help_title": "How this step works",
         "wizard.scale_best": "Best",
-        "wizard.scale_worst": "Worst"
+        "wizard.scale_worst": "Worst",
+        "mobile.reminders.title": "Recordatorios",
+        "mobile.reminders.sub": "Avisos semanales para mantener tus registros al día.",
+        "mobile.reminders.weekly_label": "Recordatorio semanal de registro",
+        "mobile.reminders.weekly_desc": "Recibe una notificación una vez por semana para registrar cómo te sientes.",
+        "mobile.reminders.denied_title": "Las notificaciones están desactivadas",
+        "mobile.reminders.denied_body": "Activa las notificaciones de GeneoRx en los ajustes de tu dispositivo para recibir recordatorios semanales."
     },
     "fr": {
         "account.age": "Âge",
@@ -2916,7 +2928,13 @@
         "wellbeing.sleep": "Sommeil (0–10)",
         "wizard.help_title": "How this step works",
         "wizard.scale_best": "Best",
-        "wizard.scale_worst": "Worst"
+        "wizard.scale_worst": "Worst",
+        "mobile.reminders.title": "Rappels",
+        "mobile.reminders.sub": "Des rappels hebdomadaires pour ne pas oublier vos suivis.",
+        "mobile.reminders.weekly_label": "Rappel de suivi hebdomadaire",
+        "mobile.reminders.weekly_desc": "Recevez une notification une fois par semaine pour noter comment vous vous sentez.",
+        "mobile.reminders.denied_title": "Les notifications sont désactivées",
+        "mobile.reminders.denied_body": "Activez les notifications pour GeneoRx dans les réglages de votre appareil pour recevoir des rappels hebdomadaires."
     },
     "ar": {
         "auth.back": "العودة للرئيسية",
@@ -3363,7 +3381,13 @@
         "welcome.legal": "Free to start · Educational guidance only · not medical advice",
         "wizard.help_title": "How this step works",
         "wizard.scale_best": "Best",
-        "wizard.scale_worst": "Worst"
+        "wizard.scale_worst": "Worst",
+        "mobile.reminders.title": "التذكيرات",
+        "mobile.reminders.sub": "تنبيهات أسبوعية للحفاظ على انتظام تسجيلاتك.",
+        "mobile.reminders.weekly_label": "تذكير التسجيل الأسبوعي",
+        "mobile.reminders.weekly_desc": "احصل على إشعار مرة واحدة أسبوعيًا لتسجيل شعورك.",
+        "mobile.reminders.denied_title": "الإشعارات متوقفة",
+        "mobile.reminders.denied_body": "فعّل إشعارات GeneoRx من إعدادات جهازك لتلقّي التذكيرات الأسبوعية."
     },
     "ur": {
         "auth.back": "ہوم پر واپس",
@@ -3810,7 +3834,13 @@
         "welcome.legal": "Free to start · Educational guidance only · not medical advice",
         "wizard.help_title": "How this step works",
         "wizard.scale_best": "Best",
-        "wizard.scale_worst": "Worst"
+        "wizard.scale_worst": "Worst",
+        "mobile.reminders.title": "یاد دہانیاں",
+        "mobile.reminders.sub": "آپ کے چیک اِن کو باقاعدہ رکھنے کے لیے ہفتہ وار یاد دہانیاں۔",
+        "mobile.reminders.weekly_label": "ہفتہ وار چیک اِن یاد دہانی",
+        "mobile.reminders.weekly_desc": "ہفتے میں ایک بار اطلاع پائیں تاکہ آپ اپنی کیفیت درج کر سکیں۔",
+        "mobile.reminders.denied_title": "اطلاعات بند ہیں",
+        "mobile.reminders.denied_body": "ہفتہ وار یاد دہانیاں حاصل کرنے کے لیے اپنے ڈیوائس کی ترتیبات میں GeneoRx کی اطلاعات آن کریں۔"
     },
     "sw": {
         "auth.back": "Rudi nyumbani",
@@ -4257,6 +4287,12 @@
         "welcome.legal": "Free to start · Educational guidance only · not medical advice",
         "wizard.help_title": "How this step works",
         "wizard.scale_best": "Best",
-        "wizard.scale_worst": "Worst"
+        "wizard.scale_worst": "Worst",
+        "mobile.reminders.title": "Vikumbusho",
+        "mobile.reminders.sub": "Vikumbusho vya kila wiki ili kuweka rekodi zako sawa.",
+        "mobile.reminders.weekly_label": "Kikumbusho cha kuingia kila wiki",
+        "mobile.reminders.weekly_desc": "Pata arifa mara moja kwa wiki ili kurekodi jinsi unavyojisikia.",
+        "mobile.reminders.denied_title": "Arifa zimezimwa",
+        "mobile.reminders.denied_body": "Washa arifa za GeneoRx katika mipangilio ya kifaa chako ili kupokea vikumbusho vya kila wiki."
     }
 }
