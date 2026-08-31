@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "587390033290",
+    "project_id": "geneorx",
+    "storage_bucket": "geneorx.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:587390033290:android:c2bb8cd1df94cfa4b4fc73",
+        "android_client_info": {
+          "package_name": "com.geneorx.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAEfODNksKBDguZ7PFdqlZ65Jm6JPwRVQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
