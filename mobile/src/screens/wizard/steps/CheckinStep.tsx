@@ -10,7 +10,8 @@ import { Input } from '@/components/Input';
 import { useToast } from '@/components/Toast';
 import { useAuth } from '@/auth/AuthContext';
 import { useWizard } from '@/store/WizardContext';
-import { fmtDate, getSymptomUniverse, impactLabel } from '@/wizard/engine';
+import { fmtDate, getSymptomUniverse, impactLabel, latestCheckin } from '@/wizard/engine';
+import { useMedCatalog } from '@/store/MedCatalogContext';
 import { dedupeCheckins } from '@/wizard/sync';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { CheckinSymptomItem, SymptomChange, Wellbeing } from '@/wizard/types';
@@ -32,6 +33,7 @@ type Props = {
 
 export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
   const { state, update, setStep, savePayload } = useWizard();
+  const { catalog } = useMedCatalog();
   const { isGuest } = useAuth();
   const { t } = useTranslation();
   const toast = useToast();
@@ -39,11 +41,18 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
   const [detailIndex, setDetailIndex] = useState<number | null>(null);
   const [checkinDate, setCheckinDate] = useState(todayISO());
   const [dateError, setDateError] = useState<string | null>(null);
-  const [adherence, setAdherence] = useState(70);
-  const [taken, setTaken] = useState<Set<string>>(new Set(state.plan.recommendedSupplements));
+  // Mirror the website: prefill from the previous check-in when there is one
+  // (script.blade.php renderCheckin -> defaultAdh / defaultWell / taken).
+  // Supplements in particular must NOT default to "all taken" — that recorded
+  // adherence the user never asserted and printed it in the doctor report.
+  const last = latestCheckin(state);
+  const [adherence, setAdherence] = useState(last ? last.adherencePct : 70);
+  const [taken, setTaken] = useState<Set<string>>(
+    new Set(last?.supplementsTaken?.length ? last.supplementsTaken : []),
+  );
   const [changes, setChanges] = useState<Record<string, SymptomChange>>({});
   const [severities, setSeverities] = useState<Record<string, number>>({});
-  const [wb, setWb] = useState<Wellbeing>(state.wellbeingBaseline);
+  const [wb, setWb] = useState<Wellbeing>(last ? last.wellbeing : state.wellbeingBaseline);
   const [sideEffects, setSideEffects] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -51,9 +60,15 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
 
   // Like the website: when no symptoms are selected yet, rate the first 12
   // of the symptom universe so there is always something to log.
-  const symptomsToRate = state.symptoms.selected.length
-    ? state.symptoms.selected
-    : getSymptomUniverse(state).slice(0, 12);
+  // Exactly the website's two-stage cap: fall back to the first 12 of the
+  // universe, then cap the rated list at 10 either way. Without the final
+  // slice a mobile check-in rated more symptoms than the web for the same
+  // input, so improvementScore (and the whole Progress chart) diverged.
+  const symptomsToRate = (
+    state.symptoms.selected.length
+      ? state.symptoms.selected
+      : getSymptomUniverse(state, catalog).slice(0, 12)
+  ).slice(0, 10);
 
   const toggleTaken = (s: string) =>
     setTaken((prev) => {
@@ -93,7 +108,7 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
         supplementsTaken: [...taken],
         symptoms: { items, improvementScore },
         wellbeing: wb,
-        sideEffects,
+        sideEffects: sideEffects.split(',').map((x) => x.trim()).filter(Boolean),
         notes,
       });
       d.checkins = dedupeCheckins(d.checkins);

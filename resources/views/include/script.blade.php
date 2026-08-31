@@ -1228,11 +1228,22 @@ function updateMyCheckinsAvailability(){
   }
 }
 
+/* Older mobile builds stored sideEffects as a raw comma-separated string while
+   this file has always stored an array. The server round-trips the value
+   verbatim, so a check-in synced from one of those builds arrives here as a
+   string and `.join()` threw, blanking the whole panel. Accept both shapes. */
+function sideEffectText(v){
+  const list = Array.isArray(v)
+    ? v.map(x => String(x).trim()).filter(Boolean)
+    : (typeof v === "string" ? v.split(",").map(x => x.trim()).filter(Boolean) : []);
+  return list.length ? list.join(", ") : t("common.none");
+}
+
 function renderCheckinDetailHtml(checkin){
   const wellbeing = checkin.wellbeing || {};
   const symptoms = (checkin.symptoms?.items || []).map(x => `${x.symptom}: ${impactLabel(x.change || "No change")}`).join(" · ");
   const supplements = (checkin.supplementsTaken || []).length ? checkin.supplementsTaken.join(", ") : t("checkin.none_logged");
-  const sideEffects = (checkin.sideEffects || []).length ? checkin.sideEffects.join(", ") : t("common.none");
+  const sideEffects = sideEffectText(checkin.sideEffects);
   const notes = checkin.notes ? checkin.notes : t("checkin.no_notes");
   return `
     <div class="checkin-detail-panel">
@@ -1351,7 +1362,7 @@ function renderLastCheckinCard(last, options = {}){
   const wellbeing = last.wellbeing || {};
   const symptoms = (last.symptoms?.items || []).map(x => `${x.symptom}: ${impactLabel(x.change || "No change")}`).join(" · ");
   const supplements = (last.supplementsTaken || []).length ? last.supplementsTaken.join(", ") : t("checkin.none_logged");
-  const sideEffects = (last.sideEffects || []).length ? last.sideEffects.join(", ") : t("common.none");
+  const sideEffects = sideEffectText(last.sideEffects);
   const notes = last.notes ? last.notes : t("checkin.no_notes");
   const actionBtns = [];
   if (showDownloadReport) {

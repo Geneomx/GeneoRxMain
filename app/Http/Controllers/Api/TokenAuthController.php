@@ -69,9 +69,11 @@ class TokenAuthController extends Controller
             ]);
         }
 
-        if (! $user->email_verified_at) {
-            $user->forceFill(['email_verified_at' => now()])->save();
-        }
+        // NOTE: do NOT mark the email verified here. Signing in proves the user
+        // knows the password, not that they own the address. Stamping it made the
+        // OTP gate escapable by force-quitting and logging back in, and rendered
+        // the admin "Verified" column meaningless. Unverified users are routed to
+        // the OTP screen, which can request a fresh code on its own.
 
         $user->tokens()->where('name', 'mobile')->delete();
         $token = $user->createToken('mobile')->plainTextToken;
@@ -82,7 +84,7 @@ class TokenAuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'emailVerified' => true,
+                'emailVerified' => (bool) $user->email_verified_at,
                 'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ],
         ]);

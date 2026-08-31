@@ -265,13 +265,25 @@ export function safetyFlags(s: WizardState, t: TranslateFn): string[] {
   return flags;
 }
 
+/**
+ * Read a check-in's side effects as a list. Mobile used to store this as a raw
+ * comma-separated string while the web stored an array, so rows already synced
+ * from older app versions come back in either shape — normalise both.
+ */
+export function sideEffectList(v: string[] | string | null | undefined): string[] {
+  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
+  if (typeof v === 'string') return v.split(',').map((x) => x.trim()).filter(Boolean);
+  return [];
+}
+
 /* ---------- symptoms ---------- */
-export function getSymptomUniverse(s: WizardState): string[] {
+export function getSymptomUniverse(s: WizardState, catalog?: MedEntry[]): string[] {
+  const db = catalog?.length ? catalog : MED_DB;
   const base = s.meds.length
     ? (() => {
         const chips: string[] = [];
         s.meds.forEach((mi) => {
-          const med = MED_DB.find((x) => x.id === mi.medId);
+          const med = db.find((x) => x.id === mi.medId);
           if (med) chips.push(...(med.symptomChips || []));
         });
         return uniq(chips).slice(0, 24);

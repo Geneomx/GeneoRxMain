@@ -4,6 +4,7 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Chip } from '@/components/Chip';
 import { useWizard } from '@/store/WizardContext';
+import { useMedCatalog } from '@/store/MedCatalogContext';
 import { getSymptomUniverse } from '@/wizard/engine';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Severity } from '@/wizard/types';
@@ -12,9 +13,12 @@ import { spacing } from '@/theme';
 
 export const SymptomsStep: React.FC = () => {
   const { state, update } = useWizard();
+  const { catalog } = useMedCatalog();
   const { t } = useTranslation();
   const [custom, setCustom] = useState('');
-  const universe = getSymptomUniverse(state);
+  // Pass the catalog so meds that only exist server-side (or were added as custom)
+  // still contribute their symptom chips — the static MED_DB alone yields none.
+  const universe = getSymptomUniverse(state, catalog);
   const selected = new Set(state.symptoms.selected);
 
   const sevOpts = useMemo(

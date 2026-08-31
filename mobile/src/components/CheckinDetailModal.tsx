@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { useTranslation } from '@/hooks/useTranslation';
-import { fmtDate, impactLabel } from '@/wizard/engine';
+import { fmtDate, impactLabel, sideEffectList } from '@/wizard/engine';
 import type { WizardCheckin } from '@/wizard/types';
 import { colors, radius, spacing } from '@/theme';
 
@@ -52,9 +52,9 @@ export const CheckinDetailModal: React.FC<Props> = ({ visible, checkin, index, o
                 </Text>
               ))}
             </View>
-            {checkin.sideEffects ? (
+            {sideEffectList(checkin.sideEffects).length ? (
               <Text style={styles.meta}>
-                {t('checkin.side_effects')}: {checkin.sideEffects}
+                {t('checkin.side_effects')}: {sideEffectList(checkin.sideEffects).join(', ')}
               </Text>
             ) : null}
             {checkin.notes ? (

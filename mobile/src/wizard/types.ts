@@ -32,7 +32,7 @@ export interface WizardCheckin {
   supplementsTaken: string[];
   symptoms: { items: CheckinSymptomItem[]; improvementScore?: number };
   wellbeing: Wellbeing;
-  sideEffects: string;
+  sideEffects: string[];
   notes: string;
 }
 

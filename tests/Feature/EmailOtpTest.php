@@ -70,4 +70,45 @@ class EmailOtpTest extends TestCase
             'platform' => 'ios',
         ]);
     }
+
+    /**
+     * Regression: signing in used to stamp email_verified_at, which made the OTP
+     * gate escapable — an unverified user could force-quit the app, log back in
+     * and be treated as verified. Logging in proves knowledge of the password,
+     * not ownership of the address.
+     */
+    public function test_mobile_login_does_not_verify_an_unverified_email(): void
+    {
+        $user = User::factory()->unverified()->create([
+            'email' => 'unverified@example.com',
+            'password' => Hash::make('secret123'),
+        ]);
+
+        $this->assertNull($user->email_verified_at);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'unverified@example.com',
+            'password' => 'secret123',
+        ])->assertOk()
+            ->assertJsonPath('user.emailVerified', false)
+            ->assertJsonPath('user.email_verified_at', null);
+
+        $this->assertNull($user->fresh()->email_verified_at);
+    }
+
+    public function test_mobile_login_reports_an_already_verified_email_as_verified(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'verified@example.com',
+            'password' => Hash::make('secret123'),
+        ]);
+
+        $this->assertNotNull($user->email_verified_at);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'verified@example.com',
+            'password' => 'secret123',
+        ])->assertOk()
+            ->assertJsonPath('user.emailVerified', true);
+    }
 }
