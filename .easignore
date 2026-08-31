@@ -20,5 +20,7 @@ mobile/.expo-shared/
 
 # Secrets that must never be uploaded.
 mobile/play-service-account.json
+mobile/credentials.json
+mobile/credentials/
 .env
 .env.*

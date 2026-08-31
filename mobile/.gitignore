@@ -15,6 +15,10 @@ android/app/build/
 .env.local
 # Google Play service-account credentials — NEVER commit
 play-service-account.json
+# Written by `eas credentials`; holds the Android keystore password,
+# key alias and key password in PLAINTEXT. Never commit.
+credentials.json
+credentials/
 npm-debug.*
 yarn-debug.*
 yarn-error.*
