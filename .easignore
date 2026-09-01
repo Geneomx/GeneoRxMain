@@ -1,28 +1,44 @@
 # EAS archives from the GIT ROOT, and this is a monorepo (eas.json lives in
-# mobile/), so the exclusion list must be root-relative and lives here — a
-# mobile/.easignore is never consulted for the upload archive.
+# mobile/), so this file must live here — a mobile/.easignore alone is not
+# enough for the upload archive.
 #
-# Without this the archive ballooned to ~85MB (untracked store-assets/node_modules
-# and marketing zips) and the upload kept dropping. The app build needs only the
-# mobile/ source + its lockfile.
+# IMPORTANT: use UNANCHORED patterns (no leading path segment). A pattern that
+# starts with a directory, e.g. "mobile/store-assets/", is resolved relative to
+# the project root (mobile/) and therefore looks for mobile/mobile/store-assets/
+# — it silently matches nothing. That is exactly why the archive sat at 43.8 MB
+# with store-assets supposedly excluded: only the unanchored "**/node_modules/"
+# rule was biting, which took it from 84.6 MB to 43.8 MB and no further.
+#
+# Uploads on this link drop with ECONNRESET partway through, so keeping the
+# archive small is what makes builds finish at all. Excluding the two
+# directories below takes it from ~44 MB to ~5 MB.
 
-# Dependencies and VCS (node_modules is gitignored, but store-assets/ has its
-# own untracked node_modules that leaked in).
+# Dependencies and VCS.
 **/node_modules/
-vendor/
-.git/
+**/vendor/
+**/.git/
 
-# Marketing / store-listing assets and local build artifacts — never in the app.
-mobile/store-assets/
-mobile/.expo-tmp-export/
-mobile/.expo/
-mobile/.expo-shared/
+# Marketing / store-listing assets — ~41 MB of screenshots, iPad captures and a
+# 13 MB zip. Uploaded to App Store Connect and Play by hand; never part of the
+# app binary.
+store-assets/
+**/store-assets/
+
+# Local Expo build artifacts and caches (~3 MB), regenerated on demand.
+.expo/
+.expo-shared/
+.expo-tmp-export/
+**/.expo/
+**/.expo-shared/
+**/.expo-tmp-export/
 
 # Secrets that must never be uploaded.
-mobile/*firebase-adminsdk*.json
-mobile/*-service-account*.json
-mobile/play-service-account.json
-mobile/credentials.json
-mobile/credentials/
+**/*firebase-adminsdk*.json
+**/*-service-account*.json
+**/play-service-account.json
+**/credentials.json
+**/credentials/
 .env
 .env.*
+**/.env
+**/.env.*

@@ -1,18 +1,33 @@
-# Keep the EAS upload archive small and fast — exclude everything the build
-# does not need. Marketing/store assets and local build artifacts are the big
-# offenders (they pushed the archive to ~85 MB and stalled uploads).
-node_modules/
-.git/
+# Kept in sync with the .easignore at the repo root. EAS archives from the GIT
+# ROOT in this monorepo, so the root file is the one that governs the upload —
+# this exists so the exclusions hold whichever file the CLI resolves.
+#
+# Patterns are UNANCHORED on purpose: an anchored pattern is resolved relative
+# to the project root and silently matches nothing.
+
+**/node_modules/
+**/vendor/
+**/.git/
+
+# Marketing / store-listing assets — never part of the app binary.
+store-assets/
+**/store-assets/
+
+# Local Expo build artifacts and caches.
 .expo/
 .expo-shared/
 .expo-tmp-export/
+**/.expo/
+**/.expo-shared/
+**/.expo-tmp-export/
 
-# Store listing + marketing assets — screenshots, zips, iPad captures.
-# Never part of the app binary.
-store-assets/
-
-# Secrets / service accounts that must never be uploaded.
-play-service-account.json
-
-# Stray large asset outside the app.
-../public/logo-master.png
+# Secrets that must never be uploaded.
+**/*firebase-adminsdk*.json
+**/*-service-account*.json
+**/play-service-account.json
+**/credentials.json
+**/credentials/
+.env
+.env.*
+**/.env
+**/.env.*
