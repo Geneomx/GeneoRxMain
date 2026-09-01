@@ -13,6 +13,11 @@ android/build/
 android/app/build/
 .env
 .env.local
+# Firebase / Google service-account keys — NEVER commit.
+# These carry a private_key granting admin access to the Firebase project.
+*firebase-adminsdk*.json
+*-service-account*.json
+service-account*.json
 # Google Play service-account credentials — NEVER commit
 play-service-account.json
 # Written by `eas credentials`; holds the Android keystore password,

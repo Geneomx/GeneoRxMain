@@ -19,6 +19,8 @@ mobile/.expo/
 mobile/.expo-shared/
 
 # Secrets that must never be uploaded.
+mobile/*firebase-adminsdk*.json
+mobile/*-service-account*.json
 mobile/play-service-account.json
 mobile/credentials.json
 mobile/credentials/
