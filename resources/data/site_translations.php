@@ -141,7 +141,7 @@ $en = [
 
     // Tabs
     'mobile.tab.home' => 'Home',
-    'mobile.tab.guided' => 'Setup',
+    'mobile.tab.guided' => 'My Plan',
     'mobile.tab.assistant' => 'Ask',
     'mobile.tab.meds' => 'Medicines',
     'mobile.tab.checkin' => 'Check-in',
@@ -446,8 +446,9 @@ $en = [
 return [
     'en' => $en,
     'es' => array_merge($en, [
+        'mobile.home.your_plan' => 'Tu plan',
         'mobile.tab.home' => 'Inicio',
-        'mobile.tab.guided' => 'Configurar',
+        'mobile.tab.guided' => 'Mi plan',
         'mobile.tab.meds' => 'Medicinas',
         'mobile.tab.checkin' => 'Registro',
         'mobile.tab.insights' => 'Información',
@@ -566,6 +567,8 @@ return [
         'mobile.wizard.complete_sub' => 'Tu registro y reporte están guardados. Vuelve al panel para ver tu resumen.',
     ]),
     'fr' => array_merge($en, [
+        'mobile.tab.guided' => 'Mon plan',
+        'mobile.home.your_plan' => 'Votre plan',
         'lang.saved' => 'Langue mise à jour',
         'nav.guest' => 'Invité',
         'nav.signin' => 'Se connecter',
@@ -611,6 +614,8 @@ return [
         'mobile.wizard.complete_sub' => 'Votre suivi et rapport sont enregistrés. Retournez au tableau de bord pour voir votre résumé.',
     ]),
     'ar' => array_merge($en, [
+        'mobile.tab.guided' => 'خطتي',
+        'mobile.home.your_plan' => 'خطتك',
         'lang.all' => 'جميع اللغات',
         'lang.choose' => 'اختر اللغة',
         'lang.saved' => 'تم تحديث اللغة',
@@ -629,6 +634,8 @@ return [
         'slide.3.title' => 'باختصار',
     ]),
     'ur' => array_merge($en, [
+        'mobile.tab.guided' => 'میرا پلان',
+        'mobile.home.your_plan' => 'آپ کا پلان',
         'lang.all' => 'تمام زبانیں',
         'lang.choose' => 'زبان منتخب کریں',
         'lang.saved' => 'زبان اپ ڈیٹ ہو گئی',
@@ -647,6 +654,8 @@ return [
         'slide.3.title' => ' مختصراً',
     ]),
     'sw' => array_merge($en, [
+        'mobile.tab.guided' => 'Mpango wangu',
+        'mobile.home.your_plan' => 'Mpango wako',
         'lang.saved' => 'Lugha imesasishwa',
         'nav.guest' => 'Mgeni',
         'nav.signin' => 'Ingia',
