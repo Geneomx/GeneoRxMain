@@ -49,3 +49,19 @@ export function isoFromCalendarDate(input: string): string | null {
 export function isValidCalendarDate(input: string): boolean {
   return isoFromCalendarDate(input) !== null;
 }
+
+/**
+ * Whole local calendar days between an ISO date and now.
+ *
+ * Extracted from HomeScreen, where it was inlined. The monthly treatment check
+ * gates on this, and a second copy would be one more thing to drift.
+ */
+export function daysSince(dateISO: string, now: Date = new Date()): number {
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const then = new Date(dateISO);
+  if (Number.isNaN(then.getTime())) return Number.POSITIVE_INFINITY;
+  return Math.max(0, Math.round((startOfDay(now) - startOfDay(then)) / 86400000));
+}
+
+/** How often the monthly treatment check is asked. */
+export const MONTHLY_CHECK_DAYS = 28;

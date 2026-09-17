@@ -345,7 +345,10 @@ const defaultState = () => ({
 function dedupeCheckins(checkins){
   const seen = new Set();
   const deduped = (checkins || []).filter(c => {
-    const key = `${c.dateISO}|${c.adherencePct}|${JSON.stringify(c.wellbeing || {})}|${(c.notes || "").trim()}`;
+    /* `completion` is part of the identity of a check-in: without it, two
+       same-day entries differing only in "saw prescriber" collapse into one
+       here while surviving on mobile, whose key already hashes more fields. */
+    const key = `${c.dateISO}|${c.adherencePct}|${JSON.stringify(c.wellbeing || {})}|${JSON.stringify(c.completion || {})}|${(c.notes || "").trim()}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

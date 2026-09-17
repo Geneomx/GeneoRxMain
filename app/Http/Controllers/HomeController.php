@@ -300,20 +300,28 @@ class HomeController extends Controller
                 $data = $row;
                 Arr::forget($data, 'id');
 
-                $attributes = [
-                    'date_checked' => $dateChecked,
-                    'adherence_percentage' => $adherence,
-                    'notes' => $notes,
-                    'data' => $data,
-                    'status' => 'active',
-                ];
-
                 $rowId = isset($row['id']) ? (string) $row['id'] : null;
                 $signature = $this->checkinSignature($dateChecked, $adherence, $notes);
 
                 $match = ($rowId !== null && $byId->has($rowId))
                     ? $byId->get($rowId)
                     : ($bySignature[$signature] ?? null);
+
+                // Merge rather than overwrite the JSON blob. A client that does
+                // not know about a newer field (an older app build, or one
+                // rebuilding a check-in object) would otherwise erase it on the
+                // next save. Top-level array_replace, NOT recursive: `data`
+                // holds lists such as symptoms.items and supplementsTaken which
+                // must replace wholesale rather than deep-merge.
+                $existingData = ($match && is_array($match->data)) ? $match->data : [];
+
+                $attributes = [
+                    'date_checked' => $dateChecked,
+                    'adherence_percentage' => $adherence,
+                    'notes' => $notes,
+                    'data' => array_replace($existingData, $data),
+                    'status' => 'active',
+                ];
 
                 // Never resurrect a row the client just asked to delete.
                 if ($match && in_array((string) $match->id, $deletedIds, true)) {

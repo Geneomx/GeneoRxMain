@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { track } from '@/api/analytics';
-import { isoFromCalendarDate, todayISO } from '@/wizard/calendarDate';
+import { MONTHLY_CHECK_DAYS, daysSince, isoFromCalendarDate, todayISO } from '@/wizard/calendarDate';
 import { Button } from '@/components/Button';
 import { CheckinDetailModal } from '@/components/CheckinDetailModal';
 import { Chip } from '@/components/Chip';
@@ -14,8 +14,8 @@ import { fmtDate, getSymptomUniverse, impactLabel, latestCheckin } from '@/wizar
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import { dedupeCheckins } from '@/wizard/sync';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { CheckinSymptomItem, SymptomChange, Wellbeing } from '@/wizard/types';
-import { Divider, FinePrint, HelpNote, ScaleRow, Section, Tagline } from '@/screens/wizard/ui';
+import { LIFESTYLE_KEYS, type CheckinCompletion, type CheckinSymptomItem, type LifestyleKey, type Rating, type SymptomChange, type TriState, type Wellbeing } from '@/wizard/types';
+import { Divider, FinePrint, HelpNote, OptionalScaleRow, ScaleRow, Section, Tagline, TriStateRow } from '@/screens/wizard/ui';
 import { colors, radius, spacing } from '@/theme';
 
 const CHANGE_VALUES: { value: SymptomChange; score: number }[] = [
@@ -53,6 +53,18 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
   const [changes, setChanges] = useState<Record<string, SymptomChange>>({});
   const [severities, setSeverities] = useState<Record<string, number>>({});
   const [wb, setWb] = useState<Wellbeing>(last ? last.wellbeing : state.wellbeingBaseline);
+  // The three v3 body systems. They start unanswered EVERY week and are never
+  // prefilled from `last` — prefilling would silently re-assert a number the
+  // user did not look at, which is the severityNow bug at triple scale.
+  const [digestive, setDigestive] = useState<Rating>(null);
+  const [circulation, setCirculation] = useState<Rating>(null);
+  const [immunity, setImmunity] = useState<Rating>(null);
+
+  // Monthly treatment check — likewise never prefilled.
+  const [labsDone, setLabsDone] = useState<TriState | null>(null);
+  const [prescriberSeen, setPrescriberSeen] = useState<TriState | null>(null);
+  const [lifestyle, setLifestyle] = useState<Partial<Record<LifestyleKey, TriState | null>>>({});
+
   const [sideEffects, setSideEffects] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -69,6 +81,17 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
       ? state.symptoms.selected
       : getSymptomUniverse(state, catalog).slice(0, 12)
   ).slice(0, 10);
+
+  // Ask the monthly block only when it is actually due: find the most recent
+  // check-in that carries answers and re-prompt once it is 28 days old. A
+  // check-in that was never asked does not reset the clock.
+  const monthlyDue = (() => {
+    const answered = [...state.checkins]
+      .filter((c) => c.completion && (c.completion.labs !== null || c.completion.prescriber !== null))
+      .sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+    const lastAnswered = answered[answered.length - 1];
+    return !lastAnswered || daysSince(lastAnswered.dateISO) >= MONTHLY_CHECK_DAYS;
+  })();
 
   const toggleTaken = (s: string) =>
     setTaken((prev) => {
@@ -107,7 +130,24 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
         adherencePct: adherence,
         supplementsTaken: [...taken],
         symptoms: { items, improvementScore },
-        wellbeing: wb,
+        // The three new ratings ride inside `wellbeing` deliberately: the web
+        // dedupe key hashes that object, so a sibling field would be invisible
+        // to it and two same-day check-ins differing only in these would
+        // silently collapse into one.
+        wellbeing: { ...wb, digestive, circulation, immunity },
+        // Snapshot the plan as it stood this week; the live plan may change.
+        supplementsPlanned: [...allSupplements],
+        ...(monthlyDue
+          ? {
+              completion: {
+                labs: labsDone,
+                labsDateISO: labsDone === 'yes' ? dateISO : null,
+                prescriber: prescriberSeen,
+                prescriberDateISO: prescriberSeen === 'yes' ? dateISO : null,
+                lifestyle,
+              } satisfies CheckinCompletion,
+            }
+          : {}),
         sideEffects: sideEffects.split(',').map((x) => x.trim()).filter(Boolean),
         notes,
       });
@@ -121,6 +161,12 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
     toast.show(t(isGuest ? 'toast.checkin_guest' : 'toast.checkin_saved'));
     setSideEffects('');
     setNotes('');
+    setDigestive(null);
+    setCirculation(null);
+    setImmunity(null);
+    setLabsDone(null);
+    setPrescriberSeen(null);
+    setLifestyle({});
     setChanges({});
     setSeverities({});
     if (advanceToProgress) setStep(PROGRESS_STEP);
@@ -251,7 +297,58 @@ export const CheckinStep: React.FC<Props> = ({ advanceToProgress = false }) => {
         <ScaleRow label={t('wellbeing.mood')} value={wb.mood} onChange={(v) => setWb((p) => ({ ...p, mood: v }))} />
         <ScaleRow label={t('wellbeing.sleep')} value={wb.sleep} onChange={(v) => setWb((p) => ({ ...p, sleep: v }))} />
         <ScaleRow label={t('wellbeing.focus')} value={wb.focus} onChange={(v) => setWb((p) => ({ ...p, focus: v }))} />
+
+        <Divider />
+        <Tagline title={t('checkin.systems_title')} body={t('checkin.systems_sub')} />
+        <OptionalScaleRow
+          label={t('wellbeing.digestive')}
+          value={digestive}
+          onChange={setDigestive}
+          notAnsweredLabel={t('checkin.not_answered')}
+        />
+        <OptionalScaleRow
+          label={t('wellbeing.circulation')}
+          value={circulation}
+          onChange={setCirculation}
+          notAnsweredLabel={t('checkin.not_answered')}
+        />
+        <OptionalScaleRow
+          label={t('wellbeing.immunity')}
+          value={immunity}
+          onChange={setImmunity}
+          notAnsweredLabel={t('checkin.not_answered')}
+        />
+        <FinePrint>{t('checkin.systems_note')}</FinePrint>
       </Section>
+
+      {monthlyDue ? (
+        <Section>
+          <Tagline title={t('checkin.monthly_title')} body={t('checkin.monthly_sub')} />
+          <TriStateRow
+            label={t('checkin.labs_q')}
+            value={labsDone}
+            onChange={setLabsDone}
+            labels={{ yes: t('common.yes'), no: t('common.no'), unsure: t('checkin.unsure') }}
+          />
+          <TriStateRow
+            label={t('checkin.prescriber_q')}
+            value={prescriberSeen}
+            onChange={setPrescriberSeen}
+            labels={{ yes: t('common.yes'), no: t('common.no'), unsure: t('checkin.unsure') }}
+          />
+          <Divider />
+          {LIFESTYLE_KEYS.map((key) => (
+            <TriStateRow
+              key={key}
+              label={t(`checkin.lifestyle.${key}`)}
+              value={lifestyle[key] ?? null}
+              onChange={(v) => setLifestyle((prev) => ({ ...prev, [key]: v }))}
+              labels={{ yes: t('common.yes'), no: t('common.no'), unsure: t('checkin.unsure') }}
+            />
+          ))}
+          <FinePrint>{t('checkin.monthly_note')}</FinePrint>
+        </Section>
+      ) : null}
 
       <Section>
         <Input label={t('checkin.side_effects')} placeholder={t('checkin.side_effects_placeholder')} value={sideEffects} onChangeText={setSideEffects} multiline />

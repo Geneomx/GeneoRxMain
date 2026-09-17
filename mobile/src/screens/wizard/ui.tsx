@@ -6,6 +6,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { colors, gradients, radius, shadow, spacing, touchMin } from '@/theme';
 import { citationToLink, successLabel } from '@/wizard/engine';
 import type { AlertLevel, InsightResult, Tier } from '@/wizard/engine';
+import type { Rating, TriState } from '@/wizard/types';
 
 /* ---------- Section card ---------- */
 export const Section: React.FC<{ children: React.ReactNode; style?: object }> = ({ children, style }) => (
@@ -396,6 +397,104 @@ export const InsightModal: React.FC<{ visible: boolean; onClose: () => void; ins
   );
 };
 
+/**
+ * A 0-10 row that can legitimately be left unanswered.
+ *
+ * Deliberately NOT a widened ScaleRow. ScaleRow's `value: number` means every
+ * row always holds a number, which is how `severityNow` ended up defaulting to
+ * 5 and silently asserting values nobody chose. Here the leading
+ * "Not answered" pill is the default, and 0 remains separately selectable as a
+ * real answer.
+ */
+export const OptionalScaleRow: React.FC<{
+  label: string;
+  value: Rating;
+  onChange: (v: Rating) => void;
+  notAnsweredLabel: string;
+}> = ({ label, value, onChange, notAnsweredLabel }) => {
+  const answered = typeof value === 'number';
+  return (
+    <View style={styles.scaleWrap}>
+      <View style={styles.scaleHead}>
+        <Text style={styles.scaleLabel}>{label}</Text>
+        <Text style={styles.scaleValue}>
+          {answered ? (
+            <>
+              {value}
+              <Text style={styles.scaleValueMax}> / {SCALE_MAX}</Text>
+            </>
+          ) : (
+            <Text style={styles.scaleValueMax}>—</Text>
+          )}
+        </Text>
+      </View>
+      <View style={styles.scorePillRow}>
+        <Pressable
+          onPress={() => onChange(null)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: !answered }}
+          style={[styles.scorePill, styles.scorePillWide, !answered && styles.scorePillOn]}
+        >
+          <Text style={[styles.scorePillText, !answered && styles.scorePillTextOn]} numberOfLines={1}>
+            {notAnsweredLabel}
+          </Text>
+        </Pressable>
+        {Array.from({ length: SCALE_MAX + 1 }, (_, n) => {
+          const on = n === value;
+          return (
+            <Pressable
+              key={n}
+              onPress={() => onChange(n)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={[styles.scorePill, on && styles.scorePillOn]}
+            >
+              <Text style={[styles.scorePillText, on && styles.scorePillTextOn]}>{n}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+/** Yes / No / Unsure. `null` means the question was never answered. */
+export const TriStateRow: React.FC<{
+  label: string;
+  value: TriState | null;
+  onChange: (v: TriState | null) => void;
+  labels: { yes: string; no: string; unsure: string };
+}> = ({ label, value, onChange, labels }) => {
+  const opts: { key: TriState; text: string }[] = [
+    { key: 'yes', text: labels.yes },
+    { key: 'no', text: labels.no },
+    { key: 'unsure', text: labels.unsure },
+  ];
+  return (
+    <View style={{ gap: 6 }}>
+      <Text style={styles.scaleLabel}>{label}</Text>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        {opts.map((o) => {
+          const on = o.key === value;
+          return (
+            <Pressable
+              key={o.key}
+              // Tapping the selected answer clears it — an answer given by
+              // mistake must be removable, not merely changeable.
+              onPress={() => onChange(on ? null : o.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={[styles.triPill, on && styles.scorePillOn]}
+            >
+              <Text style={[styles.scorePillText, on && styles.scorePillTextOn]}>{o.text}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   // Website .card: navy gradient panel, radius 18, white .12 hairline
   section: {
@@ -472,6 +571,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 54, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  scorePillWide: { paddingHorizontal: 10, minWidth: 74 },
+  triPill: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.inputBg,
   },
   scorePillOn: {
     backgroundColor: 'rgba(40, 225, 255, 0.22)',
