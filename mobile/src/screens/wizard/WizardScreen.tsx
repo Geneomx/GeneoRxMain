@@ -23,17 +23,16 @@ import { SymptomsStep } from '@/screens/wizard/steps/SymptomsStep';
 import { WellbeingStep } from '@/screens/wizard/steps/WellbeingStep';
 import { ResultsStep } from '@/screens/wizard/steps/ResultsStep';
 import { CheckinStep } from '@/screens/wizard/steps/CheckinStep';
+import { InsightsStep } from '@/screens/wizard/steps/InsightsStep';
 import { ProgressStep } from '@/screens/wizard/steps/ProgressStep';
 import { SummaryStep } from '@/screens/wizard/steps/SummaryStep';
 import { FeedbackStep } from '@/screens/wizard/steps/FeedbackStep';
 
 const CheckinStepScreen: React.FC = () => <CheckinStep advanceToProgress />;
 
-const SkippedStep: React.FC = () => null;
-
 const STEP_COMPONENTS = [
   AccountStep, MedicationsStep, SymptomsStep, WellbeingStep, ResultsStep,
-  CheckinStepScreen, ProgressStep, SkippedStep, SummaryStep, FeedbackStep,
+  CheckinStepScreen, ProgressStep, InsightsStep, SummaryStep, FeedbackStep,
 ];
 
 export const WizardScreen: React.FC = () => {

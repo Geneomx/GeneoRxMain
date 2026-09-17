@@ -1920,7 +1920,10 @@ document.getElementById("insightCopy").addEventListener("click", async ()=>{
    ===== TABS =====
    ========================================================= */
 const STEP_COUNT = 10;
-const HIDDEN_STEPS = new Set([7, 9]);
+/* 7 was Citations, whose content moved inline into Results; the slot sat dead
+   with a renderer nothing called. v3 reclaims it for Insights, which is why
+   no step needed renumbering. */
+const HIDDEN_STEPS = new Set([9]);
 const stepLabel = (i)=> t(`step.${i}`);
 
 function visibleSteps(){
@@ -3381,6 +3384,172 @@ function renderCitations(){
 
 
 /* ===== TAB 8: SUMMARY ===== */
+/* ===== TAB 7: INSIGHTS =====
+   Section order is the parity contract with mobile InsightsStep.tsx:
+   §1 at a glance, §2 depletion risk, §3 timeline, §4 body systems,
+   §5 patterns, §6 labs, footer. Change one, change both. */
+function renderInsights(){
+  const scores     = computeNutrientScores();
+  const weekly     = computeWeeklyHealthScore();
+  const completion = computeMedicationCompletion();
+  const systems    = computeBodySystemsView();
+  const patterns   = detectHealthPatterns();
+  const labs       = buildLabRecommendations();
+  const top        = scores.length ? scores[0] : null;
+
+  const dash = "&mdash;";
+  const num  = v => (typeof v === "number") ? String(v) : dash;
+
+  /* ---- §1 at a glance ---- */
+  const s1 = document.createElement("div");
+  s1.className = "section";
+  s1.setAttribute("data-insight", "glance");
+  const deltaTxt = (weekly.delta === null)
+    ? escapeHtml(t("insights.no_comparison"))
+    : `${weekly.delta >= 0 ? "&#9650;" : "&#9660;"} ${Math.abs(weekly.delta)} ${escapeHtml(t("insights.vs_last_week"))}`;
+  s1.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("insights.title"))}</strong><div class="fineprint">${escapeHtml(t("insights.sub"))}</div></div>
+    <div class="metricGrid">
+      <div class="metricCard">
+        <div class="k">${escapeHtml(t("insights.this_week"))}</div>
+        <div class="v" style="font-size:26px;font-weight:800">${num(weekly.score)}</div>
+        <div class="fineprint">${deltaTxt}</div>
+      </div>
+      <div class="metricCard">
+        <div class="k">${escapeHtml(t("insights.completion"))}</div>
+        <div class="v" style="font-size:26px;font-weight:800">${num(completion.score)}</div>
+        <div class="fineprint">${escapeHtml(t("insights.answered_of", {answered: completion.answered, total: completion.total}))}</div>
+      </div>
+      <div class="metricCard">
+        <div class="k">${escapeHtml(t("insights.top_risk"))}</div>
+        <div class="v" style="font-size:26px;font-weight:800">${top ? top[1] : dash}</div>
+        <div class="fineprint">${top ? escapeHtml(top[0]) : escapeHtml(t("insights.none_yet"))}</div>
+      </div>
+    </div>`;
+  mainEl.appendChild(s1);
+
+  /* ---- §2 depletion risk ---- */
+  const s2 = document.createElement("div");
+  s2.className = "section";
+  s2.setAttribute("data-insight", "risk");
+  const riskRows = scores.slice(0,6).map(pair => {
+    const nutrient = pair[0], score = pair[1];
+    const tier = tierFromScore(score);
+    return `<div class="item">
+      <div class="k">${escapeHtml(nutrient)} <span class="tierPill ${tier === "High" ? "tierHigh" : (tier === "Moderate" ? "tierMod" : "tierLow")}">${escapeHtml(tierLabel(tier))}</span></div>
+      <div class="v">${score}</div>
+    </div>`;
+  }).join("");
+  s2.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("insights.depletion_title"))}</strong></div>
+    <div class="list">${riskRows || `<div class="fineprint">${escapeHtml(t("insights.depletion_empty"))}</div>`}</div>
+    <div class="fineprint">${escapeHtml(t("insights.depletion_note"))}</div>
+    ${top ? `<div class="btns"><button class="ghost mini" id="insGoEvidence">${escapeHtml(t("insights.open_evidence"))}</button></div>` : ""}`;
+  mainEl.appendChild(s2);
+  if(top){
+    const b = document.getElementById("insGoEvidence");
+    if(b) b.addEventListener("click", () => setStep(4));
+  }
+
+  /* ---- §3 depletion timeline ---- */
+  const s3 = document.createElement("div");
+  s3.className = "section";
+  s3.setAttribute("data-insight", "timeline");
+  const tlRows = (state.meds || []).slice(0,3).map(m => {
+    const months = Math.max(0, m.durationMonths || 0);
+    const pct = Math.round(Math.min(1, months / 24) * 100);
+    return `<div class="item">
+      <div class="k">${escapeHtml(((MED_DB.find(x => x.id === m.medId) || {}).name) || m.medId)}</div>
+      <div class="v">${months}${escapeHtml(t("insights.months_short"))}
+        <span class="revealTrack" style="display:inline-block;width:90px;vertical-align:middle;margin-left:8px">
+          <span class="revealBar" style="display:block;width:${pct}%;background:linear-gradient(90deg,var(--cyan),var(--violet))"></span>
+        </span>
+      </div>
+    </div>`;
+  }).join("");
+  s3.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("insights.timeline_title"))}</strong><div class="fineprint">${escapeHtml(t("insights.timeline_sub"))}</div></div>
+    <div class="list">${tlRows || `<div class="fineprint">${escapeHtml(t("insights.timeline_empty"))}</div>`}</div>
+    <div class="fineprint">${escapeHtml(t("insights.timeline_note"))}</div>`;
+  mainEl.appendChild(s3);
+
+  /* ---- §4 body systems ---- */
+  const s4 = document.createElement("div");
+  s4.className = "section";
+  s4.setAttribute("data-insight", "systems");
+  const sysRows = systems.rows.map(r => {
+    const answered = typeof r.value === "number";
+    const pct = answered ? Math.round((r.value / 10) * 100) : 0;
+    return `<div class="item"${answered ? "" : ' style="opacity:.55"'}>
+      <div class="k">${escapeHtml(t("wellbeing." + r.key))}</div>
+      <div class="v">${answered ? r.value : dash}
+        <span class="revealTrack" style="display:inline-block;width:90px;vertical-align:middle;margin-left:8px">
+          ${answered ? `<span class="revealBar" style="display:block;width:${pct}%;background:var(--cyan)"></span>` : ""}
+        </span>
+      </div>
+    </div>`;
+  }).join("");
+  s4.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("insights.systems_title"))}</strong>
+      <div class="fineprint">${escapeHtml(t("insights.answered_of", {answered: systems.answered, total: systems.total}))}</div></div>
+    <div class="list">${sysRows}</div>
+    <div class="fineprint">${escapeHtml(t("insights.systems_note"))}</div>
+    ${systems.answered < systems.total ? `<div class="btns"><button class="ghost mini" id="insGoCheckin">${escapeHtml(t("insights.rate_missing"))}</button></div>` : ""}`;
+  mainEl.appendChild(s4);
+  const bc = document.getElementById("insGoCheckin");
+  if(bc) bc.addEventListener("click", () => setStep(5));
+
+  /* ---- §5 patterns — ALL of them, not just patterns[0] ---- */
+  const s5 = document.createElement("div");
+  s5.className = "section";
+  s5.setAttribute("data-insight", "patterns");
+  const patRows = patterns.map(pt => `
+    <div class="item">
+      <div class="k">${escapeHtml(pt.title)} <span class="tierPill ${pt.confidence === "High" ? "tierHigh" : "tierMod"}">${escapeHtml(pt.confidence)}</span></div>
+      <div class="v" style="font-weight:400;color:var(--muted)">${escapeHtml(pt.note)}</div>
+    </div>`).join("");
+  s5.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("insights.patterns_title"))}</strong><div class="fineprint">${escapeHtml(t("insights.patterns_sub"))}</div></div>
+    <div class="list">${patRows || `<div class="fineprint">${escapeHtml(t("insights.patterns_empty"))}</div>`}</div>
+    <div class="fineprint">${escapeHtml(t("insights.patterns_note"))}</div>`;
+  mainEl.appendChild(s5);
+
+  /* ---- §6 labs ---- */
+  const s6 = document.createElement("div");
+  s6.className = "section";
+  s6.setAttribute("data-insight", "labs");
+  const labRows = labs.map(rec => `
+    <div class="item">
+      <div class="k">${escapeHtml(rec.nutrient)} <span class="tierPill ${rec.tier === "High" ? "tierHigh" : (rec.tier === "Moderate" ? "tierMod" : "tierLow")}">${escapeHtml(tierLabel(rec.tier))}</span></div>
+      <div class="v" style="font-weight:400">${rec.noRoutineLab
+        ? `<span style="color:var(--muted2)">${escapeHtml(t("insights.labs_none"))}</span>`
+        : rec.labs.map(l => `<span class="chip" aria-pressed="false">${escapeHtml(l)}</span>`).join(" ")}</div>
+    </div>`).join("");
+  s6.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("insights.labs_title"))}</strong><div class="fineprint">${escapeHtml(t("insights.labs_sub"))}</div></div>
+    <div class="list">${labRows || `<div class="fineprint">${escapeHtml(t("insights.labs_empty"))}</div>`}</div>
+    <div class="banner">${escapeHtml(t("insights.labs_note"))}</div>`;
+  mainEl.appendChild(s6);
+
+  /* ---- footer: snapshot + assistant ---- */
+  const s7 = document.createElement("div");
+  s7.className = "section";
+  s7.innerHTML = `<div class="btns">
+      <button class="ghost" id="insSnapshot">${escapeHtml(t("insights.snapshot"))}</button>
+    </div>`;
+  mainEl.appendChild(s7);
+  const bs = document.getElementById("insSnapshot");
+  if(bs) bs.addEventListener("click", () => { if(typeof openSnapshotModal === "function") openSnapshotModal(); else setStep(6); });
+
+  /* The assistant lived only on the terminal Summary step until now. */
+  const s8 = document.createElement("div");
+  s8.className = "section";
+  mainEl.appendChild(s8);
+  if(typeof mountAssistantPanel === "function") mountAssistantPanel(s8);
+
+  mainEl.appendChild(navButtons(true, true, "nav.continue"));
+}
+
 function renderSummaryTab(){
   const meds = state.meds.map(m=>{
     const med = MED_DB.find(x=>x.id===m.medId);
@@ -3780,6 +3949,7 @@ function renderMain(){
   if(state.step===4) return renderResults();
   if(state.step===5) return renderCheckin();
   if(state.step===6) return renderProgress();
+  if(state.step===7) return renderInsights();
   if(state.step===8) return renderSummaryTab();
 }
 

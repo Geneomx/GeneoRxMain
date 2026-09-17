@@ -303,7 +303,7 @@ export const LAB_SUGGESTIONS: Record<string, string[]> = {
 
 export const STEP_LABELS = [
   'Account', 'Medications', 'Symptoms', 'Wellbeing', 'Results',
-  'Check-in', 'Progress', 'Citations', 'Summary', 'Feedback',
+  'Check-in', 'Progress', 'Insights', 'Summary', 'Feedback',
 ] as const;
 
 export const STEP_SUBS: Record<string, string> = {
@@ -314,13 +314,20 @@ export const STEP_SUBS: Record<string, string> = {
   Results: 'Nutrient signals + recommendations + evidence.',
   'Check-in': 'Log symptom improvement + adherence + wellbeing.',
   Progress: 'Weekly health signal + snapshot for clinician.',
-  Citations: 'All sources referenced in this session.',
+  Insights: 'What your medications and check-ins add up to.',
   Summary: 'Your overall GeneoRx dashboard view.',
   Feedback: 'Send questions and feedback to GeneoRx.',
 };
 
-/** Steps hidden from the tray — mirrors the website portal. */
-export const HIDDEN_STEPS = new Set([7, 9]);
+/**
+ * Steps hidden from the tray — mirrors the website portal.
+ *
+ * 7 used to be Citations, whose content moved inline into Results, leaving
+ * STEP_COMPONENTS[7] as a no-op. v3 reclaims that slot for Insights, which is
+ * why this feature needed no renumbering: every hardcoded setStep(4/5/6),
+ * CHECKIN_STEP and step.N key is untouched.
+ */
+export const HIDDEN_STEPS = new Set([9]);
 
 export function visibleSteps(isGuest: boolean): number[] {
   const steps: number[] = [];
