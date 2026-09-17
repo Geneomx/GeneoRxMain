@@ -5,6 +5,7 @@ import { Button } from '@/components/Button';
 import { DropdownSelect } from '@/components/DropdownSelect';
 import { Input } from '@/components/Input';
 import { useWizard } from '@/store/WizardContext';
+import { FirstRunBanner } from '@/screens/wizard/FirstRunBanner';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import type { MedEntry } from '@/content/wizardData';
 import { searchMeds } from '@/wizard/medSearch';
@@ -15,6 +16,7 @@ import { colors, radius, spacing } from '@/theme';
 
 export const MedicationsStep: React.FC = () => {
   const { state, update } = useWizard();
+  const firstRun = state.checkins.length === 0;
   const { catalog, mergeCustomMeds } = useMedCatalog();
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
@@ -116,6 +118,9 @@ export const MedicationsStep: React.FC = () => {
 
   return (
     <View style={{ gap: spacing.md }}>
+      {firstRun ? (
+        <FirstRunBanner position={2} titleKey="firstrun.s2_title" subKey="firstrun.s2_sub" />
+      ) : null}
       <HelpNote what={t('step.1.sub')} why={t('meds.sub')} />
       <Section>
         <Tagline title={t('meds.title')} body={t('meds.sub')} />

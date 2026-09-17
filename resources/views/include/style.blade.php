@@ -565,4 +565,10 @@
     @media (max-width:780px){.metricGrid{grid-template-columns:1fr}}
     .metricCard{border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(7,10,18,.22);padding:12px}
 
-  </style>
+  
+    .firstRun{border-color:rgba(40,225,255,.28);background:rgba(40,225,255,.06)}
+    .firstRunDots{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+    .step-dot{width:18px;height:18px;border-radius:50%;border:1px solid var(--stroke);
+      display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--txt)}
+    .step-dot.on{background:var(--cyan);border-color:transparent;color:#061018}
+</style>

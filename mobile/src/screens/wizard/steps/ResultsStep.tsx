@@ -4,6 +4,7 @@ import { track } from '@/api/analytics';
 import { Button } from '@/components/Button';
 import { useToast } from '@/components/Toast';
 import { useWizard, type FocusTarget } from '@/store/WizardContext';
+import { FirstRunBanner } from '@/screens/wizard/FirstRunBanner';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import {
   aggregateEvidenceByNutrient,
@@ -80,6 +81,7 @@ function topInlineCites(
 
 export const ResultsStep: React.FC = () => {
   const { state, update, focusTarget, setFocusTarget } = useWizard();
+  const firstRun = state.checkins.length === 0;
   const { catalog } = useMedCatalog();
   const { t, language } = useTranslation();
   const toast = useToast();
@@ -230,6 +232,9 @@ export const ResultsStep: React.FC = () => {
 
   return (
     <View style={{ gap: spacing.md }}>
+      {firstRun ? (
+        <FirstRunBanner position={3} titleKey="firstrun.s3_title" subKey="firstrun.s3_sub" />
+      ) : null}
       {renderFocused()}
       {/* AI Coach — matches website coachBox */}
       <Section style={styles.coach}>

@@ -4,6 +4,7 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Chip } from '@/components/Chip';
 import { useWizard } from '@/store/WizardContext';
+import { FirstRunBanner } from '@/screens/wizard/FirstRunBanner';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import { getSymptomUniverse } from '@/wizard/engine';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -13,6 +14,7 @@ import { spacing } from '@/theme';
 
 export const SymptomsStep: React.FC = () => {
   const { state, update } = useWizard();
+  const firstRun = state.checkins.length === 0;
   const { catalog } = useMedCatalog();
   const { t } = useTranslation();
   const [custom, setCustom] = useState('');
@@ -50,6 +52,9 @@ export const SymptomsStep: React.FC = () => {
 
   return (
     <View style={{ gap: spacing.md }}>
+      {firstRun ? (
+        <FirstRunBanner position={1} titleKey="firstrun.s1_title" subKey="firstrun.s1_sub" />
+      ) : null}
       <HelpNote what={t('step.2.sub')} why={t('symptoms.select_hint')} />
       <Section>
         <Tagline title={t('symptoms.select')} body={t('symptoms.select_hint')} />

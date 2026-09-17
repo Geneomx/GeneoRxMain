@@ -2376,6 +2376,8 @@ function renderAccount(){
 
 /* ===== TAB 1: MEDICATIONS ===== */
 function renderMeds(){
+  { const fr = firstRunBannerHtml(2, "firstrun.s2_title", "firstrun.s2_sub");
+    if(fr){ const frEl = document.createElement("div"); frEl.innerHTML = fr; if(frEl.firstElementChild) mainEl.appendChild(frEl.firstElementChild); } }
   const s1 = document.createElement("div");
   s1.className="section";
   s1.innerHTML = `
@@ -2639,7 +2641,26 @@ function renderMeds(){
 }
 
 /* ===== TAB 2: SYMPTOMS ===== */
+/* The deck's "3 simple steps" funnel, as framing over the steps that already
+   collect this data — Symptoms, Medications and Results. Deliberately not a
+   parallel onboarding flow: a second path collecting the same inputs would
+   drift from the wizard the first time either side changed.
+   Mirrors mobile/src/screens/wizard/FirstRunBanner.tsx. */
+function firstRunBannerHtml(position, titleKey, subKey){
+  if((state.checkins || []).length) return "";   /* returning user: framing is noise */
+  const dots = [1,2,3].map(n =>
+    `<span class="step-dot${n === position ? " on" : ""}">${n === position ? n : ""}</span>`
+  ).join("");
+  return `
+    <div class="section firstRun">
+      <div class="firstRunDots">${dots}<span class="fineprint" style="margin-left:6px">${escapeHtml(t("firstrun.step_of", {n: position}))}</span></div>
+      <div class="tagline"><strong>${escapeHtml(t(titleKey))}</strong><br>${escapeHtml(t(subKey))}</div>
+    </div>`;
+}
+
 function renderSymptoms(){
+  { const fr = firstRunBannerHtml(1, "firstrun.s1_title", "firstrun.s1_sub");
+    if(fr){ const frEl = document.createElement("div"); frEl.innerHTML = fr; if(frEl.firstElementChild) mainEl.appendChild(frEl.firstElementChild); } }
   const universe = getSymptomUniverse();
   const s1 = document.createElement("div");
   s1.className="section";
@@ -2745,6 +2766,8 @@ function renderWellbeing(){
 
 /* ===== TAB 4: RESULTS ===== */
 function renderResults(){
+  { const fr = firstRunBannerHtml(3, "firstrun.s3_title", "firstrun.s3_sub");
+    if(fr){ const frEl = document.createElement("div"); frEl.innerHTML = fr; if(frEl.firstElementChild) mainEl.appendChild(frEl.firstElementChild); } }
   const scores = computeNutrientScores();
   const rec = recommendSupplements(scores);
 

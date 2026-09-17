@@ -145,6 +145,14 @@ $en = [
     'mobile.tab.assistant' => 'Ask',
     'mobile.tab.meds' => 'Medicines',
     'mobile.tab.checkin' => 'Check-in',
+    // --- v3 first-run funnel (framing over Symptoms, Medications, Results) ---
+    'firstrun.step_of' => 'Step {n} of 3',
+    'firstrun.s1_title' => 'Tell us what is bothering you',
+    'firstrun.s1_sub' => 'Pick a symptom, or describe how you feel. You are not alone in this.',
+    'firstrun.s2_title' => 'Add your medications',
+    'firstrun.s2_sub' => 'Prescription, over-the-counter and supplements. This takes about a minute.',
+    'firstrun.s3_title' => 'See what is really going on',
+    'firstrun.s3_sub' => 'Your nutrient signals, with the evidence behind each one.',
     // --- v3 check-in inputs ---
     'checkin.systems_title' => 'Body systems',
     'checkin.systems_sub' => 'Rate these if you can. Skipping is fine.',
