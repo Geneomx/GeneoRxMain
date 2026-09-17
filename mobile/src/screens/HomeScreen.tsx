@@ -14,6 +14,9 @@ import {
   computeNutrientScores,
   computeWeeklyCoachMessage,
   fmtDate,
+  computeBodySystemsView,
+  computeMedicationCompletion,
+  computeWeeklyHealthScore,
   impactLabel,
   latestCheckin,
 } from '@/wizard/engine';
@@ -160,6 +163,10 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     () => computeDrugInteractions(state, t)[0] ?? null,
     [state, t],
   );
+  const weekly = useMemo(() => computeWeeklyHealthScore(state), [state]);
+  const completion = useMemo(() => computeMedicationCompletion(state), [state]);
+  const systems = useMemo(() => computeBodySystemsView(state), [state]);
+
   const topNutrient = useMemo(() => {
     const scores = computeNutrientScores(state, catalog);
     return scores.length ? scores[0][0] : null;
@@ -298,6 +305,23 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
               ) : (
                 <Button title={t('home.first_checkin_cta')} variant="secondary" onPress={() => goToStep(5)} />
               )}
+
+              {/* Deep links into the Insights hub. Without these the hub is only
+                  findable by walking the wizard to step 7. */}
+              <View style={styles.insightTiles}>
+                <Pressable style={styles.insightTile} onPress={() => goToStep(7)}>
+                  <Text style={styles.insightVal}>{weekly.score ?? '—'}</Text>
+                  <Text style={styles.insightLab}>{t('insights.this_week')}</Text>
+                </Pressable>
+                <Pressable style={styles.insightTile} onPress={() => goToStep(7)}>
+                  <Text style={styles.insightVal}>{completion.score ?? '—'}</Text>
+                  <Text style={styles.insightLab}>{t('insights.completion')}</Text>
+                </Pressable>
+                <Pressable style={styles.insightTile} onPress={() => goToStep(7)}>
+                  <Text style={styles.insightVal}>{systems.average ?? '—'}</Text>
+                  <Text style={styles.insightLab}>{t('insights.systems')}</Text>
+                </Pressable>
+              </View>
             </>
           )}
         </View>
@@ -417,6 +441,19 @@ const styles = StyleSheet.create({
   },
   checkinLabel: { fontSize: 13, fontWeight: '700', color: colors.textSoft },
   checkinDetail: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  insightTiles: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  insightTile: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    gap: 2,
+    backgroundColor: 'rgba(7, 10, 18, 0.35)',
+  },
+  insightVal: { fontSize: 20, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
+  insightLab: { fontSize: 11, color: colors.textMuted },
   chevron: { fontSize: 20, color: colors.textDim, fontWeight: '700' },
 
   checkinRowStale: { backgroundColor: colors.warningBg, borderColor: 'rgba(251, 191, 36, 0.28)' },

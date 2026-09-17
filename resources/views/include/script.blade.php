@@ -2130,6 +2130,7 @@ function renderSummaryTop(){
         <button type="button" class="qaBtn ghost" data-go="4">${escapeHtml(t("step.4"))}</button>
         <button type="button" class="qaBtn ghost" data-go="5">${escapeHtml(t("step.5"))}</button>
         <button type="button" class="qaBtn ghost" data-go="6">${escapeHtml(t("step.6"))}</button>
+        <button type="button" class="qaBtn ghost" data-go="7">${escapeHtml(t("step.7"))}</button>
       </div>
     </div>
   `;
@@ -3358,6 +3359,31 @@ function renderProgress(){
     mainEl.appendChild(navButtons(true,true,"nav.continue"));
     return;
   }
+
+  /* Weekly Health Score — placed directly above the trend charts it
+     summarises, so the number and its evidence stay together.
+     Mirrors the card in mobile ProgressStep.tsx. */
+  const weekly = computeWeeklyHealthScore();
+  const sWeekly = document.createElement("div");
+  sWeekly.className = "section";
+  const wDelta = (weekly.delta === null)
+    ? escapeHtml(t("insights.no_comparison"))
+    : `${weekly.delta >= 0 ? "&#9650;" : "&#9660;"} ${Math.abs(weekly.delta)} ${escapeHtml(t("insights.vs_last_week"))}`;
+  const wDrivers = weekly.drivers.map(d =>
+    `<span class="chip" aria-pressed="false">${escapeHtml(t("wellbeing." + d.key))} ${d.delta > 0 ? "+" : ""}${d.delta}</span>`
+  ).join(" ");
+  sWeekly.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("insights.this_week"))}</strong><br>${escapeHtml(t("insights.weekly_basis"))}</div>
+    <div class="row" style="align-items:center">
+      <div class="col" style="flex:0 0 auto">
+        <div class="scoreBadge ${weekly.score === null ? "" : (weekly.score >= 70 ? "scoreHigh" : (weekly.score >= 45 ? "scoreMod" : "scoreLow"))}">${weekly.score === null ? "&mdash;" : weekly.score}</div>
+      </div>
+      <div class="col">
+        <div class="fineprint">${wDelta}</div>
+        <div class="chips" style="margin-top:6px">${wDrivers}</div>
+      </div>
+    </div>`;
+  mainEl.appendChild(sWeekly);
 
   const dEnergy = last.wellbeing.energy - base.energy;
   const dMood = last.wellbeing.mood - base.mood;

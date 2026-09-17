@@ -10,6 +10,7 @@ import {
   buildClinicianSnapshotText,
   computeNutrientScores,
   computeWeeklyCoachMessage,
+  computeWeeklyHealthScore,
   fmtDate,
   impactLabel,
   latestCheckin,
@@ -17,6 +18,7 @@ import {
 import { shareClinicianSnapshot, downloadDoctorReport } from '@/wizard/reports';
 import { buildTrendSeries } from '@/wizard/trends';
 import { TrendChart, type TrendLine } from '@/components/TrendChart';
+import { ScoreRing } from '@/components/ScoreRing';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
 import { Divider, FinePrint, HelpNote, NoteBox, Section, Tagline } from '@/screens/wizard/ui';
@@ -36,6 +38,7 @@ export const ProgressStep: React.FC = () => {
 
   const coach = useMemo(() => computeWeeklyCoachMessage(state, t, catalog), [state, language, t, catalog]);
   const last = useMemo(() => latestCheckin(state), [state]);
+  const weekly = useMemo(() => computeWeeklyHealthScore(state), [state]);
   const trends = useMemo(() => buildTrendSeries(state.checkins), [state.checkins]);
   const snapshot = useMemo(() => buildClinicianSnapshotText(state, t, undefined, catalog), [state, language, t, catalog]);
 
@@ -97,6 +100,29 @@ export const ProgressStep: React.FC = () => {
           <Text key={i} style={styles.bullet}>• {b}</Text>
         ))}
         <NoteBox>{t('results.next_best_action')} {coach.nextBestAction}</NoteBox>
+      </Section>
+
+      {/* Weekly Health Score — sits directly above the trend charts it
+          summarises, rather than in a separate place from its own evidence. */}
+      <Section>
+        <Tagline title={t('insights.this_week')} body={t('insights.weekly_basis')} />
+        <View style={styles.weeklyRow}>
+          <ScoreRing value={weekly.score} size={78} stroke={8} gradient />
+          <View style={styles.weeklyBody}>
+            {weekly.delta !== null ? (
+              <Text style={[styles.weeklyDelta, weekly.delta >= 0 ? styles.weeklyUp : styles.weeklyDown]}>
+                {weekly.delta >= 0 ? '▲' : '▼'} {Math.abs(weekly.delta)} {t('insights.vs_last_week')}
+              </Text>
+            ) : (
+              <Text style={styles.weeklyMuted}>{t('insights.no_comparison')}</Text>
+            )}
+            {weekly.drivers.map((d) => (
+              <Text key={d.key} style={styles.weeklyDriver}>
+                {t(`wellbeing.${d.key}`)} {d.delta > 0 ? '+' : ''}{d.delta}
+              </Text>
+            ))}
+          </View>
+        </View>
       </Section>
 
       {deltas ? (
@@ -270,6 +296,13 @@ const styles = StyleSheet.create({
   head: { fontSize: 17, fontWeight: '700', color: colors.text },
   bullet: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
 
+  weeklyRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  weeklyBody: { flex: 1, gap: 3 },
+  weeklyDelta: { fontSize: 15, fontWeight: '800' },
+  weeklyUp: { color: colors.success },
+  weeklyDown: { color: colors.danger },
+  weeklyMuted: { fontSize: 14, fontWeight: '700', color: colors.textMuted },
+  weeklyDriver: { fontSize: 12, color: colors.textMuted },
   deltaGrid: { flexDirection: 'row', gap: spacing.sm },
   deltaCell: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', gap: 2 },
   deltaLabel: { fontSize: 11, color: colors.textMuted, textTransform: 'capitalize' },
