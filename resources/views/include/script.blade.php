@@ -619,6 +619,104 @@ function renderWellbeingScoreGrid(values, idPrefix){
   `;
 }
 
+/* The v3 body-system rows.
+   Deliberately NOT renderWellbeingScoreGrid, which defaults `?? 5`, nor
+   readWellbeingScores, which reads `|| "0"` — both bake in values the user
+   never chose. Here the leading "Not answered" pill is the default and carries
+   an empty value, while 0 stays separately selectable as a real answer.
+   Mirrors OptionalScaleRow in mobile/src/screens/wizard/ui.tsx. */
+const V3_SYSTEM_FIELDS = [
+  { key: "digestive",   label: "wellbeing.digestive" },
+  { key: "circulation", label: "wellbeing.circulation" },
+  { key: "immunity",    label: "wellbeing.immunity" }
+];
+
+function renderBodySystemScoreRow(key, labelKey, inputId, value){
+  const answered = typeof value === "number";
+  const pills = [`<button type="button" class="score-pill${answered ? "" : " on"}" data-score="">${escapeHtml(t("checkin.not_answered"))}</button>`];
+  for(let n = 0; n <= 10; n++){
+    pills.push(`<button type="button" class="score-pill${answered && value === n ? " on" : ""}" data-score="${n}">${n}</button>`);
+  }
+  return `
+    <div class="score-picker" data-field="${escapeHtml(key)}">
+      <div class="score-picker-head">
+        <span>${escapeHtml(t(labelKey))}</span>
+        <span class="score-picker-value">${answered ? value + " / 10" : "&mdash;"}</span>
+      </div>
+      <div class="score-picker-track">${pills.join("")}</div>
+      <input type="hidden" id="${escapeHtml(inputId)}" value="${answered ? value : ""}" />
+    </div>`;
+}
+
+function renderBodySystemScoreGrid(values, idPrefix){
+  const getId = key => idPrefix ? (idPrefix + key.charAt(0).toUpperCase() + key.slice(1)) : key;
+  return `<div class="score-picker-grid">${
+    V3_SYSTEM_FIELDS.map(f => renderBodySystemScoreRow(f.key, f.label, getId(f.key), ratingOrNull(values && values[f.key]))).join("")
+  }</div>`;
+}
+
+/* Empty string means "not answered" and becomes null — never 0. */
+function readBodySystemScores(ids){
+  const out = {};
+  Object.keys(ids).forEach(key => {
+    const el = document.getElementById(ids[key]);
+    const raw = el ? el.value : "";
+    out[key] = (raw === "" || raw === null || raw === undefined) ? null : ratingOrNull(parseInt(raw, 10));
+  });
+  return out;
+}
+
+/* Yes / No / Unsure. Clicking the selected answer clears it. */
+function renderTriStateRow(labelKey, inputId, value){
+  const opts = [["yes","common.yes"],["no","common.no"],["unsure","checkin.unsure"]];
+  const btns = opts.map(([v,k]) =>
+    `<button type="button" class="score-pill${value === v ? " on" : ""}" data-tri="${v}" style="flex:1">${escapeHtml(t(k))}</button>`
+  ).join("");
+  return `
+    <div class="tri-picker" style="margin-bottom:10px">
+      <div class="score-picker-head"><span>${escapeHtml(t(labelKey))}</span></div>
+      <div class="score-picker-track" style="display:flex;gap:6px">${btns}</div>
+      <input type="hidden" id="${escapeHtml(inputId)}" value="${value || ""}" />
+    </div>`;
+}
+
+function wireTriStatePickers(root){
+  if(!root) return;
+  root.querySelectorAll(".tri-picker").forEach(picker => {
+    const hidden = picker.querySelector('input[type="hidden"]');
+    picker.querySelectorAll("[data-tri]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const v = btn.getAttribute("data-tri");
+        const next = (hidden.value === v) ? "" : v;   /* tap again to clear */
+        hidden.value = next;
+        picker.querySelectorAll("[data-tri]").forEach(b => b.classList.toggle("on", b.getAttribute("data-tri") === next && next !== ""));
+      });
+    });
+  });
+}
+
+function readTriState(id){
+  const el = document.getElementById(id);
+  return triStateOrNull(el ? el.value : null);
+}
+
+/* Wire the "Not answered" pill alongside the numeric ones. */
+function wireBodySystemPickers(root){
+  if(!root) return;
+  root.querySelectorAll('.score-picker[data-field]').forEach(picker => {
+    const hidden = picker.querySelector('input[type="hidden"]');
+    const valueEl = picker.querySelector(".score-picker-value");
+    picker.querySelectorAll("[data-score]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const raw = btn.getAttribute("data-score");
+        hidden.value = raw;
+        picker.querySelectorAll("[data-score]").forEach(b => b.classList.toggle("on", b === btn));
+        if(valueEl) valueEl.innerHTML = (raw === "") ? "&mdash;" : (raw + " / 10");
+      });
+    });
+  });
+}
+
 function wireWellbeingScorePickers(root){
   if (!root) return;
   root.querySelectorAll(".score-picker").forEach(picker => {
@@ -3077,6 +3175,19 @@ function renderCheckin(){
   symBase.forEach((sym, idx)=> symList.appendChild(symRow(sym, idx, lastSymMap[sym])));
 
   /* wellbeing */
+  /* Ask the monthly block only when due: the most recent check-in that actually
+     carries answers, re-prompted after 28 days. Mirrors CheckinStep.tsx. */
+  const monthlyDue = (function(){
+    const answered = (state.checkins || [])
+      .filter(c => c.completion && (c.completion.labs !== null || c.completion.prescriber !== null))
+      .slice()
+      .sort((a,b) => String(a.dateISO).localeCompare(String(b.dateISO)));
+    const lastAnswered = answered.length ? answered[answered.length-1] : null;
+    if(!lastAnswered) return true;
+    const days = Math.round((new Date().setHours(0,0,0,0) - new Date(lastAnswered.dateISO).setHours(0,0,0,0)) / 86400000);
+    return !isFinite(days) || days >= 28;
+  })();
+
   const sWell = document.createElement("div");
   sWell.className="section";
   sWell.innerHTML = `
@@ -3084,12 +3195,29 @@ function renderCheckin(){
     <div style="height:14px"></div>
     ${renderWellbeingScoreGrid(defaultWell, "ci")}
     <div style="height:14px"></div>
+    <div class="tagline"><strong>${escapeHtml(t("checkin.systems_title"))}</strong><br>${escapeHtml(t("checkin.systems_sub"))}</div>
+    <div style="height:10px"></div>
+    ${renderBodySystemScoreGrid({}, "ci")}
+    <div class="fineprint">${escapeHtml(t("checkin.systems_note"))}</div>
+    ${monthlyDue ? `
+      <div style="height:14px"></div>
+      <div class="tagline"><strong>${escapeHtml(t("checkin.monthly_title"))}</strong><br>${escapeHtml(t("checkin.monthly_sub"))}</div>
+      <div style="height:10px"></div>
+      ${renderTriStateRow("checkin.labs_q", "ciLabs", null)}
+      ${renderTriStateRow("checkin.prescriber_q", "ciPrescriber", null)}
+      ${renderTriStateRow("checkin.lifestyle.movement", "ciLifeMovement", null)}
+      ${renderTriStateRow("checkin.lifestyle.hydration", "ciLifeHydration", null)}
+      ${renderTriStateRow("checkin.lifestyle.sleep_routine", "ciLifeSleep", null)}
+      <div class="fineprint">${escapeHtml(t("checkin.monthly_note"))}</div>` : ""}
+    <div style="height:14px"></div>
     <div class="row">
       <div class="col"><label>${escapeHtml(t("checkin.side_effects"))}</label><input id="ciSide" placeholder="${escapeHtml(t("checkin.side_effects_placeholder"))}" /></div>
       <div class="col"><label>${escapeHtml(t("checkin.notes"))}</label><input id="ciNotes" placeholder="${escapeHtml(t("checkin.notes_placeholder"))}" /></div>
     </div>
   `;
   wireWellbeingScorePickers(sWell);
+  wireBodySystemPickers(sWell);
+  wireTriStatePickers(sWell);
   mainEl.appendChild(sWell);
 
   /* save */
@@ -3122,7 +3250,29 @@ function renderCheckin(){
     const notes = (document.getElementById("ciNotes").value || "").trim();
     const improvementScore = items.reduce((acc,x)=>acc + (x.changeScore||0), 0);
 
-    state.checkins.push({ dateISO, adherencePct, supplementsTaken:[...taken], wellbeing, symptoms:{items, improvementScore}, sideEffects, notes });
+    /* The three ratings ride inside `wellbeing` so the dedupe key sees them. */
+    const systems = readBodySystemScores({ digestive:"ciDigestive", circulation:"ciCirculation", immunity:"ciImmunity" });
+    Object.assign(wellbeing, systems);
+
+    const row = { dateISO, adherencePct, supplementsTaken:[...taken],
+                  supplementsPlanned:[...planSupps],
+                  wellbeing, symptoms:{items, improvementScore}, sideEffects, notes };
+
+    if(monthlyDue){
+      const labs = readTriState("ciLabs");
+      const prescriber = readTriState("ciPrescriber");
+      row.completion = {
+        labs, labsDateISO: labs === "yes" ? dateISO : null,
+        prescriber, prescriberDateISO: prescriber === "yes" ? dateISO : null,
+        lifestyle: {
+          movement: readTriState("ciLifeMovement"),
+          hydration: readTriState("ciLifeHydration"),
+          sleep_routine: readTriState("ciLifeSleep")
+        }
+      };
+    }
+
+    state.checkins.push(row);
     track("checkin_saved", { index: state.checkins.length, adherencePct, symptoms: items.length });
     state.checkins = dedupeCheckins(state.checkins);
     save();
