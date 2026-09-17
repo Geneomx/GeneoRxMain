@@ -10,7 +10,18 @@ import {
   type MedClaim,
   type SourceQuality,
 } from '@/content/wizardData';
-import type { Dose, Routine, Severity, WizardCheckin, WizardState } from '@/wizard/types';
+import {
+  BODY_SYSTEM_KEYS,
+  LIFESTYLE_KEYS,
+  type BodySystemKey,
+  type Dose,
+  type Rating,
+  type Routine,
+  type Severity,
+  type TriState,
+  type WizardCheckin,
+  type WizardState,
+} from '@/wizard/types';
 
 export type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -274,6 +285,322 @@ export function sideEffectList(v: string[] | string | null | undefined): string[
   if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
   if (typeof v === 'string') return v.split(',').map((x) => x.trim()).filter(Boolean);
   return [];
+}
+
+/* ---------- v3: ratings, body systems, completion ---------- */
+
+/**
+ * Normalise anything into a real 0-10 rating or null.
+ *
+ * `0` is a REAL answer (the user asserted "0/10") and must survive. Everything
+ * that is not a finite number — key absent, null, NaN, a string — means the
+ * question was not answered and becomes null.
+ *
+ * Deliberately NOT clampScore()/cl(): those return 0 for a non-number, which
+ * would turn every pre-v3 check-in into a flat zero line reading as
+ * catastrophic decline. Mirrored in script.blade.php.
+ */
+export function ratingOrNull(v: unknown): Rating {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+  return clamp(Math.round(v), 0, 10);
+}
+
+/** Only the three literal answers count; anything else is "not answered". */
+export function triStateOrNull(v: unknown): TriState | null {
+  return v === 'yes' || v === 'no' || v === 'unsure' ? v : null;
+}
+
+/**
+ * Single read path for all seven systems. The legacy four go through
+ * ratingOrNull too, so a corrupt stored value yields null rather than 0.
+ */
+export function readBodySystems(c: WizardCheckin | null | undefined): Record<BodySystemKey, Rating> {
+  const wb = (c?.wellbeing ?? {}) as Record<string, unknown>;
+  const out = {} as Record<BodySystemKey, Rating>;
+  for (const key of BODY_SYSTEM_KEYS) out[key] = ratingOrNull(wb[key]);
+  return out;
+}
+
+export interface BodySystemRow {
+  key: BodySystemKey;
+  value: Rating;
+  baseline: Rating;
+  /** null unless BOTH value and baseline are real numbers. */
+  delta: number | null;
+  /** true for the original four, which every user has history for. */
+  isLegacy: boolean;
+}
+
+export interface BodySystemsView {
+  rows: BodySystemRow[];
+  answered: number;
+  total: number;
+  /** Mean of ANSWERED rows only; null when nothing is answered. Never 0. */
+  average: number | null;
+  checkinDateISO: string | null;
+}
+
+const LEGACY_SYSTEMS: BodySystemKey[] = ['energy', 'mood', 'sleep', 'focus'];
+
+export function computeBodySystemsView(
+  s: WizardState,
+  checkinOverride?: WizardCheckin | null,
+): BodySystemsView {
+  const checkin = checkinOverride !== undefined ? checkinOverride : latestCheckin(s);
+  const values = readBodySystems(checkin);
+  const base = readBodySystems({ wellbeing: s.wellbeingBaseline } as WizardCheckin);
+
+  const rows: BodySystemRow[] = BODY_SYSTEM_KEYS.map((key) => {
+    const value = values[key];
+    const baseline = base[key];
+    return {
+      key,
+      value,
+      baseline,
+      delta: typeof value === 'number' && typeof baseline === 'number' ? value - baseline : null,
+      isLegacy: LEGACY_SYSTEMS.includes(key),
+    };
+  });
+
+  const answeredValues = rows.map((r) => r.value).filter((v): v is number => typeof v === 'number');
+  return {
+    rows,
+    answered: answeredValues.length,
+    total: BODY_SYSTEM_KEYS.length,
+    average: answeredValues.length
+      ? Math.round((answeredValues.reduce((a, b) => a + b, 0) / answeredValues.length) * 10) / 10
+      : null,
+    checkinDateISO: checkin?.dateISO ?? null,
+  };
+}
+
+export interface WeeklyHealthScore {
+  score: number | null;
+  delta: number | null;
+  drivers: { key: string; delta: number }[];
+}
+
+/**
+ * A composite of things that already exist on every check-in: adherence,
+ * wellbeing vs the user's own baseline, and symptom improvement. No new
+ * persisted state, no clinical claim — it is a progress signal, not a measure
+ * of health.
+ */
+export function computeWeeklyHealthScore(s: WizardState): WeeklyHealthScore {
+  const sorted = [...s.checkins].sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+  const last = sorted[sorted.length - 1] ?? null;
+  if (!last) return { score: null, delta: null, drivers: [] };
+
+  const scoreFor = (c: WizardCheckin): number => {
+    const adherence = clamp(Math.round(c.adherencePct ?? 0), 0, 100);
+    const wb = readBodySystems(c);
+    const answered = LEGACY_SYSTEMS.map((k) => wb[k]).filter((v): v is number => typeof v === 'number');
+    const wellbeing = answered.length
+      ? (answered.reduce((a, b) => a + b, 0) / answered.length) * 10
+      : 50;
+    const improvement = clamp(50 + (c.symptoms?.improvementScore ?? 0) * 5, 0, 100);
+    return Math.round(adherence * 0.4 + wellbeing * 0.4 + improvement * 0.2);
+  };
+
+  const score = scoreFor(last);
+  const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
+  const delta = prev ? score - scoreFor(prev) : null;
+
+  const drivers: { key: string; delta: number }[] = [];
+  if (prev) {
+    const now = readBodySystems(last);
+    const before = readBodySystems(prev);
+    for (const key of LEGACY_SYSTEMS) {
+      const a = now[key];
+      const b = before[key];
+      if (typeof a === 'number' && typeof b === 'number' && a !== b) {
+        drivers.push({ key, delta: a - b });
+      }
+    }
+    drivers.sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta));
+  }
+
+  return { score, delta, drivers: drivers.slice(0, 3) };
+}
+
+export interface LabRecommendation {
+  nutrient: string;
+  score: number;
+  tier: Tier;
+  labs: string[];
+  /** true when LAB_SUGGESTIONS says no routine test exists — render it, do not hide it. */
+  noRoutineLab: boolean;
+}
+
+/**
+ * Shared by the Labs section and the doctor report so the two cannot drift.
+ * Reads LAB_SUGGESTIONS only — adding a lab for a nutrient not in that map
+ * would be authoring a test recommendation, which we do not do.
+ */
+export function buildLabRecommendations(s: WizardState, catalog?: MedEntry[], limit = 5): LabRecommendation[] {
+  return computeNutrientScores(s, catalog)
+    .slice(0, limit)
+    .map(([nutrient, score]) => {
+      const labs = LAB_SUGGESTIONS[nutrient] || [];
+      const noRoutineLab = labs.length === 0 || labs.some((l) => /no standard|no routine/i.test(l));
+      return { nutrient, score, tier: tierFromScore(score), labs, noRoutineLab };
+    });
+}
+
+export type McsKey = 'adherence' | 'supplements' | 'labs' | 'prescriber' | 'lifestyle';
+
+/**
+ * Product judgement, NOT evidence-derived and NOT a validated instrument.
+ * Must stay byte-identical to MCS_WEIGHTS in script.blade.php — a parity test
+ * asserts it.
+ */
+export const MCS_WEIGHTS: Record<McsKey, number> = {
+  adherence: 0.35,
+  supplements: 0.2,
+  labs: 0.2,
+  prescriber: 0.15,
+  lifestyle: 0.1,
+};
+
+/** A "completion score" built from one checkbox is a lie of confidence. */
+export const MCS_MIN_COMPONENTS = 2;
+
+export interface McsComponent {
+  key: McsKey;
+  score: number | null;
+  weight: number;
+  reason: 'answered' | 'not_answered' | 'not_applicable';
+  detail?: { taken?: number; planned?: number; yes?: number; asked?: number; dated?: boolean };
+}
+
+export interface MedicationCompletion {
+  score: number | null;
+  components: McsComponent[];
+  answered: number;
+  total: number;
+  coveragePct: number;
+  confidence: 'high' | 'moderate' | 'low' | 'none';
+  checkinDateISO: string | null;
+  /** Constant. Forces every renderer to label the number as self-report. */
+  selfReported: true;
+}
+
+function triScore(v: TriState | null): { score: number | null; reason: McsComponent['reason'] } {
+  const t = triStateOrNull(v);
+  if (t === 'yes') return { score: 100, reason: 'answered' };
+  if (t === 'no') return { score: 0, reason: 'answered' };
+  // 'unsure' and null both mean we do not know — an honest "I don't know" must
+  // not be scored as a failure.
+  return { score: null, reason: 'not_answered' };
+}
+
+/**
+ * Returns keys, not prose, and takes no TranslateFn — keeping translated
+ * strings out of the part that must stay in lockstep across platforms.
+ */
+export function computeMedicationCompletion(
+  s: WizardState,
+  checkinOverride?: WizardCheckin | null,
+): MedicationCompletion {
+  const checkin = checkinOverride !== undefined ? checkinOverride : latestCheckin(s);
+  const isLatest = checkin != null && checkin === latestCheckin(s);
+  const completion = checkin?.completion;
+  const components: McsComponent[] = [];
+
+  // adherence
+  components.push(
+    checkin
+      ? {
+          key: 'adherence',
+          score: clamp(Math.round(checkin.adherencePct ?? 0), 0, 100),
+          weight: MCS_WEIGHTS.adherence,
+          reason: 'answered',
+        }
+      : { key: 'adherence', score: null, weight: MCS_WEIGHTS.adherence, reason: 'not_applicable' },
+  );
+
+  // supplements — planned set must come from the snapshot, or the live plan for
+  // the newest check-in only. For older ones the plan may have changed since.
+  const planned = checkin?.supplementsPlanned ?? (isLatest ? s.plan.recommendedSupplements : undefined);
+  if (checkin && planned && planned.length) {
+    const takenSet = new Set(checkin.supplementsTaken || []);
+    const taken = planned.filter((x) => takenSet.has(x)).length;
+    components.push({
+      key: 'supplements',
+      score: Math.round((taken / planned.length) * 100),
+      weight: MCS_WEIGHTS.supplements,
+      reason: 'answered',
+      detail: { taken, planned: planned.length },
+    });
+  } else {
+    components.push({ key: 'supplements', score: null, weight: MCS_WEIGHTS.supplements, reason: 'not_applicable' });
+  }
+
+  const labs = triScore(completion?.labs ?? null);
+  components.push({
+    key: 'labs',
+    score: labs.score,
+    weight: MCS_WEIGHTS.labs,
+    reason: labs.reason,
+    detail: { dated: Boolean(completion?.labsDateISO) },
+  });
+
+  const pres = triScore(completion?.prescriber ?? null);
+  components.push({
+    key: 'prescriber',
+    score: pres.score,
+    weight: MCS_WEIGHTS.prescriber,
+    reason: pres.reason,
+    detail: { dated: Boolean(completion?.prescriberDateISO) },
+  });
+
+  // lifestyle — score over the answered sub-questions only
+  const life = completion?.lifestyle ?? {};
+  let yes = 0;
+  let asked = 0;
+  for (const key of LIFESTYLE_KEYS) {
+    const t = triStateOrNull(life[key]);
+    if (t === 'yes') { yes += 1; asked += 1; }
+    else if (t === 'no') { asked += 1; }
+  }
+  components.push(
+    asked
+      ? {
+          key: 'lifestyle',
+          score: Math.round((yes / asked) * 100),
+          weight: MCS_WEIGHTS.lifestyle,
+          reason: 'answered',
+          detail: { yes, asked },
+        }
+      : { key: 'lifestyle', score: null, weight: MCS_WEIGHTS.lifestyle, reason: 'not_answered' },
+  );
+
+  const present = components.filter((c) => c.score !== null);
+  const hasAdherence = present.some((c) => c.key === 'adherence');
+  const total = components.length;
+  const answered = present.length;
+
+  let score: number | null = null;
+  if (answered >= MCS_MIN_COMPONENTS && hasAdherence) {
+    const weightSum = present.reduce((a, c) => a + c.weight, 0);
+    // Weights renormalise over what was answered. A missing component is never
+    // imputed with the mean of the present ones.
+    score = Math.round(present.reduce((a, c) => a + c.weight * (c.score as number), 0) / weightSum);
+  }
+
+  const confidence: MedicationCompletion['confidence'] =
+    score === null ? 'none' : answered >= 5 ? 'high' : answered >= 3 ? 'moderate' : 'low';
+
+  return {
+    score,
+    components,
+    answered,
+    total,
+    coveragePct: Math.round((answered / total) * 100),
+    confidence,
+    checkinDateISO: checkin?.dateISO ?? null,
+    selfReported: true,
+  };
 }
 
 /* ---------- symptoms ---------- */
