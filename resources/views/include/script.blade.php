@@ -337,7 +337,7 @@ const defaultState = () => ({
   meds: [],
   symptoms: { selected:[], custom:[], severity:"mild" },
   symptomOnlyMode: false,
-  wellbeingBaseline: { energy:5, mood:5, sleep:5, focus:5 },
+  wellbeingBaseline: { energy:5, mood:5, sleep:5, focus:5, digestive:null, circulation:null, immunity:null },
   plan: { started:false, startDate:null, recommendedSupplements:[], routine:{} },
   checkins: [],
   feedback: []
@@ -854,6 +854,175 @@ function evidenceCoverage(){
     return med && (med.claims||[]).some(c => (c.citations||[]).length>0);
   }).length;
   return { selectedCount: selected.length, evidenceCount };
+}
+
+/* ===== v3: ratings, body systems, completion =====
+   Mirrors mobile/src/wizard/engine.ts. A parity test asserts BODY_SYSTEM_KEYS,
+   LIFESTYLE_KEYS, MCS_WEIGHTS and MCS_MIN_COMPONENTS are identical across the
+   two files — change one, change both. */
+
+const BODY_SYSTEM_KEYS = ["energy","mood","sleep","focus","digestive","circulation","immunity"];
+const LIFESTYLE_KEYS = ["movement","hydration","sleep_routine"];
+const LEGACY_SYSTEMS = ["energy","mood","sleep","focus"];
+
+/* Product judgement, NOT evidence-derived and NOT a validated instrument. */
+const MCS_WEIGHTS = { adherence:0.35, supplements:0.20, labs:0.20, prescriber:0.15, lifestyle:0.10 };
+const MCS_MIN_COMPONENTS = 2;
+
+/* 0 is a REAL answer; anything non-finite means "not answered" -> null.
+   Deliberately NOT cl(), which returns 0 for a non-number. */
+function ratingOrNull(v){
+  if(typeof v !== "number" || !isFinite(v)) return null;
+  return clamp(Math.round(v), 0, 10);
+}
+
+function triStateOrNull(v){
+  return (v === "yes" || v === "no" || v === "unsure") ? v : null;
+}
+
+function readBodySystems(c){
+  const wb = (c && c.wellbeing) ? c.wellbeing : {};
+  const out = {};
+  BODY_SYSTEM_KEYS.forEach(k => { out[k] = ratingOrNull(wb[k]); });
+  return out;
+}
+
+function computeBodySystemsView(checkinOverride){
+  const checkin = (checkinOverride !== undefined) ? checkinOverride : latestCheckin();
+  const values = readBodySystems(checkin);
+  const base = readBodySystems({ wellbeing: state.wellbeingBaseline });
+
+  const rows = BODY_SYSTEM_KEYS.map(key => {
+    const value = values[key];
+    const baseline = base[key];
+    return {
+      key, value, baseline,
+      delta: (typeof value === "number" && typeof baseline === "number") ? (value - baseline) : null,
+      isLegacy: LEGACY_SYSTEMS.indexOf(key) !== -1
+    };
+  });
+
+  const answered = rows.map(r => r.value).filter(v => typeof v === "number");
+  return {
+    rows,
+    answered: answered.length,
+    total: BODY_SYSTEM_KEYS.length,
+    average: answered.length ? Math.round((answered.reduce((a,b)=>a+b,0) / answered.length) * 10) / 10 : null,
+    checkinDateISO: checkin ? checkin.dateISO : null
+  };
+}
+
+function computeWeeklyHealthScore(){
+  const sorted = (state.checkins || []).slice().sort((a,b)=> String(a.dateISO).localeCompare(String(b.dateISO)));
+  const last = sorted.length ? sorted[sorted.length-1] : null;
+  if(!last) return { score:null, delta:null, drivers:[] };
+
+  function scoreFor(c){
+    const adherence = clamp(Math.round(c.adherencePct || 0), 0, 100);
+    const wb = readBodySystems(c);
+    const answered = LEGACY_SYSTEMS.map(k => wb[k]).filter(v => typeof v === "number");
+    const wellbeing = answered.length ? (answered.reduce((a,b)=>a+b,0) / answered.length) * 10 : 50;
+    const improvement = clamp(50 + ((c.symptoms && c.symptoms.improvementScore) || 0) * 5, 0, 100);
+    return Math.round(adherence * 0.4 + wellbeing * 0.4 + improvement * 0.2);
+  }
+
+  const score = scoreFor(last);
+  const prev = sorted.length > 1 ? sorted[sorted.length-2] : null;
+  const delta = prev ? (score - scoreFor(prev)) : null;
+
+  const drivers = [];
+  if(prev){
+    const now = readBodySystems(last), before = readBodySystems(prev);
+    LEGACY_SYSTEMS.forEach(key => {
+      const a = now[key], b = before[key];
+      if(typeof a === "number" && typeof b === "number" && a !== b) drivers.push({ key, delta: a - b });
+    });
+    drivers.sort((x,y)=> Math.abs(y.delta) - Math.abs(x.delta));
+  }
+  return { score, delta, drivers: drivers.slice(0,3) };
+}
+
+/* Reads LAB_SUGGESTIONS only. Adding a lab for a nutrient not in that map would
+   be authoring a test recommendation, which we do not do. */
+function buildLabRecommendations(limit){
+  const n = (typeof limit === "number") ? limit : 5;
+  return computeNutrientScores().slice(0, n).map(pair => {
+    const nutrient = pair[0], score = pair[1];
+    const labs = LAB_SUGGESTIONS[nutrient] || [];
+    const noRoutineLab = labs.length === 0 || labs.some(l => /no standard|no routine/i.test(l));
+    return { nutrient, score, tier: tierFromScore(score), labs, noRoutineLab };
+  });
+}
+
+function mcsTriScore(v){
+  const t = triStateOrNull(v);
+  if(t === "yes") return { score:100, reason:"answered" };
+  if(t === "no")  return { score:0,   reason:"answered" };
+  /* 'unsure' and null both mean we do not know — never scored as a failure. */
+  return { score:null, reason:"not_answered" };
+}
+
+function computeMedicationCompletion(checkinOverride){
+  const checkin = (checkinOverride !== undefined) ? checkinOverride : latestCheckin();
+  const isLatest = !!checkin && checkin === latestCheckin();
+  const completion = checkin ? checkin.completion : null;
+  const components = [];
+
+  components.push(checkin
+    ? { key:"adherence", score: clamp(Math.round(checkin.adherencePct || 0),0,100), weight: MCS_WEIGHTS.adherence, reason:"answered" }
+    : { key:"adherence", score:null, weight: MCS_WEIGHTS.adherence, reason:"not_applicable" });
+
+  const planned = (checkin && checkin.supplementsPlanned)
+    ? checkin.supplementsPlanned
+    : (isLatest ? (state.plan.recommendedSupplements || []) : null);
+
+  if(checkin && planned && planned.length){
+    const takenSet = {};
+    (checkin.supplementsTaken || []).forEach(x => { takenSet[x] = true; });
+    const taken = planned.filter(x => takenSet[x]).length;
+    components.push({ key:"supplements", score: Math.round((taken / planned.length) * 100),
+                      weight: MCS_WEIGHTS.supplements, reason:"answered", detail:{ taken, planned: planned.length } });
+  } else {
+    components.push({ key:"supplements", score:null, weight: MCS_WEIGHTS.supplements, reason:"not_applicable" });
+  }
+
+  const labs = mcsTriScore(completion ? completion.labs : null);
+  components.push({ key:"labs", score: labs.score, weight: MCS_WEIGHTS.labs, reason: labs.reason,
+                    detail:{ dated: !!(completion && completion.labsDateISO) } });
+
+  const pres = mcsTriScore(completion ? completion.prescriber : null);
+  components.push({ key:"prescriber", score: pres.score, weight: MCS_WEIGHTS.prescriber, reason: pres.reason,
+                    detail:{ dated: !!(completion && completion.prescriberDateISO) } });
+
+  const life = (completion && completion.lifestyle) ? completion.lifestyle : {};
+  let yes = 0, asked = 0;
+  LIFESTYLE_KEYS.forEach(k => {
+    const t = triStateOrNull(life[k]);
+    if(t === "yes"){ yes++; asked++; }
+    else if(t === "no"){ asked++; }
+  });
+  components.push(asked
+    ? { key:"lifestyle", score: Math.round((yes/asked)*100), weight: MCS_WEIGHTS.lifestyle, reason:"answered", detail:{ yes, asked } }
+    : { key:"lifestyle", score:null, weight: MCS_WEIGHTS.lifestyle, reason:"not_answered" });
+
+  const present = components.filter(c => c.score !== null);
+  const hasAdherence = present.some(c => c.key === "adherence");
+  const total = components.length, answered = present.length;
+
+  let score = null;
+  if(answered >= MCS_MIN_COMPONENTS && hasAdherence){
+    const weightSum = present.reduce((a,c)=> a + c.weight, 0);
+    /* Weights renormalise over what was answered; a missing component is never
+       imputed with the mean of the present ones. */
+    score = Math.round(present.reduce((a,c)=> a + c.weight * c.score, 0) / weightSum);
+  }
+
+  const confidence = (score === null) ? "none" : (answered >= 5 ? "high" : (answered >= 3 ? "moderate" : "low"));
+
+  return { score, components, answered, total,
+           coveragePct: Math.round((answered/total)*100), confidence,
+           checkinDateISO: checkin ? checkin.dateISO : null,
+           selfReported: true };
 }
 
 function safetyFlags(){
