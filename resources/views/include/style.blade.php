@@ -204,7 +204,13 @@
     .bd{padding:18px}
 
     /* Tabs */
-    .steps{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;margin-top:10px}
+    /* Single scrolling row, not flex-wrap: with 9 steps the wrapping version ran
+       to three rows and pushed content below the fold. Mirrors the mobile tray. */
+    .steps{display:flex;gap:8px;justify-content:flex-start;margin-top:10px;
+      overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+      padding-bottom:2px}
+    .steps::-webkit-scrollbar{display:none}
+    .step{flex:0 0 auto}
     .step{
       padding:9px 12px;border-radius:999px;
       border:1px solid rgba(255,255,255,.12);
@@ -336,12 +342,19 @@
     .k{font-size:13px;color:var(--muted);margin-bottom:5px}
     .v{font-size:14px;line-height:1.45}
 
+    /* Flat by default. This used to always be a cyan-tinted bordered box, but it
+       is used inside .section — itself a bordered card with padding — so the
+       common case was two borders and doubled padding around one heading.
+       Mirrors the Tagline change in mobile/src/screens/wizard/ui.tsx.
+       Add .boxed for a genuine standalone callout. */
     .tagline{
+      color: var(--txt);
+      font-size:14px;line-height:1.5;
+    }
+    .tagline.boxed{
       padding:12px 14px;border-radius:14px;
       border:1px solid rgba(40,225,255,.22);
       background: rgba(40,225,255,.10);
-      color: var(--txt);
-      font-size:14px;line-height:1.5;
     }
     .banner{
       padding:12px 14px;border-radius:14px;

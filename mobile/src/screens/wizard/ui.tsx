@@ -71,9 +71,21 @@ export const HelpNote: React.FC<{
   );
 };
 
-/* ---------- Tagline (cyan-tinted callout — matches website .tagline) ---------- */
-export const Tagline: React.FC<{ title: string; body?: string }> = ({ title, body }) => (
-  <View style={styles.taglineBox}>
+/* ---------- Tagline ----------
+   A section heading, flat by default.
+
+   It used to always render a cyan-tinted bordered box. But 32 of its 35 usages
+   sit directly inside a <Section>, which is itself a bordered card with 24px
+   padding — so the common case was two borders and ~38px of padding wrapping a
+   single heading, which is what made screens like Progress look cramped and
+   boxy. Pass `boxed` for the rare standalone callout that genuinely wants the
+   tint. */
+export const Tagline: React.FC<{ title: string; body?: string; boxed?: boolean }> = ({
+  title,
+  body,
+  boxed = false,
+}) => (
+  <View style={boxed ? styles.taglineBox : styles.taglineFlat}>
     <Text style={styles.taglineTitle}>{title}</Text>
     {body ? <Text style={styles.taglineBody}>{body}</Text> : null}
   </View>
@@ -506,6 +518,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     ...shadow.card,
   },
+  taglineFlat: { gap: 3 },
   taglineBox: {
     gap: 4,
     padding: 14,

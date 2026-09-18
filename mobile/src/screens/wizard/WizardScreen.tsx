@@ -61,6 +61,10 @@ export const WizardScreen: React.FC = () => {
   // on an actual change (a language switch re-runs the effect but must not
   // re-log the step).
   const lastTrackedStep = useRef<number | null>(null);
+  // Keeps the active pill visible in the horizontal tray without the user
+  // having to hunt for it after a jump.
+  const trayRef = useRef<ScrollView | null>(null);
+  const trayX = useRef<Record<number, number>>({});
   useEffect(() => {
     if (lastTrackedStep.current === step) return;
     lastTrackedStep.current = step;
@@ -75,6 +79,13 @@ export const WizardScreen: React.FC = () => {
       { text: t('common.no'), style: 'cancel' },
       { text: t('mobile.reset.confirm'), style: 'destructive', onPress: reset },
     ]);
+
+  useEffect(() => {
+    const x = trayX.current[step];
+    if (x === undefined) return;
+    // Nudge it left of centre so the following steps stay hinted at.
+    trayRef.current?.scrollTo({ x: Math.max(0, x - 80), animated: true });
+  }, [step]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -91,13 +102,22 @@ export const WizardScreen: React.FC = () => {
         </View>
         <Text style={styles.sub} numberOfLines={3}>{t(`step.${step}.sub`)}</Text>
 
-        <View style={styles.tabs}>
+        <ScrollView
+          ref={trayRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabs}
+          keyboardShouldPersistTaps="handled"
+        >
           {steps.map((idx) => {
             const isOn = idx === step;
             return (
               <Pressable
                 key={idx}
                 onPress={() => setStep(idx)}
+                onLayout={(e) => {
+                  trayX.current[idx] = e.nativeEvent.layout.x;
+                }}
                 style={[styles.tab, isOn && styles.tabOn]}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: isOn }}
@@ -111,12 +131,14 @@ export const WizardScreen: React.FC = () => {
                   />
                 )}
                 <Text style={[styles.tabText, isOn && styles.tabTextOn]} numberOfLines={1}>
-                  {t(`step.${idx}`)}
+                  {/* step.N.short exists in every pack and was unused; the
+                      full labels are what forced the tray to wrap. */}
+                  {t(`step.${idx}.short`)}
                 </Text>
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
       </View>
 
       <ScrollView
@@ -160,7 +182,9 @@ const styles = StyleSheet.create({
   },
 
   /* Pill tab tray — wraps to new rows like website .steps (flex-wrap) */
-  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 2 },
+  // Single scrolling row. Deliberately NOT flexWrap: with 9 steps the wrapping
+  // version ran to three rows and cost ~120px before any content rendered.
+  tabs: { flexDirection: 'row', gap: 8, paddingVertical: 2, paddingRight: 12 },
   tab: {
     paddingVertical: 9,
     paddingHorizontal: 12,

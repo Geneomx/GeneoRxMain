@@ -2068,13 +2068,21 @@ function setStep(n){
 
 function renderSteps(){
   stepsEl.innerHTML = "";
+  let activeEl = null;
   visibleSteps().forEach(i => {
     const s = document.createElement("div");
     s.className = `step ${i===state.step ? "on":""}`;
-    s.textContent = stepLabel(i);
+    /* step.N.short exists in every language pack and was unused; the full
+       labels are what forced the tray onto three rows. */
+    s.textContent = t(`step.${i}.short`);
     s.addEventListener("click", ()=> setStep(i));
     stepsEl.appendChild(s);
+    if(i === state.step) activeEl = s;
   });
+  /* Keep the current step visible now that the row scrolls. */
+  if(activeEl && typeof activeEl.scrollIntoView === "function"){
+    activeEl.scrollIntoView({ block: "nearest", inline: "center" });
+  }
 }
 
 function renderPills(){
