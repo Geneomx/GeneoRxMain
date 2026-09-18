@@ -79,6 +79,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Whether this user currently has a paying subscription.
+     *
+     * Exposed through /mobile/profile as account.subscribed so the app can gate
+     * features without knowing anything about billing internals. Note that no
+     * purchase path exists in the mobile app yet and gating app features behind
+     * web payment risks App Store guideline 3.1.1, so the client-side gate that
+     * consumes this is deliberately switched off for now.
+     */
+    public function isSubscribed(): bool
+    {
+        $status = $this->subscription?->status;
+
+        return in_array($status, ['active', 'trialing'], true);
+    }
+
+    /**
      * Get the user's check-ins.
      */
     public function checkIns()

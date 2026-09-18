@@ -4,11 +4,9 @@ import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
 import { MeterRow } from '@/components/MeterRow';
 import { ScoreRing } from '@/components/ScoreRing';
-import { useAuth } from '@/auth/AuthContext';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import { useWizard } from '@/store/WizardContext';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
 import {
   buildLabRecommendations,
   computeBodySystemsView,
@@ -43,9 +41,7 @@ function toneForTier(tier: Tier): 'good' | 'warn' | 'bad' {
 export const InsightsStep: React.FC = () => {
   const { state, setStep, setFocusTarget } = useWizard();
   const { catalog } = useMedCatalog();
-  const { isGuest } = useAuth();
   const { t } = useTranslation();
-  const goToDashboard = useDashboardNavigation();
 
   const scores = useMemo(() => computeNutrientScores(state, catalog), [state, catalog]);
   const weekly = useMemo(() => computeWeeklyHealthScore(state), [state]);
@@ -240,7 +236,8 @@ export const InsightsStep: React.FC = () => {
           onPress={() => setStep(6)}
           disabled={!hasCheckins}
         />
-        {!isGuest ? <Button title={t('insights.ask')} onPress={goToDashboard} /> : null}
+        {/* No Ask button here any more: the floating bubble is present on every
+            screen, so a second entry point that navigated away was misleading. */}
       </View>
       <FinePrint>{t('summary.ai_disclaimer')}</FinePrint>
     </View>

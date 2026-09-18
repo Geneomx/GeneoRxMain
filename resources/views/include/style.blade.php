@@ -584,4 +584,23 @@
     .step-dot{width:18px;height:18px;border-radius:50%;border:1px solid var(--stroke);
       display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--txt)}
     .step-dot.on{background:var(--cyan);border-color:transparent;color:#061018}
+
+    /* Ask GeneoRx as a floating bubble, mirroring mobile AskBubble.tsx. The
+       assistant used to be reachable only from the terminal Summary step. */
+    .askFab{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:50%;
+      border:0;cursor:pointer;z-index:60;display:flex;align-items:center;justify-content:center;
+      font-size:24px;color:#061018;background:linear-gradient(135deg,var(--cyan),var(--violet));
+      box-shadow:0 10px 26px rgba(40,225,255,.35)}
+    .askFab:hover{transform:translateY(-1px)}
+    .askPanel{position:fixed;right:20px;bottom:88px;width:min(380px,calc(100vw - 40px));
+      max-height:min(560px,70vh);z-index:61;display:none;flex-direction:column;gap:10px;
+      background:var(--bg1);border:1px solid var(--stroke);border-radius:18px;padding:14px;
+      box-shadow:0 18px 44px rgba(0,0,0,.6);overflow:auto}
+    .askPanel.open{display:flex}
+    .askHd{display:flex;align-items:center;gap:8px}
+    .askHd strong{font-size:14px}
+    .askClose{margin-left:auto;background:none;border:0;color:var(--muted2);font-size:18px;cursor:pointer}
+    .askGate{border:1px solid rgba(40,225,255,.3);background:rgba(40,225,255,.07);
+      border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+    @media (max-width:520px){ .askFab{bottom:14px;right:14px} .askPanel{bottom:78px;right:14px} }
 </style>

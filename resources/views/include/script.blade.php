@@ -4178,7 +4178,58 @@ function renderAll(){
     renderCheckinViewModalContent();
   }
 }
+/* Ask GeneoRx floating bubble — mounted once, available on every step.
+   Mirrors mobile/src/components/AskBubble.tsx, including the guest gate. The
+   paid gate is inert on both platforms for now (see that file for why). */
+const ASK_REQUIRES_PAID = false;
+
+function mountAskBubble(){
+  if(document.getElementById("askFab")) return;   /* already mounted */
+
+  const paid = !!(window.GENEORX_SUBSCRIBED);
+  if(ASK_REQUIRES_PAID && !IS_GUEST && !paid) return;
+
+  const fab = document.createElement("button");
+  fab.id = "askFab";
+  fab.className = "askFab";
+  fab.type = "button";
+  fab.setAttribute("aria-label", t("ask.open"));
+  fab.innerHTML = "&#10022;";
+
+  const panel = document.createElement("div");
+  panel.id = "askPanel";
+  panel.className = "askPanel";
+  panel.innerHTML = `
+    <div class="askHd">
+      <strong>${escapeHtml(t("assistant.title"))}</strong>
+      <button type="button" class="askClose" id="askClose" aria-label="${escapeHtml(t("common.close"))}">&times;</button>
+    </div>
+    <div class="fineprint">${escapeHtml(t("assistant.disclaimer"))}</div>
+    <div id="askBody"></div>`;
+
+  document.body.appendChild(fab);
+  document.body.appendChild(panel);
+
+  const body = panel.querySelector("#askBody");
+  if(IS_GUEST){
+    body.innerHTML = `
+      <div class="askGate">
+        <strong>${escapeHtml(t("ask.gate_title"))}</strong>
+        <div class="fineprint">${escapeHtml(t("ask.gate_body"))}</div>
+        <a class="primary" href="/register" style="text-align:center;text-decoration:none;padding:10px;border-radius:10px">${escapeHtml(t("nav.register"))}</a>
+        <div class="fineprint">${escapeHtml(t("ask.gate_signin"))}</div>
+      </div>`;
+  } else if(typeof mountAssistantPanel === "function"){
+    mountAssistantPanel(body);
+  }
+
+  fab.addEventListener("click", () => panel.classList.toggle("open"));
+  const close = panel.querySelector("#askClose");
+  if(close) close.addEventListener("click", () => panel.classList.remove("open"));
+}
+
 function bootPortal(){
+  mountAskBubble();
   prepareLoggedInSession();
   renderAll();
   maybePromptProfile();

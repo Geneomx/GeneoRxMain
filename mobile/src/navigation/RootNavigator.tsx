@@ -8,6 +8,7 @@ import {
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '@/auth/AuthContext';
 import { useWizard } from '@/store/WizardContext';
+import { useProfile } from '@/store/ProfileContext';
 import { refreshPushRegistration } from '@/notifications/push';
 import { AuthStack } from './AuthStack';
 import { AppTabs } from './AppTabs';
@@ -53,6 +54,7 @@ const navTheme = {
 export const RootNavigator: React.FC = () => {
   const { token, loading, isGuest, emailVerified } = useAuth();
   const { setStep } = useWizard();
+  const { data: profile } = useProfile();
   const [navReady, setNavReady] = useState(false);
   const lastResponse = Notifications.useLastNotificationResponse();
   const handledResponseId = useRef<string | null>(null);
@@ -62,8 +64,16 @@ export const RootNavigator: React.FC = () => {
   // Silently refresh this device's push token whenever a signed-in, verified
   // user opens the app. No-op (and no prompt) unless they've opted in before.
   useEffect(() => {
-    if (isSignedIn) void refreshPushRegistration();
-  }, [isSignedIn]);
+    if (!isSignedIn) return;
+    // Pass the account-level preference so a second device (or a reinstall)
+    // registers its own token instead of showing the toggle on and delivering
+    // nothing.
+    const optedIn = Boolean(
+      (profile?.portal_state as { reminderPreferences?: { enabled?: boolean } } | undefined)
+        ?.reminderPreferences?.enabled,
+    );
+    void refreshPushRegistration(optedIn);
+  }, [isSignedIn, profile]);
 
   // Route a tapped weekly reminder to the check-in step. Waits for the
   // container (navReady) so it also works on a cold start, and dedupes by the

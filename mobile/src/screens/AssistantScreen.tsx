@@ -19,7 +19,15 @@ import { MED_DB } from '@/content/wizardData';
 import { useTranslation } from '@/hooks/useTranslation';
 import { colors, radius, spacing } from '@/theme';
 
-export const AssistantScreen: React.FC = () => {
+/**
+ * The Ask GeneoRx chat, with no screen chrome, so it can be hosted anywhere.
+ *
+ * Extracted when Ask moved from a bottom tab to a floating bubble: the sheet
+ * needs the conversation without a SafeAreaView, ambient background or page
+ * header wrapped around it. All state lives here, so each host gets its own
+ * independent thread.
+ */
+export const AssistantPanel: React.FC = () => {
   const { state } = useWizard();
   const { catalog } = useMedCatalog();
   const { t, language } = useTranslation();
@@ -81,14 +89,7 @@ export const AssistantScreen: React.FC = () => {
   const empty = messages.length === 0;
 
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
-      <AmbientBackground />
-      <View style={s.header}>
-        <Text style={s.title}>✦ {t('assistant.title')}</Text>
-        <Text style={s.sub}>{t('assistant.subtitle')}</Text>
-      </View>
-
-      <KeyboardAvoidingView
+    <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={90}
@@ -151,8 +152,7 @@ export const AssistantScreen: React.FC = () => {
             <Text style={s.sendBtnText}>{t('assistant.send')}</Text>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 

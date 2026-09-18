@@ -74,14 +74,31 @@ export async function enablePushNotifications(): Promise<boolean> {
 }
 
 /**
- * Silently re-register on app start IF the user previously opted in (a token is
- * stored). Expo tokens can rotate, so we refresh the server's copy. Never
- * prompts for permission — if the user never opted in, this is a no-op.
+ * Reconcile this device's push registration on app start.
+ *
+ * `accountOptedIn` is the account-level preference from the server. It matters
+ * because the preference is per ACCOUNT while the token is per DEVICE: on a
+ * second phone, or after a reinstall, the Reminders toggle would read ON
+ * (seeded from the account) while this device had no token registered — so the
+ * user saw "enabled" and silently never received anything.
+ *
+ * Registering when the account says opted-in is safe: it only proceeds if the
+ * OS permission is already granted, so it never produces a surprise prompt.
+ * Passing nothing falls back to the old local-only behaviour.
  */
-export async function refreshPushRegistration(): Promise<void> {
+export async function refreshPushRegistration(accountOptedIn?: boolean): Promise<void> {
   try {
     const token = await AsyncStorage.getItem(STORED_TOKEN_KEY);
-    if (token) await enablePushNotifications();
+    if (token) {
+      await enablePushNotifications();
+      return;
+    }
+    if (!accountOptedIn) return;
+
+    // No local token but the account wants reminders. Only register if
+    // permission is already granted, so this stays silent.
+    const existing = await Notifications.getPermissionsAsync();
+    if (existing.status === 'granted') await enablePushNotifications();
   } catch {
     // ignore
   }

@@ -2,17 +2,21 @@ import React from 'react';
 import { View } from 'react-native';
 import Svg, { Path, Circle, Polygon } from 'react-native-svg';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { AskBubble } from '@/components/AskBubble';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { HomeScreen } from '@/screens/HomeScreen';
 import { WizardScreen } from '@/screens/wizard/WizardScreen';
-import { AssistantScreen } from '@/screens/AssistantScreen';
 import { ProfileStack } from '@/navigation/ProfileStack';
 import { AppTabBar } from '@/navigation/AppTabBar';
 
+/**
+ * Three tabs, not four. Ask moved to a floating bubble (AskBubble): it frees the
+ * fourth slot — with four tabs the bar degrades to icon-only below 360px width —
+ * and it closes a parity divergence, since the website has no Ask tab either.
+ */
 export type AppTabsParamList = {
   Home: undefined;
   Guided: undefined;
-  Assistant: undefined;
   Profile: undefined;
 };
 
@@ -49,14 +53,6 @@ const PersonIcon = ({ color }: { color: string }) => (
   </Svg>
 );
 
-const SparkIcon = ({ color }: { color: string }) => (
-  <Svg width={ICON} height={ICON} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"
-      stroke={color} strokeWidth={1.7} strokeLinejoin="round"
-    />
-  </Svg>
-);
 
 const AppTabsNavigator: React.FC = () => (
   <Tabs.Navigator
@@ -81,13 +77,6 @@ const AppTabsNavigator: React.FC = () => (
       }}
     />
     <Tabs.Screen
-      name="Assistant"
-      component={AssistantScreen}
-      options={{
-        tabBarIcon: ({ color }) => <SparkIcon color={color} />,
-      }}
-    />
-    <Tabs.Screen
       name="Profile"
       component={ProfileStack}
       options={{
@@ -102,6 +91,9 @@ export const AppTabs: React.FC = () => (
     <OfflineBanner />
     <View style={{ flex: 1 }}>
       <AppTabsNavigator />
+      {/* Sits above the tab bar on every tab, so Ask is reachable from anywhere
+          rather than only from its own screen. */}
+      <AskBubble />
     </View>
   </View>
 );

@@ -43,7 +43,7 @@ class HomeController extends Controller
             return response()->json([
                 'user' => ['name' => 'Guest', 'email' => '', 'emailVerified' => true],
                 'profile' => null,
-                'account' => ['email' => '', 'consent' => false],
+                'account' => ['email' => '', 'consent' => false, 'subscribed' => false],
                 'plan' => null,
                 'portal_state' => [],
                 'medications' => [],
@@ -82,6 +82,7 @@ class HomeController extends Controller
             'account' => [
                 'email' => $user->email,
                 'consent' => (bool) data_get($portal, 'account.consent', false),
+                'subscribed' => $user->isSubscribed(),
             ],
             'plan' => data_get($portal, 'plan'),
             'portal_state' => $portal,

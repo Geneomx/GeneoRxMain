@@ -145,6 +145,12 @@ $en = [
     'mobile.tab.assistant' => 'Ask',
     'mobile.tab.meds' => 'Medicines',
     'mobile.tab.checkin' => 'Check-in',
+    // --- v3 Ask bubble ---
+    'ask.open' => 'Ask GeneoRx',
+    'ask.gate_title' => 'Create a free account to ask',
+    'ask.gate_body' => 'Ask GeneoRx answers using your own medications and check-ins, so it needs an account to know what you are taking.',
+    'ask.gate_signin' => 'Already have an account? Sign in.',
+    'common.close' => 'Close',
     // --- v3 first-run funnel (framing over Symptoms, Medications, Results) ---
     'firstrun.step_of' => 'Step {n} of 3',
     'firstrun.s1_title' => 'Tell us what is bothering you',
