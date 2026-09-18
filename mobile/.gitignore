@@ -18,6 +18,14 @@ android/app/build/
 *firebase-adminsdk*.json
 *-service-account*.json
 service-account*.json
+# Store-listing / marketing assets: 40.7 MB of screenshots, iPad captures and a
+# 13 MB zip. None of it enters the app binary, but EAS builds its upload archive
+# from git-tracked files, so tracking them meant re-uploading 40 MB on EVERY
+# build — a ~39 minute upload on a slow link, and the cause of repeated
+# `write ECONNRESET` failures. Untracked in this commit; the files remain on
+# disk and in git history, so nothing is lost.
+store-assets/
+
 # Google Play service-account credentials — NEVER commit
 play-service-account.json
 # Written by `eas credentials`; holds the Android keystore password,
