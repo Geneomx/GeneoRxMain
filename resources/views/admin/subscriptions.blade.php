@@ -84,7 +84,7 @@
               </span>
             </td>
             <td style="color:var(--text-muted);font-size:12.5px;">
-              {{ $sub->provider ?? ($sub->stripe_id ? 'Stripe' : 'Admin') }}
+              {{ $sub->provider ?? ($sub->provider_subscription_id ? 'Stripe' : 'Admin') }}
             </td>
             <td style="font-size:13px;">
               @if($sub->admin_override_ends_at)

@@ -77,7 +77,7 @@
           </tr>
         @endforeach
         @if($recent->isEmpty())
-          <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px;">No users yet.</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px;">No users yet.</td></tr>
         @endif
       </tbody>
     </table>

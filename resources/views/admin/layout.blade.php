@@ -508,7 +508,7 @@
 
       <div class="sidebar-label">About</div>
       <div class="sidebar-link" style="cursor:default;opacity:.55;font-size:12.5px;">
-        v1.0
+        v3.0
       </div>
     </nav>
 

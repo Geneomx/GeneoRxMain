@@ -50,7 +50,7 @@
         </div>
       </div>
       <div class="info-item"><div class="info-label">Joined</div><div class="info-value muted">{{ $user->created_at->format('M j, Y') }}</div></div>
-      <div class="info-item"><div class="info-label">Check-ins</div><div class="info-value">{{ $user->checkIns->count() }}</div></div>
+      <div class="info-item"><div class="info-label">Check-ins</div><div class="info-value">{{ $user->check_ins_count }}</div></div>
       @if($user->profile)
         <div class="info-item"><div class="info-label">Phone</div><div class="info-value muted">{{ $user->profile->phone ?? '—' }}</div></div>
       @endif
@@ -224,7 +224,62 @@
 </div>
 
 <!-- RECENT CHECK-INS -->
-@if($user->checkIns->isNotEmpty())
+<div class="admin-card">
+    <div class="admin-card-hd"><h3>Reminders &amp; access</h3></div>
+    <div class="admin-card-bd">
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Weekly reminders</div>
+          <div class="info-value">
+            <span class="pill {{ $reminderEnabled ? 'pill-verified' : 'pill-free' }}">
+              {{ $reminderEnabled ? 'On' : 'Off' }}
+            </span>
+          </div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Registered devices</div>
+          {{-- The preference is per account, tokens are per device. Reminders on
+               with zero devices means the Sunday cron has nothing to send to —
+               exactly the silent failure this is here to surface. --}}
+          <div class="info-value">
+            {{ $pushTokens->whereNull('disabled_at')->count() }}
+            @if($pushTokens->whereNotNull('disabled_at')->count())
+              <span class="muted" style="font-size:12px;">({{ $pushTokens->whereNotNull('disabled_at')->count() }} disabled)</span>
+            @endif
+          </div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Will receive reminders</div>
+          @php $willReceive = $reminderEnabled && $pushTokens->whereNull('disabled_at')->count() > 0; @endphp
+          <div class="info-value">
+            <span class="pill {{ $willReceive ? 'pill-verified' : 'pill-free' }}">
+              {{ $willReceive ? 'Yes' : 'No' }}
+            </span>
+          </div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Subscription</div>
+          <div class="info-value">
+            @if($user->subscription)
+              <span class="pill {{ $user->isSubscribed() ? 'pill-verified' : 'pill-free' }}">
+                {{ $user->isSubscribed() ? 'Entitled' : 'Not entitled' }}
+              </span>
+              <span class="muted" style="font-size:12px;">
+                {{ ucfirst($user->subscription->plan ?? 'free') }} &middot; {{ $user->subscription->status }}
+                @if($user->subscription->admin_override_ends_at && $user->subscription->admin_override_ends_at->isFuture())
+                  &middot; admin override
+                @endif
+              </span>
+            @else
+              <span class="muted">None</span>
+            @endif
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if($user->checkIns->isNotEmpty())
   <div class="admin-card">
     <div class="admin-card-hd">
       <div>
@@ -238,9 +293,12 @@
           <tr>
             <th>Date</th>
             <th>Status</th>
-            <th>Supplements taken</th>
+            <th>Supplements</th>
             <th>Symptoms</th>
             <th>Adherence</th>
+            <th>Wellbeing</th>
+            <th>Body systems</th>
+            <th>Monthly check</th>
           </tr>
         </thead>
         <tbody>
@@ -250,6 +308,34 @@
               // medications/symptoms columns are never written by saveProfile().
               $ciSupplements = data_get($ci->data, 'supplementsTaken', []);
               $ciSymptoms = array_column(data_get($ci->data, 'symptoms.items', []), 'symptom');
+
+              // v3 fields. Every rating is `number|null` where null means the
+              // question was not answered — it must render as a dash, never 0,
+              // or support would read "not asked" as "worst possible score".
+              $ciPlanned = data_get($ci->data, 'supplementsPlanned');
+              $rate = function ($key) use ($ci) {
+                  $v = data_get($ci->data, 'wellbeing.' . $key);
+                  return (is_numeric($v) && is_finite((float) $v)) ? (int) $v : null;
+              };
+              $ciCore = ['energy' => $rate('energy'), 'mood' => $rate('mood'),
+                         'sleep' => $rate('sleep'), 'focus' => $rate('focus')];
+              $ciSystems = ['digestive' => $rate('digestive'), 'circulation' => $rate('circulation'),
+                            'immunity' => $rate('immunity')];
+              $fmtRates = fn (array $r) => implode(' / ', array_map(
+                  fn ($v) => $v === null ? '—' : $v, $r));
+              $ciAnswered = count(array_filter($ciCore + $ciSystems, fn ($v) => $v !== null));
+
+              // Tri-state: 'yes' | 'no' | 'unsure' | null. 'unsure' is a real
+              // answer and must not be shown as a failure.
+              $ciCompletion = data_get($ci->data, 'completion');
+              $tri = function ($v) {
+                  return match ($v) {
+                      'yes' => 'Yes',
+                      'no' => 'No',
+                      'unsure' => 'Unsure',
+                      default => null,
+                  };
+              };
             @endphp
             <tr>
               <td style="white-space:nowrap;color:var(--text-muted);">{{ $ci->created_at->format('M j, Y') }}</td>
@@ -265,9 +351,15 @@
                 </span>
               </td>
               <td style="color:var(--text-muted);font-size:12.5px;">
-                {{ implode(', ', array_slice($ciSupplements, 0, 3)) ?: '—' }}
-                @if(count($ciSupplements) > 3)
-                  <span style="color:var(--text-muted);"> +{{ count($ciSupplements) - 3 }}</span>
+                {{-- Taken alone is unreadable: 3 taken means nothing without the
+                     plan size. supplementsPlanned is absent on pre-v3 rows. --}}
+                @if(is_array($ciPlanned) && count($ciPlanned))
+                  <strong style="color:var(--text);">{{ count($ciSupplements) }}/{{ count($ciPlanned) }}</strong>
+                @else
+                  <strong style="color:var(--text);">{{ count($ciSupplements) }}</strong>
+                @endif
+                @if(count($ciSupplements))
+                  <div>{{ implode(', ', array_slice($ciSupplements, 0, 2)) }}@if(count($ciSupplements) > 2) +{{ count($ciSupplements) - 2 }}@endif</div>
                 @endif
               </td>
               <td style="color:var(--text-muted);font-size:12.5px;">
@@ -277,7 +369,31 @@
                 @endif
               </td>
               <td style="color:var(--text-muted);">
-                {{ $ci->adherence_percentage !== null ? $ci->adherence_percentage . '%' : ' ' }}
+                {{ $ci->adherence_percentage !== null ? $ci->adherence_percentage . '%' : '—' }}
+              </td>
+
+              <td style="color:var(--text-muted);font-size:12.5px;white-space:nowrap;"
+                  title="Energy / Mood / Sleep / Focus, 0-10">
+                {{ $fmtRates($ciCore) }}
+              </td>
+
+              <td style="color:var(--text-muted);font-size:12.5px;white-space:nowrap;"
+                  title="Digestive / Circulation / Immunity, 0-10. A dash means the user did not answer.">
+                {{ $fmtRates($ciSystems) }}
+                <div style="font-size:11px;">{{ $ciAnswered }}/7 answered</div>
+              </td>
+
+              <td style="color:var(--text-muted);font-size:12.5px;">
+                @if($ciCompletion)
+                  <div>Labs: <strong style="color:var(--text);">{{ $tri(data_get($ciCompletion, 'labs')) ?? 'not asked' }}</strong></div>
+                  <div>Prescriber: <strong style="color:var(--text);">{{ $tri(data_get($ciCompletion, 'prescriber')) ?? 'not asked' }}</strong></div>
+                  @php
+                    $life = array_filter((array) data_get($ciCompletion, 'lifestyle', []), fn ($v) => $v === 'yes');
+                  @endphp
+                  <div style="font-size:11px;">Lifestyle: {{ count($life) }} yes</div>
+                @else
+                  <span>—</span>
+                @endif
               </td>
             </tr>
           @endforeach

@@ -9,6 +9,7 @@ use App\Models\Feedback;
 use App\Models\Medication;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\UserPushToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -84,6 +85,24 @@ class AdminController extends Controller
             'checkIns' => fn ($q) => $q->latest()->take(10),
         ]);
 
+        // The relation above is capped at 10 for display, so
+        // $user->checkIns->count() in the view reported 10 for a user with 400.
+        // Count separately, and load the subscription so the detail page can
+        // show entitlement without a trip to the subscriptions list.
+        $user->loadCount('checkIns');
+        $user->load('subscription');
+
+        // Weekly-reminder state. The preference is per ACCOUNT (portal_state)
+        // while tokens are per DEVICE, and both must line up for the Sunday cron
+        // to deliver — so support needs to see them together. Until now nobody
+        // could tell who had reminders on without a database client.
+        $reminderEnabled = (bool) data_get(
+            $user->profile?->portal_state ?? [],
+            'reminderPreferences.enabled',
+            false
+        );
+        $pushTokens = UserPushToken::where('user_id', $user->id)->get();
+
         // medication_name stores a catalog slug or a "custom_..." id, not a display name.
         $catalogNames = Medication::catalog()->pluck('name', 'slug');
         $trackedMedications = $user->medications->map(fn ($m) => [
@@ -92,7 +111,7 @@ class AdminController extends Controller
             'durationMonths' => $m->duration_months,
         ]);
 
-        return view('admin.user-detail', compact('user', 'trackedMedications'));
+        return view('admin.user-detail', compact('user', 'trackedMedications', 'reminderEnabled', 'pushTokens'));
     }
 
     public function verifyEmail(User $user)
@@ -440,10 +459,10 @@ class AdminController extends Controller
             ->orderBy('admin_override_ends_at')
             ->get();
 
+        // Same definition the API uses (Subscription::isEntitled), so admin and
+        // the app can no longer disagree about whether someone is a subscriber.
         $active = Subscription::with('user')
-            ->where(fn ($q) => $q->whereIn('status', $activeStatuses)
-                ->orWhere(fn ($qq) => $qq->whereNotNull('admin_override_ends_at')
-                    ->where('admin_override_ends_at', '>', now())))
+            ->entitled()
             ->latest()
             ->paginate(25)
             ->withQueryString();

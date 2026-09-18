@@ -89,9 +89,7 @@ class User extends Authenticatable
      */
     public function isSubscribed(): bool
     {
-        $status = $this->subscription?->status;
-
-        return in_array($status, ['active', 'trialing'], true);
+        return (bool) $this->subscription?->isEntitled();
     }
 
     /**
