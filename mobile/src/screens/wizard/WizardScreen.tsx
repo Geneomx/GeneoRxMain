@@ -155,6 +155,7 @@ export const WizardScreen: React.FC = () => {
                 onLayout={(e) => {
                   trayX.current[idx] = e.nativeEvent.layout.x;
                 }}
+                hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
                 style={[styles.tab, isOn && styles.tabOn]}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: isOn }}
@@ -217,8 +218,11 @@ const styles = StyleSheet.create({
      content rendered. */
   tabs: { flexDirection: 'row', gap: 8, paddingVertical: 2, paddingRight: 12 },
   tab: {
-    paddingVertical: 9,
-    paddingHorizontal: 12,
+    // 48px tall rather than 36. Still short of theme `touchMin` (52) because
+    // the tray is a horizontal strip competing for height with the content, so
+    // the row carries hitSlop as well — see the Pressable.
+    minHeight: 48,
+    paddingHorizontal: 16,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
@@ -227,25 +231,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabOn: { borderColor: 'rgba(40, 225, 255, 0.35)' },
-  tabText: { fontSize: 13, color: colors.textSoft, fontWeight: '600' },
+  // 16px, not 13. Most of this app's users are older adults, and a step name
+  // is the one thing on this row they actually have to read.
+  tabText: { fontSize: 16, color: colors.textSoft, fontWeight: '600' },
   tabTextOn: { color: colors.onPrimary, fontWeight: '900' },
 
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  title: { flex: 1, fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
-  sub: { fontSize: 15, color: colors.textMuted, lineHeight: 22, marginTop: -4 },
-  resetBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-  resetText: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+  title: { flex: 1, fontSize: 24, fontWeight: '800', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
+  // textSoft rather than textMuted: the subtitle explains what the step is for,
+  // so it should not be the dimmest thing on the screen.
+  sub: { fontSize: 17, color: colors.textSoft, lineHeight: 24, marginTop: -2 },
+  resetBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+  resetText: { fontSize: 14, fontWeight: '700', color: colors.textSoft },
 
   backBtn: {
-    width: 34,
-    height: 34,
+    width: 44,
+    height: 44,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backIcon: { fontSize: 20, lineHeight: 22, color: colors.textSoft, marginTop: -2 },
+  backIcon: { fontSize: 26, lineHeight: 28, color: colors.textSoft, marginTop: -2 },
 
   body: { gap: spacing.md, paddingTop: spacing.lg },
   forward: { marginTop: spacing.sm },
