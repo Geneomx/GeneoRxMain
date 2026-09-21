@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { AmbientBackground } from '@/components/AmbientBackground';
+import { ScoreRow } from '@/components/ScoreRow';
+import { ReportDownloadRow } from '@/components/ReportDownloadRow';
 import { Button } from '@/components/Button';
 import { useAuth } from '@/auth/AuthContext';
 import { useWizard } from '@/store/WizardContext';
@@ -307,21 +309,49 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
               )}
 
               {/* Deep links into the Insights hub. Without these the hub is only
-                  findable by walking the wizard to step 7. */}
-              <View style={styles.insightTiles}>
-                <Pressable style={styles.insightTile} onPress={() => goToStep(7)}>
-                  <Text style={styles.insightVal}>{weekly.score ?? '—'}</Text>
-                  <Text style={styles.insightLab}>{t('insights.this_week')}</Text>
-                </Pressable>
-                <Pressable style={styles.insightTile} onPress={() => goToStep(7)}>
-                  <Text style={styles.insightVal}>{completion.score ?? '—'}</Text>
-                  <Text style={styles.insightLab}>{t('insights.completion')}</Text>
-                </Pressable>
-                <Pressable style={styles.insightTile} onPress={() => goToStep(7)}>
-                  <Text style={styles.insightVal}>{systems.average ?? '—'}</Text>
-                  <Text style={styles.insightLab}>{t('insights.systems')}</Text>
-                </Pressable>
+                  findable by walking the wizard to step 7.
+
+                  These were three side-by-side tiles showing bare numbers. They
+                  were not on the same scale — weekly and completion are 0-100,
+                  systems.average is 0-10 — so "78 64 6.2" in identical boxes read
+                  as a collapse in body systems. Every row now states its unit. */}
+              <View style={styles.scores}>
+                <ScoreRow
+                  title={t('home.score.week')}
+                  description={t('home.score.week_desc')}
+                  value={weekly.score}
+                  unit={t('home.score.out_of_100')}
+                  tint={colors.primary}
+                  emptyReason={t('home.score.week_empty')}
+                  delta={typeof weekly.delta === 'number' && weekly.delta > 0 ? `▲ ${weekly.delta}` : null}
+                  onPress={() => goToStep(7)}
+                />
+                <ScoreRow
+                  title={t('home.score.completion')}
+                  description={t('home.score.completion_desc')}
+                  value={completion.score}
+                  unit={t('home.score.out_of_100')}
+                  tint={colors.violet}
+                  answered={t('home.score.answered', { n: completion.answered, total: completion.total })}
+                  emptyReason={t('home.score.completion_empty')}
+                  onPress={() => goToStep(7)}
+                />
+                <ScoreRow
+                  title={t('home.score.systems')}
+                  description={t('home.score.systems_desc')}
+                  value={systems.average}
+                  unit={t('home.score.out_of_10')}
+                  tint={colors.amber}
+                  answered={t('home.score.answered', { n: systems.answered, total: systems.total })}
+                  emptyReason={t('home.score.systems_empty')}
+                  onPress={() => goToStep(7)}
+                />
+                {/* MedicationCompletion carries selfReported: true precisely to
+                    force this line. The old tiles ignored it. */}
+                <Text style={styles.selfReported}>{t('home.score.self_reported')}</Text>
               </View>
+
+              <ReportDownloadRow />
             </>
           )}
         </View>
@@ -441,19 +471,23 @@ const styles = StyleSheet.create({
   },
   checkinLabel: { fontSize: 13, fontWeight: '700', color: colors.textSoft },
   checkinDetail: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
-  insightTiles: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  insightTile: {
-    flex: 1,
+  scores: {
+    marginTop: 12,
     borderWidth: 1,
     borderColor: colors.borderSoft,
     borderRadius: radius.md,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    gap: 2,
     backgroundColor: 'rgba(7, 10, 18, 0.35)',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  insightVal: { fontSize: 20, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
-  insightLab: { fontSize: 11, color: colors.textMuted },
+  selfReported: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textDim,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+  },
   chevron: { fontSize: 20, color: colors.textDim, fontWeight: '700' },
 
   checkinRowStale: { backgroundColor: colors.warningBg, borderColor: 'rgba(251, 191, 36, 0.28)' },

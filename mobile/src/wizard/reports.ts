@@ -1,6 +1,7 @@
 import { Share } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
 import { track } from '@/api/analytics';
 import type { MedEntry } from '@/content/wizardData';
 import { buildClinicianSnapshotText, computeInsightEngine, fmtDate, type TranslateFn } from '@/wizard/engine';
@@ -113,8 +114,28 @@ export async function downloadDoctorReport(
   const title = [t('modal.report.doctor_title'), `${t('checkin.label_n')} ${idx + 1}`, fmtDate(checkin.dateISO)]
     .filter(Boolean)
     .join(' · ');
-  const filename = `geneorx_report_checkin_${idx + 1}_${datePart}.html`;
+  const stem = `geneorx_report_checkin_${idx + 1}_${datePart}`;
+  const filename = `${stem}.html`;
   const html = buildReportHtml(snapshot, idx, checkin.dateISO, t, lang, aiSummary);
+
+  // A doctor is far more likely to accept a PDF than an .html attachment, so
+  // that is tried first. The same HTML feeds the printer, so the report content
+  // is identical either way. Every step below degrades rather than failing: PDF
+  // -> HTML file -> plain text share.
+  try {
+    const { uri } = await Print.printToFileAsync({ html });
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: title,
+        UTI: 'com.adobe.pdf',
+      });
+      return true;
+    }
+  } catch {
+    // expo-print is a native module: on a build that predates it, or if the
+    // platform refuses, fall through to the HTML file below.
+  }
 
   try {
     if (!FileSystem.cacheDirectory) throw new Error('No cache directory available');
