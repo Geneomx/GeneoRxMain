@@ -1,6 +1,10 @@
 <?php
 
 $en = [
+    // The forward button names the step it goes to: "Continue" alone does not
+    // say what happens next, and the step names already exist in every language.
+    'nav.next_named' => 'Next: {step}',
+    'nav.back_short' => 'Back',
     // Insights tiles carry the same three scales as Home, so they need the
     // same units. Symbols, identical in every language.
     'insights.of_100' => '/100',
@@ -561,6 +565,10 @@ $en = [
 return [
     'en' => $en,
     'es' => array_merge($en, [
+        // The forward button names the step it goes to: "Continue" alone does not
+        // say what happens next, and the step names already exist in every language.
+        'nav.next_named' => 'Siguiente: {step}',
+        'nav.back_short' => 'Atrás',
         // Home dashboard: the three score rows and the doctor report download.
         'home.score.week' => 'Esta semana',
         'home.score.week_desc' => 'Cómo fue tu semana en general',
@@ -724,6 +732,10 @@ return [
         'mobile.wizard.complete_sub' => 'Tu registro y reporte están guardados. Vuelve al panel para ver tu resumen.',
     ]),
     'fr' => array_merge($en, [
+        // The forward button names the step it goes to: "Continue" alone does not
+        // say what happens next, and the step names already exist in every language.
+        'nav.next_named' => 'Suivant : {step}',
+        'nav.back_short' => 'Retour',
         // Home dashboard: the three score rows and the doctor report download.
         'home.score.week' => 'Cette semaine',
         'home.score.week_desc' => 'Comment s\'est passée votre semaine',
@@ -816,6 +828,10 @@ return [
         'mobile.wizard.complete_sub' => 'Votre suivi et rapport sont enregistrés. Retournez au tableau de bord pour voir votre résumé.',
     ]),
     'ar' => array_merge($en, [
+        // The forward button names the step it goes to: "Continue" alone does not
+        // say what happens next, and the step names already exist in every language.
+        'nav.next_named' => 'التالي: {step}',
+        'nav.back_short' => 'رجوع',
         // Home dashboard: the three score rows and the doctor report download.
         'home.score.week' => 'هذا الأسبوع',
         'home.score.week_desc' => 'كيف كان أسبوعك بشكل عام',
@@ -881,6 +897,10 @@ return [
         'slide.3.title' => 'باختصار',
     ]),
     'ur' => array_merge($en, [
+        // The forward button names the step it goes to: "Continue" alone does not
+        // say what happens next, and the step names already exist in every language.
+        'nav.next_named' => 'اگلا: {step}',
+        'nav.back_short' => 'واپس',
         // Home dashboard: the three score rows and the doctor report download.
         'home.score.week' => 'اس ہفتے',
         'home.score.week_desc' => 'مجموعی طور پر آپ کا ہفتہ کیسا رہا',
@@ -946,6 +966,10 @@ return [
         'slide.3.title' => ' مختصراً',
     ]),
     'sw' => array_merge($en, [
+        // The forward button names the step it goes to: "Continue" alone does not
+        // say what happens next, and the step names already exist in every language.
+        'nav.next_named' => 'Inayofuata: {step}',
+        'nav.back_short' => 'Nyuma',
         // Home dashboard: the three score rows and the doctor report download.
         'home.score.week' => 'Wiki hii',
         'home.score.week_desc' => 'Wiki yako ilikuwaje kwa ujumla',

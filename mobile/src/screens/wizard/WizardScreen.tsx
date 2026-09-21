@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { track } from '@/api/analytics';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
@@ -41,7 +41,6 @@ export const WizardScreen: React.FC = () => {
   const { isGuest } = useAuth();
   const { t } = useTranslation();
   const goToDashboard = useDashboardNavigation();
-  const insets = useSafeAreaInsets();
   const { horizontal, scrollBottom } = useResponsiveLayout();
 
   const steps = useMemo(() => visibleSteps(isGuest), [isGuest]);
@@ -85,6 +84,13 @@ export const WizardScreen: React.FC = () => {
     bodyRef.current?.scrollTo({ y: Math.max(0, currentY.current - 8), animated: true });
   }, [step]);
 
+  // The forward button lives at the END of the open step rather than in a fixed
+  // bar. It names where it goes, because "Continue" on its own does not say
+  // what happens next.
+  const forwardTitle = isLast
+    ? t('nav.home')
+    : t('nav.next_named', { step: t(`step.${nextVisibleStep(step, isGuest)}.short`) });
+
   const renderStep = (idx: number) => {
     const isCurrent = idx === step;
     const row = (
@@ -95,7 +101,17 @@ export const WizardScreen: React.FC = () => {
         state={stepStateOf(state, idx, step, t)}
         onPress={() => setStep(idx)}
       >
-        {isCurrent ? <StepComponent /> : null}
+        {isCurrent ? (
+          <>
+            <StepComponent />
+            <View style={styles.forward}>
+              <Button
+                title={forwardTitle}
+                onPress={isLast ? goToDashboard : () => setStep(nextVisibleStep(step, isGuest))}
+              />
+            </View>
+          </>
+        ) : null}
       </StepRow>
     );
 
@@ -115,6 +131,20 @@ export const WizardScreen: React.FC = () => {
           pill-tray stack. The step names live in the list below, where all of
           them fit and each row is just a number and a name. */}
       <View style={[styles.appbar, { paddingHorizontal: horizontal }]}>
+        {/* Back is a chevron here rather than a button in a bar at the bottom.
+            This row already existed and held only the brand and Reset, so Back
+            costs no height at all. Absent on the first step, never disabled. */}
+        {!isFirst ? (
+          <Pressable
+            onPress={() => setStep(prevVisibleStep(step, isGuest))}
+            hitSlop={10}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('nav.back')}
+          >
+            <Text style={styles.backIcon}>‹</Text>
+          </Pressable>
+        ) : null}
         <Text style={styles.brand}>GeneoRx</Text>
         <View style={styles.spacer} />
         <Pressable onPress={confirmReset} hitSlop={10} style={styles.resetBtn}>
@@ -146,23 +176,6 @@ export const WizardScreen: React.FC = () => {
         </View>
       </ScrollView>
 
-      <View style={[styles.nav, { paddingHorizontal: horizontal, paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-        {!isFirst ? (
-          <View style={{ flex: 1 }}>
-            <Button
-              title={t('nav.back')}
-              variant="secondary"
-              onPress={() => setStep(prevVisibleStep(step, isGuest))}
-            />
-          </View>
-        ) : null}
-        <View style={{ flex: isFirst ? 1 : 1.5 }}>
-          <Button
-            title={isLast ? t('nav.home') : t('nav.continue')}
-            onPress={isLast ? goToDashboard : () => setStep(nextVisibleStep(step, isGuest))}
-          />
-        </View>
-      </View>
     </SafeAreaView>
   );
 };
@@ -189,12 +202,17 @@ const styles = StyleSheet.create({
   body: { paddingTop: spacing.sm },
   stepper: { position: 'relative' },
 
-  nav: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
-    backgroundColor: colors.surface,
+  /* Sits at the end of the open step's content, not in a fixed bar. */
+  forward: { marginTop: spacing.sm },
+
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  backIcon: { fontSize: 22, lineHeight: 24, color: colors.textSoft, marginTop: -2 },
 });
