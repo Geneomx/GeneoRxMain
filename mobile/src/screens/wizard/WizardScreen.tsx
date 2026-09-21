@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { track } from '@/api/analytics';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
@@ -15,9 +16,7 @@ import {
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
-import { colors, radius, spacing } from '@/theme';
-import { StepRow, StepSpine } from '@/screens/wizard/Stepper';
-import { stepStateOf } from '@/wizard/stepStatus';
+import { colors, gradients, radius, spacing } from '@/theme';
 import { AccountStep } from '@/screens/wizard/steps/AccountStep';
 import { MedicationsStep } from '@/screens/wizard/steps/MedicationsStep';
 import { SymptomsStep } from '@/screens/wizard/steps/SymptomsStep';
@@ -36,6 +35,18 @@ const STEP_COMPONENTS = [
   CheckinStepScreen, ProgressStep, InsightsStep, SummaryStep, FeedbackStep,
 ];
 
+/**
+ * The step header is a horizontal pill tray. That is what was chosen after
+ * seeing it beside a vertical numbered list; the vertical version still exists
+ * in Stepper.tsx and stepStatus.ts but is no longer referenced here, so it is
+ * not bundled. Recoverable from git if the decision reverses again.
+ *
+ * Two things from the vertical experiment are kept on purpose, because they
+ * were asked for separately and are not tied to the tray:
+ *   - Back is a chevron in the title row, not a button in a bottom bar.
+ *   - The forward button is the last thing in the content and names where it
+ *     goes. Together those removed 88px of fixed bottom chrome.
+ */
 export const WizardScreen: React.FC = () => {
   const { state, setStep, reset } = useWizard();
   const { isGuest } = useAuth();
@@ -76,91 +87,95 @@ export const WizardScreen: React.FC = () => {
       { text: t('mobile.reset.confirm'), style: 'destructive', onPress: reset },
     ]);
 
-  // Keeps the open step in view after a jump, the way the old horizontal tray
-  // scrolled the active pill into view.
-  const bodyRef = useRef<ScrollView | null>(null);
-  const currentY = useRef(0);
+  // Keeps the active pill visible in the horizontal tray without the user
+  // having to hunt for it after a jump.
+  const trayRef = useRef<ScrollView | null>(null);
+  const trayX = useRef<Record<number, number>>({});
   useEffect(() => {
-    bodyRef.current?.scrollTo({ y: Math.max(0, currentY.current - 8), animated: true });
+    const x = trayX.current[step];
+    if (x === undefined) return;
+    // Nudge it left of centre so the following steps stay hinted at.
+    trayRef.current?.scrollTo({ x: Math.max(0, x - 80), animated: true });
   }, [step]);
 
-  // The forward button lives at the END of the open step rather than in a fixed
-  // bar. It names where it goes, because "Continue" on its own does not say
-  // what happens next.
+  // A new step means new content, so start it at the top rather than wherever
+  // the previous step happened to be scrolled to.
+  const bodyRef = useRef<ScrollView | null>(null);
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ y: 0, animated: false });
+  }, [step]);
+
   const forwardTitle = isLast
     ? t('nav.home')
     : t('nav.next_named', { step: t(`step.${nextVisibleStep(step, isGuest)}.short`) });
-
-  const renderStep = (idx: number) => {
-    const isCurrent = idx === step;
-    const row = (
-      <StepRow
-        key={idx}
-        index={idx}
-        title={t(`step.${idx}.short`)}
-        state={stepStateOf(state, idx, step, t)}
-        onPress={() => setStep(idx)}
-      >
-        {isCurrent ? (
-          <>
-            <StepComponent />
-            <View style={styles.forward}>
-              <Button
-                title={forwardTitle}
-                onPress={isLast ? goToDashboard : () => setStep(nextVisibleStep(step, isGuest))}
-              />
-            </View>
-          </>
-        ) : null}
-      </StepRow>
-    );
-
-    if (!isCurrent) return row;
-    return (
-      <View key={idx} onLayout={(e) => { currentY.current = e.nativeEvent.layout.y; }}>
-        {row}
-      </View>
-    );
-  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <AmbientBackground />
 
-      {/* One 50px bar and a progress line, replacing the old title + subtitle +
-          pill-tray stack. The step names live in the list below, where all of
-          them fit and each row is just a number and a name. */}
-      <View style={[styles.appbar, { paddingHorizontal: horizontal }]}>
-        {/* Back is a chevron here rather than a button in a bar at the bottom.
-            This row already existed and held only the brand and Reset, so Back
-            costs no height at all. Absent on the first step, never disabled. */}
-        {!isFirst ? (
-          <Pressable
-            onPress={() => setStep(prevVisibleStep(step, isGuest))}
-            hitSlop={10}
-            style={styles.backBtn}
-            accessibilityRole="button"
-            accessibilityLabel={t('nav.back')}
-          >
-            <Text style={styles.backIcon}>‹</Text>
+      <View style={[styles.header, { paddingHorizontal: horizontal }]}>
+        {/* Title + subtitle + pill tabs — mirrors the website portal header */}
+        <View style={styles.titleRow}>
+          {/* Back lives here rather than in a bottom bar: this row already
+              exists, so it costs no height. Absent on the first step rather
+              than present and disabled. */}
+          {!isFirst ? (
+            <Pressable
+              onPress={() => setStep(prevVisibleStep(step, isGuest))}
+              hitSlop={10}
+              style={styles.backBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t('nav.back')}
+            >
+              <Text style={styles.backIcon}>‹</Text>
+            </Pressable>
+          ) : null}
+          <Text style={styles.title} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>
+            {t(`step.${step}`)}
+          </Text>
+          <Pressable onPress={confirmReset} hitSlop={8} style={styles.resetBtn}>
+            <Text style={styles.resetText}>{t('common.reset')}</Text>
           </Pressable>
-        ) : null}
-        <Text style={styles.brand}>GeneoRx</Text>
-        <View style={styles.spacer} />
-        <Pressable onPress={confirmReset} hitSlop={10} style={styles.resetBtn}>
-          <Text style={styles.resetText}>{t('common.reset')}</Text>
-        </Pressable>
-      </View>
-
-      <View
-        style={[styles.meter, { paddingHorizontal: horizontal }]}
-        accessibilityRole="progressbar"
-        accessibilityLabel={t('wizard.stepOf', { n: stepIndex + 1, total })}
-      >
-        <Text style={styles.meterLab}>{t('wizard.stepOf', { n: stepIndex + 1, total })}</Text>
-        <View style={styles.track}>
-          <View style={[styles.trackFill, { width: `${Math.round(((stepIndex + 1) / total) * 100)}%` }]} />
         </View>
+        <Text style={styles.sub} numberOfLines={3}>{t(`step.${step}.sub`)}</Text>
+
+        <ScrollView
+          ref={trayRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabs}
+          keyboardShouldPersistTaps="handled"
+        >
+          {steps.map((idx) => {
+            const isOn = idx === step;
+            return (
+              <Pressable
+                key={idx}
+                onPress={() => setStep(idx)}
+                onLayout={(e) => {
+                  trayX.current[idx] = e.nativeEvent.layout.x;
+                }}
+                style={[styles.tab, isOn && styles.tabOn]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isOn }}
+              >
+                {isOn && (
+                  <LinearGradient
+                    colors={gradients.stepActive}
+                    start={gradients.start}
+                    end={gradients.end}
+                    style={StyleSheet.absoluteFill}
+                  />
+                )}
+                <Text style={[styles.tabText, isOn && styles.tabTextOn]} numberOfLines={1}>
+                  {/* step.N.short exists in every pack and was unused; the
+                      full labels are what forced the tray to wrap. */}
+                  {t(`step.${idx}.short`)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <ScrollView
@@ -169,13 +184,18 @@ export const WizardScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.stepper}>
-          <StepSpine progress={total > 1 ? stepIndex / (total - 1) : 1} />
+        <StepComponent />
 
-          {steps.map(renderStep)}
+        {/* The forward action, at the end of the content rather than in a fixed
+            bar. It names its destination, because "Continue" alone does not say
+            what happens next. */}
+        <View style={styles.forward}>
+          <Button
+            title={forwardTitle}
+            onPress={isLast ? goToDashboard : () => setStep(nextVisibleStep(step, isGuest))}
+          />
         </View>
       </ScrollView>
-
     </SafeAreaView>
   );
 };
@@ -183,36 +203,50 @@ export const WizardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
-  appbar: {
-    height: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
+  header: {
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
     gap: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+    backgroundColor: colors.surface,
   },
-  brand: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: -0.1 },
-  spacer: { flex: 1 },
-  resetBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border },
-  resetText: { fontSize: 13, fontWeight: '700', color: colors.textSoft },
 
-  meter: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.sm },
-  meterLab: { fontSize: 13, color: colors.textMuted, fontVariant: ['tabular-nums'] },
-  track: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.09)', overflow: 'hidden' },
-  trackFill: { height: '100%', backgroundColor: colors.primary },
+  /* Pill tab tray — one scrolling row. Deliberately NOT flexWrap: with nine
+     steps the wrapping version ran to three rows and cost ~120px before any
+     content rendered. */
+  tabs: { flexDirection: 'row', gap: 8, paddingVertical: 2, paddingRight: 12 },
+  tab: {
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.ghostBg,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  tabOn: { borderColor: 'rgba(40, 225, 255, 0.35)' },
+  tabText: { fontSize: 13, color: colors.textSoft, fontWeight: '600' },
+  tabTextOn: { color: colors.onPrimary, fontWeight: '900' },
 
-  body: { paddingTop: spacing.sm },
-  stepper: { position: 'relative' },
-
-  /* Sits at the end of the open step's content, not in a fixed bar. */
-  forward: { marginTop: spacing.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  title: { flex: 1, fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
+  sub: { fontSize: 15, color: colors.textMuted, lineHeight: 22, marginTop: -4 },
+  resetBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+  resetText: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
 
   backBtn: {
-    width: 38,
-    height: 38,
+    width: 34,
+    height: 34,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backIcon: { fontSize: 22, lineHeight: 24, color: colors.textSoft, marginTop: -2 },
+  backIcon: { fontSize: 20, lineHeight: 22, color: colors.textSoft, marginTop: -2 },
+
+  body: { gap: spacing.md, paddingTop: spacing.lg },
+  forward: { marginTop: spacing.sm },
 });
