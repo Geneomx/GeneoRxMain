@@ -4,6 +4,13 @@
 // label, not a permission. Every visible step stayed tappable in the old pill
 // tray and stays tappable now — turning one of these into a real gate would
 // take away access the user already has.
+//
+// `stepStateOf` is what the step list actually renders. `stepSummary`,
+// `setupDigest`, `counted` and the setup helpers are NOT rendered any more: the
+// rows briefly carried a value each ("3 medicines") and with eight rows on
+// screen it read as clutter. They are kept, with their tests, because the
+// likely next step is one value on the CURRENT row only — one line of it
+// instead of eight. Delete them if that idea is dropped.
 
 import { computeNutrientScores, detectHealthPatterns, latestCheckin, type TranslateFn } from '@/wizard/engine';
 import { daysSince } from '@/wizard/calendarDate';

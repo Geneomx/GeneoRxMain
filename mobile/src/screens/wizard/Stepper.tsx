@@ -5,7 +5,13 @@
 // Vertically they fit, keep their names, and can each carry what is in them.
 //
 // Every row here is pressable, including the ones drawn as 'locked'. That state
-// is a label ("needs 1 check-in"), not a gate — see stepStatus.ts.
+// is styling, not a gate — see stepStatus.ts.
+//
+// A row is deliberately just a number and a name. It briefly carried a value
+// ("3 medicines"), a chevron and a subtitle as well, and with eight rows on
+// screen that was four pieces of information per row and read as clutter. All
+// steps must stay visible, so the way to make the screen simple is to put less
+// on each one, not to show fewer of them.
 //
 // Layout note: the node sits in a fixed-width flex column, NOT absolutely
 // positioned. Yoga places an absolute child from its parent's CONTENT box,
@@ -15,7 +21,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients, radius, spacing } from '@/theme';
+import { colors, gradients, spacing } from '@/theme';
 import type { StepState } from '@/wizard/stepStatus';
 
 /** Rail geometry. The spine and every node centre on RAIL_X.
@@ -77,15 +83,11 @@ const Node: React.FC<{ state: StepState; label: string }> = ({ state, label }) =
 export const StepRow: React.FC<{
   index: number;
   title: string;
-  /** The short right-hand value, or null to render a dash. */
-  value?: string | null;
-  /** Shown under the title on the current step only. */
-  sub?: string;
   state: StepState;
   onPress: () => void;
   /** The open step's content. */
   children?: React.ReactNode;
-}> = ({ index, title, value, sub, state, onPress, children }) => {
+}> = ({ index, title, state, onPress, children }) => {
   const isCurrent = state === 'current';
 
   return (
@@ -96,7 +98,7 @@ export const StepRow: React.FC<{
         style={styles.head}
         accessibilityRole="tab"
         accessibilityState={{ selected: isCurrent }}
-        accessibilityLabel={`${title}${value ? `, ${value}` : ''}`}
+        accessibilityLabel={title}
       >
         <View style={[styles.rail, isCurrent && styles.railOn]}>
           <Node state={state} label={String(index)} />
@@ -114,22 +116,7 @@ export const StepRow: React.FC<{
             >
               {title}
             </Text>
-            <View style={styles.spacer} />
-            <Text
-              style={[
-                styles.value,
-                state === 'done' && styles.valueDone,
-                isCurrent && styles.valueOn,
-                state === 'locked' && styles.valueLocked,
-              ]}
-              numberOfLines={1}
-            >
-              {value ?? '—'}
-            </Text>
-            {!isCurrent && state !== 'locked' ? <Text style={styles.chev}>›</Text> : null}
           </View>
-
-          {isCurrent && sub ? <Text style={styles.sub}>{sub}</Text> : null}
         </View>
       </Pressable>
 
@@ -140,50 +127,6 @@ export const StepRow: React.FC<{
     </View>
   );
 };
-
-/**
- * Setup (steps 1-4, plus Account for guests) folded into one band. Nothing is
- * lost — every value the individual rows carried is in the digest line. Tapping
- * unfolds them.
- */
-export const SetupBand: React.FC<{
-  title: string;
-  count: string;
-  digest: string;
-  onPress: () => void;
-}> = ({ title, count, digest, onPress }) => (
-  <View style={styles.step}>
-    <Pressable
-      onPress={onPress}
-      hitSlop={ROW_SLOP}
-      style={styles.head}
-      accessibilityRole="button"
-      accessibilityLabel={`${title}, ${count}. ${digest}`}
-    >
-      <View style={styles.rail}>
-        <Node state="done" label="✓" />
-      </View>
-
-      <View style={styles.headBody}>
-        <View style={styles.band}>
-          <View style={styles.row}>
-            <Text style={styles.bandTitle}>{title}</Text>
-            <View style={styles.spacer} />
-            <Text style={styles.bandCount}>{count}</Text>
-            <Text style={styles.caret}>▾</Text>
-          </View>
-          <Text style={styles.bandDigest} numberOfLines={2}>{digest}</Text>
-        </View>
-        {/* Two hairlines peeking beneath, so the band reads as a stack of rows
-            rather than one more row. */}
-        <View style={styles.stackHint}>
-          <View style={styles.stackLine1} />
-          <View style={styles.stackLine2} />
-        </View>
-      </View>
-    </Pressable>
-  </View>
-);
 
 const styles = StyleSheet.create({
   spine: {
@@ -229,41 +172,12 @@ const styles = StyleSheet.create({
   nodeTextOn: { fontSize: 14, fontWeight: '900', color: colors.onPrimary },
 
   row: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, minHeight: 30 },
-  spacer: { flex: 1 },
 
   name: { fontSize: 17, fontWeight: '600', color: colors.text, letterSpacing: -0.1 },
   nameOn: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
   nameLocked: { color: colors.textDim, fontWeight: '500' },
 
-  value: { fontSize: 15, color: colors.textSoft, fontVariant: ['tabular-nums'] },
-  valueDone: { color: colors.textSoft },
-  valueOn: { color: colors.primary },
-  valueLocked: { color: colors.textDim, fontStyle: 'italic' },
-
-  chev: { fontSize: 20, lineHeight: 22, color: colors.textMuted },
-  sub: { marginTop: 4, fontSize: 15, lineHeight: 22, color: colors.textMuted },
 
   panel: { marginTop: spacing.md, gap: spacing.md },
 
-  band: {
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.md,
-    backgroundColor: colors.card,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: 4,
-  },
-  bandTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
-  bandCount: { fontSize: 15, color: colors.textSoft, fontVariant: ['tabular-nums'] },
-  caret: { fontSize: 15, lineHeight: 18, color: colors.textMuted },
-  bandDigest: { fontSize: 14, lineHeight: 20, color: colors.textMuted },
-
-  stackHint: { height: 6 },
-  stackLine1: {
-    position: 'absolute', left: 5, right: 5, top: 2, height: 1, backgroundColor: colors.borderSoft,
-  },
-  stackLine2: {
-    position: 'absolute', left: 10, right: 10, top: 5, height: 1, backgroundColor: colors.borderSoft, opacity: 0.6,
-  },
 });

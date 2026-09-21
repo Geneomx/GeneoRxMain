@@ -6,7 +6,6 @@ import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
 import { useAuth } from '@/auth/AuthContext';
 import { useWizard } from '@/store/WizardContext';
-import { useMedCatalog } from '@/store/MedCatalogContext';
 import {
   nextVisibleStep,
   normalizeStep,
@@ -17,15 +16,8 @@ import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
 import { colors, radius, spacing } from '@/theme';
-import { SetupBand, StepRow, StepSpine } from '@/screens/wizard/Stepper';
-import {
-  counted,
-  isSetupComplete,
-  isSetupStep,
-  setupDigest,
-  stepStateOf,
-  stepSummary,
-} from '@/wizard/stepStatus';
+import { StepRow, StepSpine } from '@/screens/wizard/Stepper';
+import { stepStateOf } from '@/wizard/stepStatus';
 import { AccountStep } from '@/screens/wizard/steps/AccountStep';
 import { MedicationsStep } from '@/screens/wizard/steps/MedicationsStep';
 import { SymptomsStep } from '@/screens/wizard/steps/SymptomsStep';
@@ -48,7 +40,6 @@ export const WizardScreen: React.FC = () => {
   const { state, setStep, reset } = useWizard();
   const { isGuest } = useAuth();
   const { t } = useTranslation();
-  const { catalog } = useMedCatalog();
   const goToDashboard = useDashboardNavigation();
   const insets = useSafeAreaInsets();
   const { horizontal, scrollBottom } = useResponsiveLayout();
@@ -86,28 +77,6 @@ export const WizardScreen: React.FC = () => {
       { text: t('mobile.reset.confirm'), style: 'destructive', onPress: reset },
     ]);
 
-  // Setup (steps 0-4) folds into one band once there is something in it. It
-  // unfolds on tap, and never folds while the open step is one of its own.
-  const [setupOpen, setSetupOpen] = useState(false);
-  const setupSteps = steps.filter(isSetupStep);
-  // Unfolding is for looking or editing, so it refolds once the user moves on
-  // past setup. Without this there is no way back to the folded band.
-  useEffect(() => {
-    if (!isSetupStep(step)) setSetupOpen(false);
-  }, [step]);
-  const foldSetup =
-    setupSteps.length > 1 && isSetupComplete(state) && !setupOpen && !isSetupStep(step);
-
-  // Row values are memoised because two of them are not cheap: Results runs
-  // computeNutrientScores and Insights runs detectHealthPatterns. This screen
-  // re-renders on every keystroke and slider drag inside the open step, and
-  // recomputing those each time would make the check-in feel sticky.
-  const { summaries, digest } = useMemo(() => {
-    const map: Record<number, string | null> = {};
-    for (const idx of steps) map[idx] = stepSummary(state, idx, t, catalog);
-    return { summaries: map, digest: setupDigest(state, t, catalog) };
-  }, [state, steps, t, catalog]);
-
   // Keeps the open step in view after a jump, the way the old horizontal tray
   // scrolled the active pill into view.
   const bodyRef = useRef<ScrollView | null>(null);
@@ -123,8 +92,6 @@ export const WizardScreen: React.FC = () => {
         key={idx}
         index={idx}
         title={t(`step.${idx}.short`)}
-        value={summaries[idx]}
-        sub={t(`step.${idx}.sub`)}
         state={stepStateOf(state, idx, step, t)}
         onPress={() => setStep(idx)}
       >
@@ -144,11 +111,11 @@ export const WizardScreen: React.FC = () => {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <AmbientBackground />
 
-      {/* 44px bar + a 2px meter, replacing the title/subtitle/pill-tray stack.
-          The step names moved into the list below, where all of them fit. */}
+      {/* One 50px bar and a progress line, replacing the old title + subtitle +
+          pill-tray stack. The step names live in the list below, where all of
+          them fit and each row is just a number and a name. */}
       <View style={[styles.appbar, { paddingHorizontal: horizontal }]}>
         <Text style={styles.brand}>GeneoRx</Text>
-        <Text style={styles.stepName} numberOfLines={1}>{t(`step.${step}.short`)}</Text>
         <View style={styles.spacer} />
         <Pressable onPress={confirmReset} hitSlop={10} style={styles.resetBtn}>
           <Text style={styles.resetText}>{t('common.reset')}</Text>
@@ -175,18 +142,7 @@ export const WizardScreen: React.FC = () => {
         <View style={styles.stepper}>
           <StepSpine progress={total > 1 ? stepIndex / (total - 1) : 1} />
 
-          {foldSetup ? (
-            <SetupBand
-              title={t('step.setup.title')}
-              count={counted(t, 'step.setup.count', setupSteps.length)}
-              digest={digest}
-              onPress={() => setSetupOpen(true)}
-            />
-          ) : (
-            setupSteps.map(renderStep)
-          )}
-
-          {steps.filter((i) => !isSetupStep(i)).map(renderStep)}
+          {steps.map(renderStep)}
         </View>
       </ScrollView>
 
@@ -221,9 +177,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   brand: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: -0.1 },
-  // Not uppercased: all-caps is measurably slower to read, and this app is
-  // mostly used by older adults.
-  stepName: { fontSize: 14, color: colors.textMuted, flexShrink: 1 },
   spacer: { flex: 1 },
   resetBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border },
   resetText: { fontSize: 13, fontWeight: '700', color: colors.textSoft },
