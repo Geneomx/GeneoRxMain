@@ -13,6 +13,15 @@ import type { WizardState } from '@/wizard/types';
 /** A week between check-ins — the cadence the reminder cron already uses. */
 const CHECKIN_DUE_DAYS = 7;
 
+/**
+ * Counted labels carry a `_one` variant, because "1 weeks" reads as a bug to
+ * anyone looking at it. Only the four genuinely countable values need it —
+ * "1 active" and "1 tracked" are already correct English.
+ */
+export function counted(t: TranslateFn, key: string, n: number): string {
+  return n === 1 ? t(`${key}_one`, { n }) : t(key, { n });
+}
+
 export type StepState =
   /** Answered. Shows what is in it. */
   | 'done'
@@ -123,7 +132,7 @@ export function stepSummary(
 
     case 4: {
       const n = computeNutrientScores(s, catalog).length;
-      return n > 0 ? t('step.sum.signals', { n }) : null;
+      return n > 0 ? counted(t, 'step.sum.signals', n) : null;
     }
 
     // Deliberately says "Due now" rather than a dash when there is no history
@@ -133,13 +142,13 @@ export function stepSummary(
 
     case 6: {
       const n = s.checkins.length;
-      return n > 0 ? t('step.sum.weeks', { n }) : null;
+      return n > 0 ? counted(t, 'step.sum.weeks', n) : null;
     }
 
     case 7: {
       if (!s.checkins.length) return null;
       const n = detectHealthPatterns(s, t).length;
-      return n > 0 ? t('step.sum.patterns', { n }) : null;
+      return n > 0 ? counted(t, 'step.sum.patterns', n) : null;
     }
 
     case 8:

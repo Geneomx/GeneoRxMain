@@ -19,6 +19,7 @@ import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
 import { colors, radius, spacing } from '@/theme';
 import { SetupBand, StepRow, StepSpine } from '@/screens/wizard/Stepper';
 import {
+  counted,
   isSetupComplete,
   isSetupStep,
   setupDigest,
@@ -177,7 +178,7 @@ export const WizardScreen: React.FC = () => {
           {foldSetup ? (
             <SetupBand
               title={t('step.setup.title')}
-              count={t('step.setup.count', { n: setupSteps.length })}
+              count={counted(t, 'step.setup.count', setupSteps.length)}
               digest={digest}
               onPress={() => setSetupOpen(true)}
             />

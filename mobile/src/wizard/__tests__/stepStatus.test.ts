@@ -153,6 +153,11 @@ describe('row values', () => {
     expect(stepSummary(s, 3, t)).toBe('step.sum.baseline:7·6·4·5');
   });
 
+  it('uses a singular label for one, so no row ever reads "1 weeks"', () => {
+    const one = withSetup({ checkins: [checkin(daysAgo(1))] });
+    expect(stepSummary(one, 6, t)).toBe('step.sum.weeks_one:1');
+  });
+
   it('counts weeks from the check-in history', () => {
     const s = withSetup({ checkins: [checkin(daysAgo(14)), checkin(daysAgo(7)), checkin(daysAgo(1))] });
     expect(stepSummary(s, 6, t)).toBe('step.sum.weeks:3');
@@ -160,7 +165,7 @@ describe('row values', () => {
 
   it('reports the real nutrient signal count for Results', () => {
     // Metformin claims Vitamin B12 in MED_DB, so exactly one signal.
-    expect(stepSummary(withSetup(), 4, t)).toBe('step.sum.signals:1');
+    expect(stepSummary(withSetup(), 4, t)).toBe('step.sum.signals_one:1');
   });
 });
 

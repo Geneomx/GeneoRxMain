@@ -527,11 +527,19 @@ $en = [
     'step.sum.patterns' => '{n} patterns',
     'step.sum.ready' => 'Ready',
     'wizard.stepShort' => 'STEP {n}',
+    'step.setup.count_one' => '{n} step',
+    'step.sum.signals_one' => '{n} signal',
+    'step.sum.weeks_one' => '{n} week',
+    'step.sum.patterns_one' => '{n} pattern',
 ];
 
 return [
     'en' => $en,
     'es' => array_merge($en, [
+        'step.setup.count_one' => '{n} paso',
+        'step.sum.signals_one' => '{n} señal',
+        'step.sum.weeks_one' => '{n} semana',
+        'step.sum.patterns_one' => '{n} patrón',
         // Vertical step list — row values, the folded setup band, and lock labels.
         'step.setup.title' => 'Configuración lista',
         'step.setup.count' => '{n} pasos',
@@ -670,6 +678,10 @@ return [
         'mobile.wizard.complete_sub' => 'Tu registro y reporte están guardados. Vuelve al panel para ver tu resumen.',
     ]),
     'fr' => array_merge($en, [
+        'step.setup.count_one' => '{n} étape',
+        'step.sum.signals_one' => '{n} signal',
+        'step.sum.weeks_one' => '{n} semaine',
+        'step.sum.patterns_one' => '{n} tendance',
         // Vertical step list — row values, the folded setup band, and lock labels.
         'step.setup.title' => 'Configuration terminée',
         'step.setup.count' => '{n} étapes',
@@ -737,6 +749,10 @@ return [
         'mobile.wizard.complete_sub' => 'Votre suivi et rapport sont enregistrés. Retournez au tableau de bord pour voir votre résumé.',
     ]),
     'ar' => array_merge($en, [
+        'step.setup.count_one' => 'خطوة {n}',
+        'step.sum.signals_one' => 'إشارة {n}',
+        'step.sum.weeks_one' => 'أسبوع {n}',
+        'step.sum.patterns_one' => 'نمط {n}',
         // Vertical step list — row values, the folded setup band, and lock labels.
         'step.setup.title' => 'اكتمل الإعداد',
         'step.setup.count' => '{n} خطوات',
@@ -777,6 +793,10 @@ return [
         'slide.3.title' => 'باختصار',
     ]),
     'ur' => array_merge($en, [
+        'step.setup.count_one' => '{n} مرحلہ',
+        'step.sum.signals_one' => '{n} اشارہ',
+        'step.sum.weeks_one' => '{n} ہفتہ',
+        'step.sum.patterns_one' => '{n} نمونہ',
         // Vertical step list — row values, the folded setup band, and lock labels.
         'step.setup.title' => 'سیٹ اپ مکمل',
         'step.setup.count' => '{n} مراحل',
@@ -817,6 +837,10 @@ return [
         'slide.3.title' => ' مختصراً',
     ]),
     'sw' => array_merge($en, [
+        'step.setup.count_one' => 'hatua {n}',
+        'step.sum.signals_one' => 'ishara {n}',
+        'step.sum.weeks_one' => 'wiki {n}',
+        'step.sum.patterns_one' => 'mfumo {n}',
         // Vertical step list — row values, the folded setup band, and lock labels.
         'step.setup.title' => 'Usanidi umekamilika',
         'step.setup.count' => 'hatua {n}',

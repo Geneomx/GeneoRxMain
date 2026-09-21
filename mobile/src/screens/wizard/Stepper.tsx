@@ -6,6 +6,11 @@
 //
 // Every row here is pressable, including the ones drawn as 'locked'. That state
 // is a label ("needs 1 check-in"), not a gate — see stepStatus.ts.
+//
+// Layout note: the node sits in a fixed-width flex column, NOT absolutely
+// positioned. Yoga places an absolute child from its parent's CONTENT box,
+// where CSS uses the padding box, so an absolute node inside a padded row lands
+// one full indent to the right — on top of the label.
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -13,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, radius, spacing } from '@/theme';
 import type { StepState } from '@/wizard/stepStatus';
 
-/** Rail geometry — the node centre and the content indent both derive from it. */
+/** Rail geometry. The spine and every node centre on RAIL_X. */
 const RAIL_X = 10;
 const NODE = 18;
 const NODE_ON = 22;
@@ -28,10 +33,13 @@ export const StepSpine: React.FC<{ progress: number }> = ({ progress }) => (
   </View>
 );
 
+/** Centres a node of `size` on the rail, inside the fixed-width rail column. */
+const railOffset = (size: number) => ({ marginLeft: RAIL_X - size / 2 });
+
 const Node: React.FC<{ state: StepState; label: string }> = ({ state, label }) => {
   if (state === 'current') {
     return (
-      <View style={[styles.node, styles.nodeOn]}>
+      <View style={[styles.node, styles.nodeOn, railOffset(NODE_ON)]}>
         <LinearGradient
           colors={gradients.stepActive}
           start={gradients.start}
@@ -44,13 +52,20 @@ const Node: React.FC<{ state: StepState; label: string }> = ({ state, label }) =
   }
   if (state === 'done') {
     return (
-      <View style={[styles.node, styles.nodeDone]}>
+      <View style={[styles.node, styles.nodeBase, styles.nodeDone, railOffset(NODE)]}>
         <Text style={styles.nodeTextDone}>✓</Text>
       </View>
     );
   }
   return (
-    <View style={[styles.node, state === 'locked' ? styles.nodeLocked : styles.nodeAvailable]}>
+    <View
+      style={[
+        styles.node,
+        styles.nodeBase,
+        state === 'locked' ? styles.nodeLocked : styles.nodeAvailable,
+        railOffset(NODE),
+      ]}
+    >
       <Text style={[styles.nodeText, state === 'locked' && styles.nodeTextLocked]}>{label}</Text>
     </View>
   );
@@ -65,7 +80,7 @@ export const StepRow: React.FC<{
   sub?: string;
   state: StepState;
   onPress: () => void;
-  /** The open step's content. Rendered in the one raised surface on screen. */
+  /** The open step's content. */
   children?: React.ReactNode;
 }> = ({ index, title, value, sub, state, onPress, children }) => {
   const isCurrent = state === 'current';
@@ -75,43 +90,49 @@ export const StepRow: React.FC<{
       <Pressable
         onPress={onPress}
         hitSlop={ROW_SLOP}
+        style={styles.head}
         accessibilityRole="tab"
         accessibilityState={{ selected: isCurrent }}
         accessibilityLabel={`${title}${value ? `, ${value}` : ''}`}
       >
-        <View style={[styles.nodeWrap, isCurrent && styles.nodeWrapOn]}>
+        <View style={[styles.rail, isCurrent && styles.railOn]}>
           <Node state={state} label={String(index)} />
         </View>
 
-        <View style={styles.row}>
-          <Text
-            style={[
-              styles.name,
-              isCurrent && styles.nameOn,
-              state === 'locked' && styles.nameLocked,
-            ]}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-          <View style={styles.spacer} />
-          <Text
-            style={[
-              styles.value,
-              state === 'done' && styles.valueDone,
-              isCurrent && styles.valueOn,
-              state === 'locked' && styles.valueLocked,
-            ]}
-            numberOfLines={1}
-          >
-            {value ?? '—'}
-          </Text>
-          {!isCurrent && state !== 'locked' ? <Text style={styles.chev}>›</Text> : null}
-        </View>
+        <View style={styles.headBody}>
+          <View style={styles.row}>
+            <Text
+              style={[
+                styles.name,
+                isCurrent && styles.nameOn,
+                state === 'locked' && styles.nameLocked,
+              ]}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+            <View style={styles.spacer} />
+            <Text
+              style={[
+                styles.value,
+                state === 'done' && styles.valueDone,
+                isCurrent && styles.valueOn,
+                state === 'locked' && styles.valueLocked,
+              ]}
+              numberOfLines={1}
+            >
+              {value ?? '—'}
+            </Text>
+            {!isCurrent && state !== 'locked' ? <Text style={styles.chev}>›</Text> : null}
+          </View>
 
-        {isCurrent && sub ? <Text style={styles.sub}>{sub}</Text> : null}
+          {isCurrent && sub ? <Text style={styles.sub}>{sub}</Text> : null}
+        </View>
       </Pressable>
 
+      {/* The open step's content. Deliberately NOT wrapped in a card: every step
+          already renders its own `Section` cards, so a wrapper would double the
+          borders. Full width, because `step` carries no padding of its own. */}
       {isCurrent && children ? <View style={styles.panel}>{children}</View> : null}
     </View>
   );
@@ -132,27 +153,30 @@ export const SetupBand: React.FC<{
     <Pressable
       onPress={onPress}
       hitSlop={ROW_SLOP}
+      style={styles.head}
       accessibilityRole="button"
       accessibilityLabel={`${title}, ${count}. ${digest}`}
     >
-      <View style={styles.nodeWrap}>
+      <View style={styles.rail}>
         <Node state="done" label="✓" />
       </View>
 
-      <View style={styles.band}>
-        <View style={styles.row}>
-          <Text style={styles.bandTitle}>{title}</Text>
-          <View style={styles.spacer} />
-          <Text style={styles.bandCount}>{count}</Text>
-          <Text style={styles.caret}>▾</Text>
+      <View style={styles.headBody}>
+        <View style={styles.band}>
+          <View style={styles.row}>
+            <Text style={styles.bandTitle}>{title}</Text>
+            <View style={styles.spacer} />
+            <Text style={styles.bandCount}>{count}</Text>
+            <Text style={styles.caret}>▾</Text>
+          </View>
+          <Text style={styles.bandDigest} numberOfLines={2}>{digest}</Text>
         </View>
-        <Text style={styles.bandDigest} numberOfLines={2}>{digest}</Text>
-      </View>
-      {/* Two hairlines peeking beneath, so the band reads as a stack of rows
-          rather than one more row. */}
-      <View style={styles.stackHint}>
-        <View style={styles.stackLine1} />
-        <View style={styles.stackLine2} />
+        {/* Two hairlines peeking beneath, so the band reads as a stack of rows
+            rather than one more row. */}
+        <View style={styles.stackHint}>
+          <View style={styles.stackLine1} />
+          <View style={styles.stackLine2} />
+        </View>
       </View>
     </Pressable>
   </View>
@@ -169,32 +193,32 @@ const styles = StyleSheet.create({
   },
   spineFill: { width: '100%', backgroundColor: colors.primary, opacity: 0.55 },
 
-  step: { position: 'relative', paddingBottom: 14, paddingLeft: INDENT },
+  step: { paddingBottom: 14 },
+  head: { flexDirection: 'row', alignItems: 'flex-start' },
 
-  nodeWrap: {
-    position: 'absolute',
-    left: RAIL_X - NODE / 2,
-    top: 0,
-    width: NODE,
-    height: NODE,
-  },
-  nodeWrapOn: { left: RAIL_X - NODE_ON / 2, top: -2, width: NODE_ON, height: NODE_ON },
+  /** Fixed-width column holding the node. Never padded — see the header note. */
+  rail: { width: INDENT, paddingTop: 1 },
+  railOn: { paddingTop: 0 },
+
+  headBody: { flex: 1, minWidth: 0 },
 
   node: {
-    width: '100%',
-    height: '100%',
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  nodeBase: {
+    width: NODE,
+    height: NODE,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  nodeOn: { width: NODE_ON, height: NODE_ON },
   nodeDone: { backgroundColor: 'rgba(52, 211, 153, 0.14)', borderColor: 'rgba(52, 211, 153, 0.45)' },
-  nodeOn: { borderWidth: 0 },
   nodeAvailable: { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-  nodeLocked: { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.14)' },
+  nodeLocked: { backgroundColor: colors.background, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.14)' },
 
   nodeText: { fontSize: 9, fontWeight: '700', color: colors.textSoft },
   nodeTextLocked: { color: colors.textDim },
@@ -216,16 +240,7 @@ const styles = StyleSheet.create({
   chev: { fontSize: 15, lineHeight: 15, color: colors.textDim },
   sub: { marginTop: 3, fontSize: 13, lineHeight: 19, color: colors.textMuted },
 
-  /* The open step's content.
-     Deliberately NOT a card: every step already renders its own `Section`
-     cards, so a wrapper here would double the borders. The negative left
-     margin cancels the rail indent, so step content keeps exactly the width it
-     has today — nothing inside the steps had to change. */
-  panel: {
-    marginTop: spacing.md,
-    marginLeft: -INDENT,
-    gap: spacing.md,
-  },
+  panel: { marginTop: spacing.md, gap: spacing.md },
 
   band: {
     borderWidth: 1,
@@ -241,7 +256,7 @@ const styles = StyleSheet.create({
   caret: { fontSize: 11, lineHeight: 13, color: colors.textDim },
   bandDigest: { fontSize: 10, lineHeight: 15, color: colors.textDim },
 
-  stackHint: { height: 6, marginTop: 0 },
+  stackHint: { height: 6 },
   stackLine1: {
     position: 'absolute', left: 5, right: 5, top: 2, height: 1, backgroundColor: colors.borderSoft,
   },
