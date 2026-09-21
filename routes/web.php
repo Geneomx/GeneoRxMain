@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminDoctorController;
 use App\Http\Controllers\AdminMedicationController;
 use App\Http\Controllers\Api\AiSummaryController;
 use App\Http\Controllers\Api\AnalyticsController;
@@ -105,6 +106,19 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/users/{user}/send-reset', [AdminController::class, 'sendPasswordReset'])->name('send-reset');
     Route::post('/users/{user}/set-password', [AdminController::class, 'setPassword'])->name('set-password');
     Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('delete-user');
+
+    // ── Doctors + consults ────────────────────────────────────────────────────
+    // Doctors are registered here and nowhere else: there is no self-registration
+    // route, because listing someone as a clinician is a claim we are making.
+    Route::get('/doctors', [AdminDoctorController::class, 'index'])->name('doctors');
+    Route::post('/doctors', [AdminDoctorController::class, 'store'])->name('doctors.store');
+    Route::put('/doctors/{doctor}', [AdminDoctorController::class, 'update'])->name('doctors.update');
+    Route::post('/doctors/{doctor}/toggle', [AdminDoctorController::class, 'toggleActive'])->name('doctors.toggle');
+
+    Route::get('/consults', [AdminDoctorController::class, 'inbox'])->name('consults');
+    Route::post('/consults/messages/{message}/reply', [AdminDoctorController::class, 'reply'])->name('consults.reply');
+    Route::post('/consults/messages/{message}/close', [AdminDoctorController::class, 'closeMessage'])->name('consults.close');
+    Route::post('/consults/appointments/{appointment}/respond', [AdminDoctorController::class, 'respondAppointment'])->name('consults.respond');
 
     // ── Medications CRUD ──────────────────────────────────────────────────────
     Route::get('/medications', [AdminMedicationController::class, 'index'])->name('medications');

@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Api\AiSummaryController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AssistantController;
+use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\EmailOtpController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\PushTokenController;
@@ -51,6 +52,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/mobile/profile', [HomeController::class, 'saveProfile']);
     Route::post('/mobile/push-token', [PushTokenController::class, 'store']);
     Route::delete('/mobile/push-token', [PushTokenController::class, 'destroy']);
+
+    // ── Doctors: directory, async questions, appointment requests ─────────
+    // Signed-in only, unlike feedback: a question to a named clinician needs an
+    // account to reply to.
+    Route::get('/mobile/doctors', [DoctorController::class, 'index']);
+    Route::get('/mobile/doctor-messages', [DoctorController::class, 'messages']);
+    Route::post('/mobile/doctor-messages', [DoctorController::class, 'storeMessage'])
+        ->middleware('throttle:10,1');
+    Route::get('/mobile/appointments', [DoctorController::class, 'appointments']);
+    Route::post('/mobile/appointments', [DoctorController::class, 'storeAppointment'])
+        ->middleware('throttle:10,1');
 
     // Account management (Apple requires in-app account deletion)
     Route::put('/account/password', [AccountController::class, 'changePasswordApi']);

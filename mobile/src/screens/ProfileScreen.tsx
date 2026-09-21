@@ -195,6 +195,19 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* ASK A DOCTOR */}
+        <Pressable
+          onPress={() => navigation.navigate('Doctor')}
+          style={({ pressed }) => [styles.section, styles.doctorRow, pressed && { opacity: 0.8 }]}
+          accessibilityRole="button"
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.doctorTitle}>{t('doctor.nav')}</Text>
+            <Text style={styles.doctorSub}>{t('doctor.sub')}</Text>
+          </View>
+          <Text style={styles.doctorChevron}>&#8250;</Text>
+        </Pressable>
+
         {/* HEALTH PROFILE SECTION */}
         <View style={styles.section}>
           <View style={styles.sectionHead}>
@@ -403,6 +416,10 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
+  doctorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  doctorTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
+  doctorSub: { fontSize: 14, lineHeight: 20, color: colors.textMuted, marginTop: 2 },
+  doctorChevron: { fontSize: 24, color: colors.textMuted },
   sectionHead: { gap: 4, marginBottom: 4 },
   sectionTag: {
     fontSize: 11.5,

@@ -487,6 +487,26 @@
         </span>
         Analytics
       </a>
+      <a href="{{ route('admin.doctors') }}" class="sidebar-link {{ request()->routeIs('admin.doctors*') ? 'active' : '' }}">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M4 22v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg>
+        </span>
+        Doctors
+      </a>
+      @php
+        // Badge counts the two things a patient is actively waiting on.
+        $openConsults = \App\Models\DoctorMessage::where('status', 'new')->count()
+          + \App\Models\AppointmentRequest::where('status', 'requested')->count();
+      @endphp
+      <a href="{{ route('admin.consults') }}" class="sidebar-link {{ request()->routeIs('admin.consults*') ? 'active' : '' }}">
+        <span class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+        </span>
+        Consults
+        @if ($openConsults > 0)
+          <span style="margin-left:auto;background:var(--teal);color:#fff;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;">{{ $openConsults }}</span>
+        @endif
+      </a>
       @php $newFeedback = \App\Models\Feedback::where('status', 'new')->count(); @endphp
       <a href="{{ route('admin.feedback') }}" class="sidebar-link {{ request()->routeIs('admin.feedback') ? 'active' : '' }}">
         <span class="icon">
