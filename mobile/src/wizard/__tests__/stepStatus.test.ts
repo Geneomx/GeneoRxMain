@@ -63,7 +63,7 @@ describe('setup folding', () => {
 
   it('carries every folded value into the digest, losing nothing', () => {
     const digest = setupDigest(withSetup(), t);
-    expect(digest).toContain('step.sum.meds:1');
+    expect(digest).toContain('step.sum.meds_one:1');
     expect(digest).toContain('step.sum.symptoms:2');
     expect(digest).toContain('step.sum.baseline');
   });
@@ -124,7 +124,7 @@ describe('step state', () => {
 describe('row values', () => {
   it('counts medications and symptoms', () => {
     const s = withSetup();
-    expect(stepSummary(s, 1, t)).toBe('step.sum.meds:1');
+    expect(stepSummary(s, 1, t)).toBe('step.sum.meds_one:1');
     expect(stepSummary(s, 2, t)).toBe('step.sum.symptoms:2');
   });
 
@@ -147,10 +147,11 @@ describe('row values', () => {
     expect(stepSummary(withSetup(), 5, t)).toBe('step.sum.due');
   });
 
-  it('shows the four core baseline numbers, not a count', () => {
+  it('says the baseline is saved in words, never as a run of digits', () => {
     const s = withSetup();
     s.wellbeingBaseline = { energy: 7, mood: 6, sleep: 4, focus: 5, digestive: null, circulation: null, immunity: null };
-    expect(stepSummary(s, 3, t)).toBe('step.sum.baseline:7·6·4·5');
+    // "Baseline 7·6·4·5" is unreadable for the older adults who mostly use this.
+    expect(stepSummary(s, 3, t)).toBe('step.sum.baseline');
   });
 
   it('uses a singular label for one, so no row ever reads "1 weeks"', () => {

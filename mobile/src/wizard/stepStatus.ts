@@ -116,19 +116,19 @@ export function stepSummary(
       return s.account.consent ? t('step.sum.set') : null;
 
     case 1: {
-      if (s.meds.length > 0) return t('step.sum.meds', { n: s.meds.length });
+      if (s.meds.length > 0) return counted(t, 'step.sum.meds', s.meds.length);
       return s.symptomOnlyMode ? t('step.sum.symptomsOnly') : null;
     }
 
     case 2: {
       const n = s.symptoms.selected.length + s.symptoms.custom.length;
-      return n > 0 ? t('step.sum.symptoms', { n }) : null;
+      return n > 0 ? counted(t, 'step.sum.symptoms', n) : null;
     }
 
-    case 3: {
-      const b = s.wellbeingBaseline;
-      return t('step.sum.baseline', { v: `${b.energy}·${b.mood}·${b.sleep}·${b.focus}` });
-    }
+    // Plain words, not "Baseline 5·5·5·5" — a dot-separated number string is
+    // unreadable for the older adults this app is mostly used by.
+    case 3:
+      return t('step.sum.baseline');
 
     case 4: {
       const n = computeNutrientScores(s, catalog).length;

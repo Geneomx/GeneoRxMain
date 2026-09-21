@@ -18,14 +18,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, radius, spacing } from '@/theme';
 import type { StepState } from '@/wizard/stepStatus';
 
-/** Rail geometry. The spine and every node centre on RAIL_X. */
-const RAIL_X = 10;
-const NODE = 18;
-const NODE_ON = 22;
-const INDENT = 32;
+/** Rail geometry. The spine and every node centre on RAIL_X.
+ *  Sized for the older adults who are most of this app's users: the node holds
+ *  a 12px numeral legibly, and the row clears theme `touchMin` (52) on its own
+ *  rather than leaning on hitSlop to make an invisible target big enough. */
+const RAIL_X = 13;
+const NODE = 26;
+const NODE_ON = 32;
+const INDENT = 42;
 
-/** Rows are visually dense; hitSlop brings the touch target back up to touchMin. */
-const ROW_SLOP = { top: 9, bottom: 9, left: 8, right: 8 };
+/** Small extra margin only — the visible row already meets touchMin. */
+const ROW_SLOP = { top: 6, bottom: 6, left: 8, right: 8 };
 
 export const StepSpine: React.FC<{ progress: number }> = ({ progress }) => (
   <View style={styles.spine} pointerEvents="none">
@@ -186,18 +189,18 @@ const styles = StyleSheet.create({
   spine: {
     position: 'absolute',
     left: RAIL_X,
-    top: 12,
+    top: 14,
     bottom: 10,
-    width: 1,
+    width: 2,
     backgroundColor: colors.borderSoft,
   },
   spineFill: { width: '100%', backgroundColor: colors.primary, opacity: 0.55 },
 
-  step: { paddingBottom: 14 },
+  step: { paddingBottom: 16 },
   head: { flexDirection: 'row', alignItems: 'flex-start' },
 
   /** Fixed-width column holding the node. Never padded — see the header note. */
-  rail: { width: INDENT, paddingTop: 1 },
+  rail: { width: INDENT, paddingTop: 2 },
   railOn: { paddingTop: 0 },
 
   headBody: { flex: 1, minWidth: 0 },
@@ -220,25 +223,25 @@ const styles = StyleSheet.create({
   nodeAvailable: { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
   nodeLocked: { backgroundColor: colors.background, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.14)' },
 
-  nodeText: { fontSize: 9, fontWeight: '700', color: colors.textSoft },
+  nodeText: { fontSize: 12, fontWeight: '700', color: colors.textSoft },
   nodeTextLocked: { color: colors.textDim },
-  nodeTextDone: { fontSize: 10, fontWeight: '700', color: colors.success },
-  nodeTextOn: { fontSize: 10, fontWeight: '900', color: colors.onPrimary },
+  nodeTextDone: { fontSize: 14, fontWeight: '700', color: colors.success },
+  nodeTextOn: { fontSize: 14, fontWeight: '900', color: colors.onPrimary },
 
-  row: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, minHeight: 18 },
+  row: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, minHeight: 30 },
   spacer: { flex: 1 },
 
-  name: { fontSize: 13, fontWeight: '600', color: colors.textSoft, letterSpacing: -0.05 },
-  nameOn: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: -0.4 },
+  name: { fontSize: 17, fontWeight: '600', color: colors.text, letterSpacing: -0.1 },
+  nameOn: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
   nameLocked: { color: colors.textDim, fontWeight: '500' },
 
-  value: { fontSize: 11, color: colors.textMuted, fontVariant: ['tabular-nums'] },
+  value: { fontSize: 15, color: colors.textSoft, fontVariant: ['tabular-nums'] },
   valueDone: { color: colors.textSoft },
   valueOn: { color: colors.primary },
   valueLocked: { color: colors.textDim, fontStyle: 'italic' },
 
-  chev: { fontSize: 15, lineHeight: 15, color: colors.textDim },
-  sub: { marginTop: 3, fontSize: 13, lineHeight: 19, color: colors.textMuted },
+  chev: { fontSize: 20, lineHeight: 22, color: colors.textMuted },
+  sub: { marginTop: 4, fontSize: 15, lineHeight: 22, color: colors.textMuted },
 
   panel: { marginTop: spacing.md, gap: spacing.md },
 
@@ -247,14 +250,14 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
     borderRadius: radius.md,
     backgroundColor: colors.card,
-    paddingVertical: 9,
-    paddingHorizontal: 11,
-    gap: 3,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 4,
   },
-  bandTitle: { fontSize: 13, fontWeight: '700', color: colors.textSoft },
-  bandCount: { fontSize: 11, color: colors.textMuted, fontVariant: ['tabular-nums'] },
-  caret: { fontSize: 11, lineHeight: 13, color: colors.textDim },
-  bandDigest: { fontSize: 10, lineHeight: 15, color: colors.textDim },
+  bandTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
+  bandCount: { fontSize: 15, color: colors.textSoft, fontVariant: ['tabular-nums'] },
+  caret: { fontSize: 15, lineHeight: 18, color: colors.textMuted },
+  bandDigest: { fontSize: 14, lineHeight: 20, color: colors.textMuted },
 
   stackHint: { height: 6 },
   stackLine1: {

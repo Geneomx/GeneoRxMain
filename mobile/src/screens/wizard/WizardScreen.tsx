@@ -158,9 +158,9 @@ export const WizardScreen: React.FC = () => {
       <View
         style={[styles.meter, { paddingHorizontal: horizontal }]}
         accessibilityRole="progressbar"
-        accessibilityLabel={t('wizard.stepShort', { n: stepIndex + 1 })}
+        accessibilityLabel={t('wizard.stepOf', { n: stepIndex + 1, total })}
       >
-        <Text style={styles.meterLab}>{`${stepIndex + 1}/${total}`}</Text>
+        <Text style={styles.meterLab}>{t('wizard.stepOf', { n: stepIndex + 1, total })}</Text>
         <View style={styles.track}>
           <View style={[styles.trackFill, { width: `${Math.round(((stepIndex + 1) / total) * 100)}%` }]} />
         </View>
@@ -215,26 +215,22 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
   appbar: {
-    height: 44,
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
-  brand: { fontSize: 13, fontWeight: '800', color: colors.text, letterSpacing: -0.1 },
-  stepName: {
-    fontSize: 11,
-    color: colors.textMuted,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    flexShrink: 1,
-  },
+  brand: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: -0.1 },
+  // Not uppercased: all-caps is measurably slower to read, and this app is
+  // mostly used by older adults.
+  stepName: { fontSize: 14, color: colors.textMuted, flexShrink: 1 },
   spacer: { flex: 1 },
-  resetBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.borderSoft },
-  resetText: { fontSize: 10, fontWeight: '700', color: colors.textMuted },
+  resetBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border },
+  resetText: { fontSize: 13, fontWeight: '700', color: colors.textSoft },
 
   meter: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.sm },
-  meterLab: { fontSize: 10, color: colors.textDim, fontVariant: ['tabular-nums'], letterSpacing: 0.5 },
-  track: { flex: 1, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.07)', overflow: 'hidden' },
+  meterLab: { fontSize: 13, color: colors.textMuted, fontVariant: ['tabular-nums'] },
+  track: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.09)', overflow: 'hidden' },
   trackFill: { height: '100%', backgroundColor: colors.primary },
 
   body: { paddingTop: spacing.sm },
