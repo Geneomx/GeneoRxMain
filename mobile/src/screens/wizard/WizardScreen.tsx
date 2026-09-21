@@ -1,12 +1,12 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { track } from '@/api/analytics';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
 import { useAuth } from '@/auth/AuthContext';
 import { useWizard } from '@/store/WizardContext';
+import { useMedCatalog } from '@/store/MedCatalogContext';
 import {
   nextVisibleStep,
   normalizeStep,
@@ -16,7 +16,15 @@ import {
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
-import { colors, gradients, radius, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
+import { SetupBand, StepRow, StepSpine } from '@/screens/wizard/Stepper';
+import {
+  isSetupComplete,
+  isSetupStep,
+  setupDigest,
+  stepStateOf,
+  stepSummary,
+} from '@/wizard/stepStatus';
 import { AccountStep } from '@/screens/wizard/steps/AccountStep';
 import { MedicationsStep } from '@/screens/wizard/steps/MedicationsStep';
 import { SymptomsStep } from '@/screens/wizard/steps/SymptomsStep';
@@ -39,11 +47,12 @@ export const WizardScreen: React.FC = () => {
   const { state, setStep, reset } = useWizard();
   const { isGuest } = useAuth();
   const { t } = useTranslation();
+  const { catalog } = useMedCatalog();
   const goToDashboard = useDashboardNavigation();
   const insets = useSafeAreaInsets();
   const { horizontal, scrollBottom } = useResponsiveLayout();
 
-  const steps = visibleSteps(isGuest);
+  const steps = useMemo(() => visibleSteps(isGuest), [isGuest]);
   const step = normalizeStep(state.step, isGuest);
   const stepIndex = steps.indexOf(step);
   const total = steps.length;
@@ -61,10 +70,6 @@ export const WizardScreen: React.FC = () => {
   // on an actual change (a language switch re-runs the effect but must not
   // re-log the step).
   const lastTrackedStep = useRef<number | null>(null);
-  // Keeps the active pill visible in the horizontal tray without the user
-  // having to hunt for it after a jump.
-  const trayRef = useRef<ScrollView | null>(null);
-  const trayX = useRef<Record<number, number>>({});
   useEffect(() => {
     if (lastTrackedStep.current === step) return;
     lastTrackedStep.current = step;
@@ -80,73 +85,108 @@ export const WizardScreen: React.FC = () => {
       { text: t('mobile.reset.confirm'), style: 'destructive', onPress: reset },
     ]);
 
+  // Setup (steps 0-4) folds into one band once there is something in it. It
+  // unfolds on tap, and never folds while the open step is one of its own.
+  const [setupOpen, setSetupOpen] = useState(false);
+  const setupSteps = steps.filter(isSetupStep);
+  // Unfolding is for looking or editing, so it refolds once the user moves on
+  // past setup. Without this there is no way back to the folded band.
   useEffect(() => {
-    const x = trayX.current[step];
-    if (x === undefined) return;
-    // Nudge it left of centre so the following steps stay hinted at.
-    trayRef.current?.scrollTo({ x: Math.max(0, x - 80), animated: true });
+    if (!isSetupStep(step)) setSetupOpen(false);
   }, [step]);
+  const foldSetup =
+    setupSteps.length > 1 && isSetupComplete(state) && !setupOpen && !isSetupStep(step);
+
+  // Row values are memoised because two of them are not cheap: Results runs
+  // computeNutrientScores and Insights runs detectHealthPatterns. This screen
+  // re-renders on every keystroke and slider drag inside the open step, and
+  // recomputing those each time would make the check-in feel sticky.
+  const { summaries, digest } = useMemo(() => {
+    const map: Record<number, string | null> = {};
+    for (const idx of steps) map[idx] = stepSummary(state, idx, t, catalog);
+    return { summaries: map, digest: setupDigest(state, t, catalog) };
+  }, [state, steps, t, catalog]);
+
+  // Keeps the open step in view after a jump, the way the old horizontal tray
+  // scrolled the active pill into view.
+  const bodyRef = useRef<ScrollView | null>(null);
+  const currentY = useRef(0);
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ y: Math.max(0, currentY.current - 8), animated: true });
+  }, [step]);
+
+  const renderStep = (idx: number) => {
+    const isCurrent = idx === step;
+    const row = (
+      <StepRow
+        key={idx}
+        index={idx}
+        title={t(`step.${idx}.short`)}
+        value={summaries[idx]}
+        sub={t(`step.${idx}.sub`)}
+        state={stepStateOf(state, idx, step, t)}
+        onPress={() => setStep(idx)}
+      >
+        {isCurrent ? <StepComponent /> : null}
+      </StepRow>
+    );
+
+    if (!isCurrent) return row;
+    return (
+      <View key={idx} onLayout={(e) => { currentY.current = e.nativeEvent.layout.y; }}>
+        {row}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <AmbientBackground />
-      <View style={[styles.header, { paddingHorizontal: horizontal }]}>
-        {/* Title + subtitle + pill tabs — mirrors the website portal header */}
-        <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>
-            {t(`step.${step}`)}
-          </Text>
-          <Pressable onPress={confirmReset} hitSlop={8} style={styles.resetBtn}>
-            <Text style={styles.resetText}>{t('common.reset')}</Text>
-          </Pressable>
-        </View>
-        <Text style={styles.sub} numberOfLines={3}>{t(`step.${step}.sub`)}</Text>
 
-        <ScrollView
-          ref={trayRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabs}
-          keyboardShouldPersistTaps="handled"
-        >
-          {steps.map((idx) => {
-            const isOn = idx === step;
-            return (
-              <Pressable
-                key={idx}
-                onPress={() => setStep(idx)}
-                onLayout={(e) => {
-                  trayX.current[idx] = e.nativeEvent.layout.x;
-                }}
-                style={[styles.tab, isOn && styles.tabOn]}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isOn }}
-              >
-                {isOn && (
-                  <LinearGradient
-                    colors={gradients.stepActive}
-                    start={gradients.start}
-                    end={gradients.end}
-                    style={StyleSheet.absoluteFill}
-                  />
-                )}
-                <Text style={[styles.tabText, isOn && styles.tabTextOn]} numberOfLines={1}>
-                  {/* step.N.short exists in every pack and was unused; the
-                      full labels are what forced the tray to wrap. */}
-                  {t(`step.${idx}.short`)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+      {/* 44px bar + a 2px meter, replacing the title/subtitle/pill-tray stack.
+          The step names moved into the list below, where all of them fit. */}
+      <View style={[styles.appbar, { paddingHorizontal: horizontal }]}>
+        <Text style={styles.brand}>GeneoRx</Text>
+        <Text style={styles.stepName} numberOfLines={1}>{t(`step.${step}.short`)}</Text>
+        <View style={styles.spacer} />
+        <Pressable onPress={confirmReset} hitSlop={10} style={styles.resetBtn}>
+          <Text style={styles.resetText}>{t('common.reset')}</Text>
+        </Pressable>
+      </View>
+
+      <View
+        style={[styles.meter, { paddingHorizontal: horizontal }]}
+        accessibilityRole="progressbar"
+        accessibilityLabel={t('wizard.stepShort', { n: stepIndex + 1 })}
+      >
+        <Text style={styles.meterLab}>{`${stepIndex + 1}/${total}`}</Text>
+        <View style={styles.track}>
+          <View style={[styles.trackFill, { width: `${Math.round(((stepIndex + 1) / total) * 100)}%` }]} />
+        </View>
       </View>
 
       <ScrollView
+        ref={bodyRef}
         contentContainerStyle={[styles.body, { paddingHorizontal: horizontal, paddingBottom: scrollBottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <StepComponent />
+        <View style={styles.stepper}>
+          <StepSpine progress={total > 1 ? stepIndex / (total - 1) : 1} />
+
+          {foldSetup ? (
+            <SetupBand
+              title={t('step.setup.title')}
+              count={t('step.setup.count', { n: setupSteps.length })}
+              digest={digest}
+              onPress={() => setSetupOpen(true)}
+            />
+          ) : (
+            setupSteps.map(renderStep)
+          )}
+
+          {steps.filter((i) => !isSetupStep(i)).map(renderStep)}
+        </View>
       </ScrollView>
 
       <View style={[styles.nav, { paddingHorizontal: horizontal, paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
@@ -172,40 +212,32 @@ export const WizardScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+
+  appbar: {
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSoft,
-    backgroundColor: colors.surface,
   },
-
-  /* Pill tab tray — wraps to new rows like website .steps (flex-wrap) */
-  // Single scrolling row. Deliberately NOT flexWrap: with 9 steps the wrapping
-  // version ran to three rows and cost ~120px before any content rendered.
-  tabs: { flexDirection: 'row', gap: 8, paddingVertical: 2, paddingRight: 12 },
-  tab: {
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.ghostBg,
-    overflow: 'hidden',
-    justifyContent: 'center',
+  brand: { fontSize: 13, fontWeight: '800', color: colors.text, letterSpacing: -0.1 },
+  stepName: {
+    fontSize: 11,
+    color: colors.textMuted,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    flexShrink: 1,
   },
-  tabOn: { borderColor: 'rgba(40, 225, 255, 0.35)' },
-  tabText: { fontSize: 13, color: colors.textSoft, fontWeight: '600' },
-  tabTextOn: { color: colors.onPrimary, fontWeight: '900' },
+  spacer: { flex: 1 },
+  resetBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.borderSoft },
+  resetText: { fontSize: 10, fontWeight: '700', color: colors.textMuted },
 
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  title: { flex: 1, fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
-  sub: { fontSize: 15, color: colors.textMuted, lineHeight: 22, marginTop: -4 },
-  resetBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-  resetText: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+  meter: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.sm },
+  meterLab: { fontSize: 10, color: colors.textDim, fontVariant: ['tabular-nums'], letterSpacing: 0.5 },
+  track: { flex: 1, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.07)', overflow: 'hidden' },
+  trackFill: { height: '100%', backgroundColor: colors.primary },
 
-  body: { gap: spacing.md, paddingTop: spacing.lg },
+  body: { paddingTop: spacing.sm },
+  stepper: { position: 'relative' },
 
   nav: {
     flexDirection: 'row',
