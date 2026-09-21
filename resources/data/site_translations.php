@@ -1,6 +1,10 @@
 <?php
 
 $en = [
+    // Insights tiles carry the same three scales as Home, so they need the
+    // same units. Symbols, identical in every language.
+    'insights.of_100' => '/100',
+    'insights.of_10' => '/10',
     // Home dashboard: the three score rows and the doctor report download.
     'home.score.week' => 'This week',
     'home.score.week_desc' => 'How your week went overall',

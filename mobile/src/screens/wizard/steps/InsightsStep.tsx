@@ -73,21 +73,39 @@ export const InsightsStep: React.FC = () => {
           </View>
         </View>
 
+        {/* These three are NOT on the same scale: completion and the depletion
+            score are 0-100, systems.average is a 0-10 mean. Without the unit,
+            "64 86 6.2" in identical tiles reads as a collapse in body systems
+            when 6.2 of 10 is the healthiest of the three. Same defect that was
+            fixed on Home. */}
         <View style={styles.tiles}>
           <View style={styles.tile}>
-            <Text style={styles.tileVal}>{completion.score ?? '—'}</Text>
+            <View style={styles.tileValRow}>
+              <Text style={styles.tileVal}>{completion.score ?? '—'}</Text>
+              {completion.score !== null ? (
+                <Text style={styles.tileUnit}>{t('insights.of_100')}</Text>
+              ) : null}
+            </View>
             <Text style={styles.tileLab}>{t('insights.completion')}</Text>
             <Text style={styles.tileMeta}>
               {t('insights.answered_of', { answered: completion.answered, total: completion.total })}
             </Text>
           </View>
           <View style={styles.tile}>
-            <Text style={styles.tileVal}>{top ? top[1] : '—'}</Text>
+            <View style={styles.tileValRow}>
+              <Text style={styles.tileVal}>{top ? top[1] : '—'}</Text>
+              {top ? <Text style={styles.tileUnit}>{t('insights.of_100')}</Text> : null}
+            </View>
             <Text style={styles.tileLab}>{t('insights.top_risk')}</Text>
             <Text style={styles.tileMeta} numberOfLines={1}>{top ? top[0] : t('insights.none_yet')}</Text>
           </View>
           <View style={styles.tile}>
-            <Text style={styles.tileVal}>{systems.average ?? '—'}</Text>
+            <View style={styles.tileValRow}>
+              <Text style={styles.tileVal}>{systems.average ?? '—'}</Text>
+              {systems.average !== null ? (
+                <Text style={styles.tileUnit}>{t('insights.of_10')}</Text>
+              ) : null}
+            </View>
             <Text style={styles.tileLab}>{t('insights.systems')}</Text>
             <Text style={styles.tileMeta}>
               {t('insights.answered_of', { answered: systems.answered, total: systems.total })}
@@ -157,7 +175,9 @@ export const InsightsStep: React.FC = () => {
       <Accordion
         title={t('insights.systems_title')}
         subtitle={t('insights.answered_of', { answered: systems.answered, total: systems.total })}
-        badge={systems.average ?? '—'}
+        // Badge takes string | number, so the unit rides along with the value.
+        // A bare 6.2 beside a section called "Body systems" reads as a failure.
+        badge={systems.average !== null ? `${systems.average}${t('insights.of_10')}` : '—'}
       >
         <View style={{ gap: 2 }}>
           {systems.rows.map((row) => (
@@ -263,7 +283,9 @@ const styles = StyleSheet.create({
     gap: 2,
     backgroundColor: 'rgba(7, 10, 18, 0.35)',
   },
+  tileValRow: { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
   tileVal: { fontSize: 20, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
+  tileUnit: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },
   tileLab: { fontSize: 11, color: colors.textSoft },
   tileMeta: { fontSize: 10, color: colors.textDim },
 
