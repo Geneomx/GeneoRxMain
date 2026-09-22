@@ -208,12 +208,12 @@
     .bd{padding:18px}
 
     /* Tabs */
-    /* Single scrolling row, not flex-wrap: with 9 steps the wrapping version ran
-       to three rows and pushed content below the fold. Mirrors the mobile tray. */
-    .steps{display:flex;gap:8px;justify-content:flex-start;margin-top:10px;
-      overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;
-      padding-bottom:2px}
-    .steps::-webkit-scrollbar{display:none}
+    /* Every step on screen at once. This was a single scrolling row, which put
+       the first steps off the left edge as soon as you were past Results —
+       you had to scroll sideways to find out where you were in your own
+       wizard. It wraps instead: two rows of pills beats a row you cannot see
+       the ends of. */
+    .steps{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start;margin-top:10px}
     .step{flex:0 0 auto}
     /* 15px on a 44px pill, up from 13px/36px: a step name is the one thing on
        this row the user has to read. Mirrors the mobile tray. */
@@ -229,6 +229,10 @@
     }
     .step:hover{filter:brightness(1.05)}
     .step:active{transform:translateY(1px)}
+    /* Tighter sides on a phone so nine pills stay within three rows. The text
+       itself does not shrink — a step name is the one thing here that has to
+       be readable. */
+    @media (max-width:560px){ .step{padding:10px 11px} }
     .step.on{
       color:#061018;font-weight:950;
       background: linear-gradient(135deg, rgba(40,225,255,.92), rgba(21,101,192,.65));

@@ -2106,7 +2106,6 @@ function setStep(n){
 
 function renderSteps(){
   stepsEl.innerHTML = "";
-  let activeEl = null;
   visibleSteps().forEach(i => {
     const s = document.createElement("div");
     s.className = `step ${i===state.step ? "on":""}`;
@@ -2115,12 +2114,9 @@ function renderSteps(){
     s.textContent = t(`step.${i}.short`);
     s.addEventListener("click", ()=> setStep(i));
     stepsEl.appendChild(s);
-    if(i === state.step) activeEl = s;
   });
-  /* Keep the current step visible now that the row scrolls. */
-  if(activeEl && typeof activeEl.scrollIntoView === "function"){
-    activeEl.scrollIntoView({ block: "nearest", inline: "center" });
-  }
+  /* No scrollIntoView: the tray wraps, so every step is already on screen and
+     scrolling one into view would only jerk the whole page. */
 }
 
 function renderPills(){
