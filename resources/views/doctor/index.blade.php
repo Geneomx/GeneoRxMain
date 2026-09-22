@@ -43,6 +43,21 @@
   .docBody{margin-top:8px;font-size:15px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
   .docLine{margin-top:8px;font-size:15px;line-height:1.5}
   .docReply{margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(52,211,153,.30);background:rgba(52,211,153,.08)}
+  .docChat{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+  .docTurn{display:flex;flex-direction:column;max-width:min(80%,520px)}
+  .docTurn--patient{align-self:flex-start}
+  .docTurn--doctor{align-self:flex-end;align-items:flex-end}
+  .docBubble{padding:10px 13px;border-radius:14px;font-size:15px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;
+    border:1px solid rgba(255,255,255,.14);background:rgba(15,23,54,.55);border-bottom-left-radius:5px}
+  .docTurn--doctor .docBubble{border-color:rgba(52,211,153,.32);background:rgba(52,211,153,.10);
+    border-bottom-left-radius:14px;border-bottom-right-radius:5px}
+  .docTurnWho{font-size:11.5px;color:var(--muted2);margin-top:4px}
+  .docReplyForm{margin-top:12px}
+  .docReplyForm label{display:block;margin:0 0 6px;font-size:14px;font-weight:600;color:var(--muted)}
+  .docReplyForm textarea{min-height:76px}
+  .docModeTag{margin-left:8px;font-size:11.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+    color:var(--cyan);border:1px solid rgba(40,225,255,.28);background:rgba(40,225,255,.10);
+    border-radius:999px;padding:2px 8px;vertical-align:middle}
   .docReplyWho{font-size:13px;font-weight:700;color:var(--green);margin-bottom:4px}
   .docFine{font-size:13px;line-height:1.45;color:var(--muted2);margin-top:6px}
   .tierNo{border-color:rgba(251,113,133,.35);background:rgba(251,113,133,.10)}
@@ -113,6 +128,8 @@
             <strong data-i18n="doctor.failed_title">Could not send</strong><br>
             @if(session('doctor_error') === 'already')
               <span data-i18n="doctor.appt_already">You already have a request waiting for a reply.</span>
+            @elseif(session('doctor_error') === 'closed')
+              <span data-i18n="doctor.chat_closed">This conversation is closed. You can ask a new question above.</span>
             @elseif(session('doctor_error') === 'slot_taken')
               <span data-i18n="doctor.appt_slot_taken">That time was just taken. Please pick another.</span>
             @elseif(in_array(session('doctor_error'), ['slot_unavailable', 'slot_needs_doctor'], true))
@@ -168,25 +185,45 @@
             <div class="docSectionTitle" data-i18n="doctor.your_questions">YOUR QUESTIONS</div>
             <div class="docList">
               @forelse($messages as $m)
+                {{-- A conversation, not a question with one answer: the patient
+                     can keep talking, and each turn is attributed. --}}
                 <div class="docCard">
                   <div class="docRowTop">
                     <div class="docWho">@if($m['doctor']){{ $m['doctor'] }}@else<span data-i18n="doctor.any">Any doctor</span>@endif</div>
-                    <span class="tierPill {{ $m['reply'] ? 'tierHigh' : 'tierMod' }}" data-i18n="doctor.status.{{ $m['status'] }}">{{ ucfirst($m['status']) }}</span>
+                    <span class="tierPill {{ $m['status'] === 'answered' ? 'tierHigh' : ($m['status'] === 'closed' ? '' : 'tierMod') }}" data-i18n="doctor.status.{{ $m['status'] }}">{{ ucfirst($m['status']) }}</span>
                   </div>
-                  <div class="docBody">{{ $m['body'] }}</div>
-                  @if($m['reply'])
-                    <div class="docReply">
-                      <div class="docReplyWho">
-                        @if($m['doctor'])
-                          <span data-i18n="doctor.reply_from" data-i18n-vars="{{ json_encode(['name' => $m['doctor']]) }}">Reply from {{ $m['doctor'] }}</span>
-                        @else
-                          <span data-i18n="doctor.reply">Reply</span>
-                        @endif
+
+                  <div class="docChat">
+                    @foreach($m['thread'] as $turn)
+                      <div class="docTurn docTurn--{{ $turn['from'] }}">
+                        <div class="docBubble">{{ $turn['body'] }}</div>
+                        <div class="docTurnWho">
+                          @if($turn['from'] === 'doctor')
+                            {{ $m['doctor'] ?? '' }}
+                          @else
+                            <span data-i18n="doctor.you">You</span>
+                          @endif
+                        </div>
                       </div>
-                      <div class="docBody" style="margin-top:0">{{ $m['reply'] }}</div>
-                    </div>
+                    @endforeach
+                  </div>
+
+                  @if($m['status'] === 'closed')
+                    <div class="docFine" data-i18n="doctor.chat_closed">This conversation is closed. You can ask a new question above.</div>
                   @else
-                    <div class="docFine" data-i18n="doctor.waiting">Waiting for a reply.</div>
+                    @if(count($m['thread']) < 2)
+                      <div class="docFine" data-i18n="doctor.waiting">Waiting for a reply.</div>
+                    @endif
+                    <form method="POST" action="{{ route('doctor.message.reply', $m['id']) }}" class="docReplyForm">
+                      @csrf
+                      <input type="hidden" name="tab" value="ask">
+                      <label for="reply-{{ $m['id'] }}" data-i18n="doctor.chat_reply_label">Write a reply</label>
+                      <textarea id="reply-{{ $m['id'] }}" name="body" required maxlength="4000"
+                                data-i18n-placeholder="doctor.chat_reply_hint" placeholder="Add anything else they should know."></textarea>
+                      <div class="btns">
+                        <button type="submit" class="primary mini" data-i18n="doctor.chat_send">Send</button>
+                      </div>
+                    </form>
                   @endif
                 </div>
               @empty
@@ -227,6 +264,17 @@
                   </div>
                 @endif
 
+                <label data-i18n="doctor.appt_mode">How would you like to see them?</label>
+                <div class="docChips" role="radiogroup">
+                  @foreach(['chat' => 'Chat', 'call' => 'Phone call', 'visit' => 'In person'] as $mode => $label)
+                    <label class="docChip">
+                      <input type="radio" name="mode" value="{{ $mode }}" @checked(old('mode', 'visit') === $mode)>
+                      <span data-i18n="doctor.mode.{{ $mode }}">{{ $label }}</span>
+                    </label>
+                  @endforeach
+                </div>
+                <div class="docFine" data-i18n="doctor.appt_mode_note">If you choose chat, the conversation happens in Questions at the time you booked.</div>
+
                 <label data-i18n="doctor.appt_pick_day">Which day?</label>
                 <div class="docChips" role="radiogroup" id="apptDays">
                   @foreach($days as $day)
@@ -259,7 +307,10 @@
               @forelse($appointments as $a)
                 <div class="docCard">
                   <div class="docRowTop">
-                    <div class="docWho">@if($a['doctor']){{ $a['doctor'] }}@else<span data-i18n="doctor.any">Any doctor</span>@endif</div>
+                    <div class="docWho">
+                      @if($a['doctor']){{ $a['doctor'] }}@else<span data-i18n="doctor.any">Any doctor</span>@endif
+                      <span class="docModeTag" data-i18n="doctor.mode.{{ $a['mode'] }}">{{ ucfirst($a['mode']) }}</span>
+                    </div>
                     <span class="tierPill {{ $a['status'] === 'confirmed' ? 'tierHigh' : ($a['status'] === 'declined' ? 'tierNo' : 'tierMod') }}" data-i18n="doctor.status.{{ $a['status'] }}">{{ ucfirst($a['status']) }}</span>
                   </div>
                   {{-- docLine, not docBody: pre-wrap would keep this template's indentation. --}}

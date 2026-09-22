@@ -171,10 +171,12 @@ class DoctorPortalTest extends TestCase
             'replied_at' => now(),
         ]);
 
+        // A reply stored the pre-chat way, straight on the thread: it still has
+        // to reach the patient, attributed to the doctor.
         $this->actingAs($me)->get('/doctor')
             ->assertOk()
             ->assertSee('Yes, with food is fine.')
-            ->assertSee('Reply from Dr Reply');
+            ->assertSee('Dr Reply');
     }
 
     public function test_a_patient_can_book_an_appointment_from_the_web(): void

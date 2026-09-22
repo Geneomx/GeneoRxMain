@@ -25,6 +25,9 @@ class AppointmentRequest extends Model
     /** Coarse windows rather than exact times: the patient is not booking a slot. */
     public const TIME_WINDOWS = ['morning', 'afternoon', 'evening'];
 
+    /** How the appointment happens. */
+    public const MODES = ['chat', 'call', 'visit'];
+
     protected $fillable = [
         'user_id',
         'doctor_id',
@@ -32,6 +35,7 @@ class AppointmentRequest extends Model
         'preferred_time',
         'slot_at',
         'slot_minutes',
+        'mode',
         'note',
         'contact_mobile',
         'status',
@@ -57,6 +61,16 @@ class AppointmentRequest extends Model
     public function doctor(): BelongsTo
     {
         return $this->belongsTo(Doctor::class);
+    }
+
+    /** "Chat" / "Phone call" / "In person", for a human to read. */
+    public function modeLabel(): string
+    {
+        return match ($this->mode) {
+            'chat' => 'Chat',
+            'call' => 'Phone call',
+            default => 'In person',
+        };
     }
 
     public function isOpen(): bool
@@ -86,6 +100,7 @@ class AppointmentRequest extends Model
             'doctor_specialty' => $this->doctor?->specialty,
             'preferred_date' => $this->preferred_date?->toDateString(),
             'preferred_time' => $this->preferred_time,
+            'mode' => $this->mode ?? 'visit',
             // A booked slot, clinic wall-clock. Null on a plain request.
             'slot_at' => $start?->toIso8601String(),
             'slot_time' => $start?->format('H:i'),

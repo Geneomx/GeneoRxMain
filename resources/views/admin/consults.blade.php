@@ -183,6 +183,7 @@
               @if ($a->preferred_time) &middot; {{ ucfirst($a->preferred_time) }} @endif
             @endif
           </strong>
+          <span class="badge">{{ $a->modeLabel() }}</span>
           <span style="color:var(--text-muted);">
             &middot; {{ $a->doctor?->name ?? 'any doctor' }}
             &middot; asked {{ $a->created_at->diffForHumans() }}

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClinicController;
 use App\Http\Controllers\DoctorPortalController;
 use App\Http\Controllers\EmailOtpController;
 use App\Http\Controllers\GuestController;
@@ -78,6 +79,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/doctor/slots', [DoctorPortalController::class, 'slots'])->name('doctor.slots');
     Route::post('/doctor/messages', [DoctorPortalController::class, 'storeMessage'])
         ->middleware('throttle:10,1')->name('doctor.message');
+    Route::post('/doctor/messages/{message}/reply', [DoctorPortalController::class, 'replyToThread'])
+        ->middleware('throttle:20,1')->name('doctor.message.reply');
     Route::post('/doctor/appointments', [DoctorPortalController::class, 'storeAppointment'])
         ->middleware('throttle:10,1')->name('doctor.appointment');
 
@@ -88,6 +91,19 @@ Route::middleware('auth')->group(function () {
 });
 
 // Admin routes (require auth + is_admin)
+// ── The clinician's own portal ─────────────────────────────────────────────
+// Registered doctors only: their appointments and their conversations, never
+// anybody else's. Separate from /admin, which is the business's own panel.
+Route::middleware(['auth', 'doctor'])->prefix('clinic')->name('clinic.')->group(function () {
+    Route::get('/', [ClinicController::class, 'appointments'])->name('appointments');
+    Route::post('/appointments/{appointment}', [ClinicController::class, 'respondAppointment'])->name('appointments.respond');
+    Route::get('/messages', [ClinicController::class, 'messages'])->name('messages');
+    Route::get('/messages/{message}', [ClinicController::class, 'thread'])->name('thread');
+    Route::post('/messages/{message}/reply', [ClinicController::class, 'reply'])
+        ->middleware('throttle:30,1')->name('thread.reply');
+    Route::post('/messages/{message}/close', [ClinicController::class, 'closeThread'])->name('thread.close');
+});
+
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');
@@ -125,6 +141,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/doctors', [AdminDoctorController::class, 'store'])->name('doctors.store');
     Route::put('/doctors/{doctor}', [AdminDoctorController::class, 'update'])->name('doctors.update');
     Route::post('/doctors/{doctor}/toggle', [AdminDoctorController::class, 'toggleActive'])->name('doctors.toggle');
+    Route::post('/doctors/{doctor}/login', [AdminDoctorController::class, 'createLogin'])->name('doctors.login');
+    Route::delete('/doctors/{doctor}/login', [AdminDoctorController::class, 'revokeLogin'])->name('doctors.login.revoke');
 
     Route::get('/consults', [AdminDoctorController::class, 'inbox'])->name('consults');
     Route::post('/consults/messages/{message}/reply', [AdminDoctorController::class, 'reply'])->name('consults.reply');

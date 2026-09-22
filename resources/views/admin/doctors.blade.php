@@ -5,7 +5,9 @@
 <div class="page-header">
   <div>
     <h1>Doctors</h1>
-    <p>The clinician directory. Added here only &mdash; there is no self-registration.</p>
+    <p>The clinician directory. Added here only &mdash; there is no self-registration.
+       Give a doctor a sign-in and they answer their own patients at
+       <code style="font-family:ui-monospace,monospace;">/clinic</code>.</p>
   </div>
 </div>
 
@@ -129,6 +131,16 @@
               Bookable {{ $doctor->availabilitySummary() }}
             </div>
 
+            <div style="font-size:13px;margin-top:5px;">
+              @if ($doctor->hasLogin())
+                <span class="badge badge-success">Can sign in</span>
+                <span style="color:var(--text-muted);">as {{ $doctor->user?->email }} &mdash; sees their own appointments and messages</span>
+              @else
+                <span class="badge">No sign-in</span>
+                <span style="color:var(--text-muted);">you answer on their behalf from Consults</span>
+              @endif
+            </div>
+
             @if ($doctor->bio)
               <div style="font-size:13px;color:var(--text);margin-top:8px;max-width:70ch;">{{ $doctor->bio }}</div>
             @endif
@@ -140,7 +152,23 @@
             @endif
           </div>
 
-          <div style="display:flex;gap:8px;align-items:flex-start;">
+          <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+            @if ($doctor->email)
+              <form method="POST" action="{{ route('admin.doctors.login', $doctor) }}">
+                @csrf
+                <button type="submit" class="btn btn-ghost"
+                        title="Emails them a link to choose their own password. You never see it.">
+                  {{ $doctor->hasLogin() ? 'Resend sign-in link' : 'Give them a sign-in' }}
+                </button>
+              </form>
+            @endif
+            @if ($doctor->hasLogin())
+              <form method="POST" action="{{ route('admin.doctors.login.revoke', $doctor) }}">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-ghost">Revoke sign-in</button>
+              </form>
+            @endif
             <form method="POST" action="{{ route('admin.doctors.toggle', $doctor) }}">
               @csrf
               <button type="submit" class="btn btn-ghost">

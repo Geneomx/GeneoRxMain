@@ -32,7 +32,7 @@ class AuthController extends Controller
             if (session('is_web_guest')) {
                 $this->endGuestSessionIfNeeded($request);
             } else {
-                return redirect()->route('treatments');
+                return redirect()->route(Auth::user()->homeRoute());
             }
         }
 
@@ -57,7 +57,8 @@ class AuthController extends Controller
             $request->session()->regenerate();
             $request->session()->forget('is_web_guest');
 
-            return redirect()->route('treatments')->with('success', 'Welcome back!');
+            // A clinician lands in their own portal, not the patient wizard.
+            return redirect()->route(Auth::user()->homeRoute())->with('success', 'Welcome back!');
         }
 
         return back()->withErrors([
@@ -74,7 +75,7 @@ class AuthController extends Controller
             if (session('is_web_guest')) {
                 $this->endGuestSessionIfNeeded($request);
             } else {
-                return redirect()->route('treatments');
+                return redirect()->route(Auth::user()->homeRoute());
             }
         }
 

@@ -46,6 +46,9 @@ final class DoctorConsults
             // and it would sit in the admin queue looking valid.
             'preferred_date' => ['nullable', 'date', 'after_or_equal:today'],
             'preferred_time' => ['nullable', 'in:'.implode(',', AppointmentRequest::TIME_WINDOWS)],
+            // How they want it to happen. Older clients send nothing, which
+            // stays an in-person visit.
+            'mode' => ['nullable', 'in:'.implode(',', AppointmentRequest::MODES)],
             'note' => ['nullable', 'string', 'max:2000'],
             'contact_mobile' => ['nullable', 'string', 'max:40'],
             // A slot start as the slots endpoint returned it (ISO 8601). When
@@ -109,6 +112,7 @@ final class DoctorConsults
             'doctor_id' => self::doctorId($data),
             'preferred_date' => $data['preferred_date'] ?? null,
             'preferred_time' => $data['preferred_time'] ?? null,
+            'mode' => $data['mode'] ?? 'visit',
             'note' => $data['note'] ?? null,
             'contact_mobile' => $data['contact_mobile'] ?? null,
             'status' => 'requested',
@@ -156,6 +160,7 @@ final class DoctorConsults
     public static function bookSlot(User $user, Doctor $doctor, CarbonImmutable $at, array $data): AppointmentRequest
     {
         return DoctorSchedule::book($user, $doctor, $at, [
+            'mode' => $data['mode'] ?? 'visit',
             'note' => $data['note'] ?? null,
             'contact_mobile' => $data['contact_mobile'] ?? null,
         ]);

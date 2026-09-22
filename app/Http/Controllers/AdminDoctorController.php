@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\AdminAuditLog;
 use App\Models\AppointmentRequest;
+use App\Models\ConsultMessage;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
+use App\Models\User;
+use App\Support\ConsultChat;
 use App\Support\DoctorSchedule;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Doctor registration and the consult inbox. Admin only.
@@ -150,6 +154,67 @@ class AdminDoctorController extends Controller
         return back()->with('success', "{$doctor->name} is now {$state}.");
     }
 
+    /**
+     * Give a doctor a sign-in for the clinic portal.
+     *
+     * The admin never sees or sets the password: the account is created (or an
+     * existing one with that address is linked) and the clinician chooses
+     * their own password from an emailed link. Their email is treated as
+     * verified because an admin vouching for a clinician is the whole point of
+     * there being no self-registration.
+     */
+    public function createLogin(Request $request, Doctor $doctor): RedirectResponse
+    {
+        $this->requireWrite();
+
+        if (blank($doctor->email)) {
+            return back()->with('error', "Add an email address for {$doctor->name} first — that is where the sign-in link goes.");
+        }
+
+        if ($doctor->hasLogin()) {
+            PasswordController::issueResetLink($doctor->user);
+
+            return back()->with('success', "Sign-in link sent to {$doctor->email} again.");
+        }
+
+        $user = User::where('email', $doctor->email)->first();
+
+        if (! $user) {
+            $user = User::create([
+                'name' => $doctor->name,
+                'email' => $doctor->email,
+                // Never used: the clinician sets their own from the link.
+                'password' => Str::random(48),
+                'email_verified_at' => now(),
+            ]);
+        } elseif (Doctor::where('user_id', $user->id)->exists()) {
+            return back()->with('error', "{$doctor->email} already signs in as another doctor.");
+        }
+
+        $doctor->update(['user_id' => $user->id]);
+        PasswordController::issueResetLink($user);
+
+        AdminAuditLog::record('doctor.login_created', $doctor, [
+            'name' => $doctor->name,
+        ], 'Doctor '.$doctor->name);
+
+        return back()->with('success', "{$doctor->name} can now sign in. A link to choose a password has gone to {$doctor->email}.");
+    }
+
+    /** Take away portal access without touching the directory listing. */
+    public function revokeLogin(Request $request, Doctor $doctor): RedirectResponse
+    {
+        $this->requireWrite();
+
+        $doctor->update(['user_id' => null]);
+
+        AdminAuditLog::record('doctor.login_revoked', $doctor, [
+            'name' => $doctor->name,
+        ], 'Doctor '.$doctor->name);
+
+        return back()->with('success', "{$doctor->name} can no longer sign in to the clinic portal.");
+    }
+
     // ── Consult inbox ──────────────────────────────────────────────────────
 
     public function inbox(Request $request)
@@ -187,13 +252,11 @@ class AdminDoctorController extends Controller
             'doctor_id' => ['nullable', 'integer', 'exists:doctors,id'],
         ]);
 
-        $message->update([
-            'reply_body' => $data['reply_body'],
-            'doctor_id' => ($data['doctor_id'] ?? null) ?: $message->doctor_id,
-            'status' => 'answered',
-            'replied_at' => now(),
-            'replied_by' => $request->user()->id,
-        ]);
+        // Attributed to the doctor, typed by this admin. Goes through the
+        // same chat seam as the doctor's own portal so the patient sees one
+        // conversation rather than two mechanisms.
+        $message->update(['doctor_id' => ($data['doctor_id'] ?? null) ?: $message->doctor_id]);
+        ConsultChat::post($message, ConsultMessage::DOCTOR, $request->user(), $data['reply_body']);
 
         // The reply text is patient health information, so it is deliberately
         // NOT written into the audit payload — only the fact of a reply.

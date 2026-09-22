@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppointmentRequest;
+use App\Models\ConsultMessage;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
+use App\Support\ConsultChat;
 use App\Support\DoctorConsults;
 use App\Support\DoctorSchedule;
 use App\Support\SlotTakenException;
@@ -44,7 +46,7 @@ class DoctorPortalController extends Controller
         $appointments = collect();
 
         if (! $guest) {
-            $messages = DoctorMessage::with('doctor')
+            $messages = DoctorMessage::with(['doctor', 'turns'])
                 ->where('user_id', $user->id)
                 ->latest()
                 ->limit(50)
@@ -90,6 +92,32 @@ class DoctorPortalController extends Controller
         }
 
         return response()->json(DoctorSchedule::slotsFor($doctor, $data['date']));
+    }
+
+    /**
+     * A follow-up in an existing conversation. Posting one puts the thread
+     * back in the doctor's queue.
+     */
+    public function replyToThread(Request $request, DoctorMessage $message): RedirectResponse
+    {
+        $to = redirect()->route('doctor');
+
+        if (session('is_web_guest')) {
+            return $to->with('doctor_error', 'guest');
+        }
+
+        // Somebody else's conversation is not readable, let alone writable.
+        abort_unless($message->user_id === $request->user()->id, 403);
+
+        if ($message->status === 'closed') {
+            return $to->with('doctor_error', 'closed');
+        }
+
+        $data = $request->validate(['body' => ['required', 'string', 'max:4000']]);
+
+        ConsultChat::post($message, ConsultMessage::PATIENT, $request->user(), $data['body']);
+
+        return $to->with('doctor_sent', 'question');
     }
 
     public function storeMessage(Request $request): RedirectResponse

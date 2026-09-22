@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Support\ConsultChat;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A question a patient left for a doctor, and the reply when one comes.
@@ -52,6 +54,18 @@ class DoctorMessage extends Model
         return $this->belongsTo(User::class, 'replied_by');
     }
 
+    /** Everything said after the opening question. */
+    public function turns(): HasMany
+    {
+        return $this->hasMany(ConsultMessage::class);
+    }
+
+    /** The most recent thing said, for a conversation list. */
+    public function latestLine(): string
+    {
+        return (string) ($this->turns()->latest('id')->value('body') ?? $this->body);
+    }
+
     public function isAnswered(): bool
     {
         return filled($this->reply_body);
@@ -70,6 +84,12 @@ class DoctorMessage extends Model
             'doctor_specialty' => $this->doctor?->specialty,
             'body' => $this->body,
             'status' => $this->status,
+            // The whole conversation, oldest first, opening question included.
+            'thread' => ConsultChat::transcript($this)
+                ->map(fn (ConsultMessage $m) => $m->toPatientArray())
+                ->values()->all(),
+            // The newest doctor turn. Kept for app builds that predate chat and
+            // show a single reply.
             'reply' => $this->reply_body,
             'replied_at' => $this->replied_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),

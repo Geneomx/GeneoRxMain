@@ -18,6 +18,7 @@ class Doctor extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'name',
         'specialty',
         'mobile',
@@ -42,6 +43,17 @@ class Doctor extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** The account this clinician signs in with, once an admin has made one. */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function hasLogin(): bool
+    {
+        return $this->user_id !== null;
     }
 
     public function messages(): HasMany

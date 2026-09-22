@@ -44,6 +44,19 @@ class PasswordController extends Controller
             return back()->with('status', 'A reset link was sent recently. Please check your inbox or wait a moment before trying again.');
         }
 
+        self::issueResetLink($user);
+
+        return back()->with('status', 'If that address is registered, a reset link has been sent. Check your inbox.');
+    }
+
+    /**
+     * Mint a single-use reset token and email the link.
+     *
+     * Also how a doctor gets their first sign-in: an admin never sees or sets
+     * their password, the clinician chooses it from the link.
+     */
+    public static function issueResetLink(User $user): void
+    {
         // Clear old tokens for this email and create a fresh one
         DB::table('password_reset_tokens')->where('email', $user->email)->delete();
 
@@ -61,8 +74,6 @@ class PasswordController extends Controller
         ]);
 
         $user->notify(new ResetPasswordNotification($resetUrl));
-
-        return back()->with('status', 'If that address is registered, a reset link has been sent. Check your inbox.');
     }
 
     // ── Step 3: Show the reset-password form ──────────────────────────────

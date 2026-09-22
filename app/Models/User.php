@@ -66,6 +66,27 @@ class User extends Authenticatable
     }
 
     /**
+     * The clinician directory entry this account signs in as, if any. Its
+     * presence is what makes someone a doctor — there is no role flag, because
+     * being a doctor is a directory listing, not a permission tier.
+     */
+    public function doctorProfile()
+    {
+        return $this->hasOne(Doctor::class);
+    }
+
+    public function isDoctor(): bool
+    {
+        return (bool) $this->doctorProfile?->is_active;
+    }
+
+    /** Where this account belongs after signing in. */
+    public function homeRoute(): string
+    {
+        return $this->isDoctor() ? 'clinic.appointments' : 'treatments';
+    }
+
+    /**
      * Get the user's profile.
      */
     public function profile()

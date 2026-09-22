@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\DoctorMiddleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => AdminMiddleware::class,
+            'doctor' => DoctorMiddleware::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'stripe/webhook',
