@@ -1408,9 +1408,9 @@ async function fetchAiVisitSummary(){
   } catch(e){ return ""; }
 }
 
-async function downloadDoctorReport(checkinIndex){
-  if (!state.checkins.length) return;
-  track("report_downloaded", { checkins: state.checkins.length });
+/* The report itself, shared by the HTML download and the PDF path so the two
+   can never differ. */
+async function buildDoctorReport(checkinIndex){
   if (typeof checkinIndex !== "number" || checkinIndex < 0 || checkinIndex >= state.checkins.length) {
     checkinIndex = state.checkins.length - 1;
   }
@@ -1428,15 +1428,46 @@ async function downloadDoctorReport(checkinIndex){
     ? `<h2 style="font-size:15px;margin-top:24px">${escapeHtml(t("report.ai_summary_title"))}</h2><p style="font-size:11px;color:#666;margin:2px 0 8px">${escapeHtml(t("report.ai_summary_note"))}</p><pre>${escapeHtml(aiSummary)}</pre>`
     : "";
   const html = `<!doctype html><html lang="${escapeHtml(lang)}" dir="${dir}"><head><meta charset="utf-8"><title>${escapeHtml(docTitle)}</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.45;color:#111}pre{white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;border:1px solid #ddd;border-radius:12px;padding:16px;background:#fafafa}</style></head><body><h1>${escapeHtml(docTitle)}</h1><p>${escapeHtml(headerBits.join(" · "))}</p><pre>${escapeHtml(snapshot)}</pre>${aiBlock}</body></html>`;
-  const blob = new Blob([html], {type:'text/html'});
+  return { html, datePart, checkinIndex };
+}
+
+async function downloadDoctorReport(checkinIndex){
+  if (!state.checkins.length) return;
+  track("report_downloaded", { checkins: state.checkins.length });
+  const r = await buildDoctorReport(checkinIndex);
+  const blob = new Blob([r.html], {type:'text/html'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `geneorx_report_checkin_${checkinIndex + 1}_${datePart}.html`;
+  a.download = `geneorx_report_checkin_${r.checkinIndex + 1}_${r.datePart}.html`;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+/* PDF on the web: the browser's own print dialog, whose "Save as PDF" needs
+   no library and exists on every desktop and phone browser. Mobile does the
+   same job with expo-print (wizard/reports.ts). The window is opened
+   synchronously on the click so popup blockers allow it, then filled once the
+   AI summary has come back; if a window cannot be opened at all, the HTML
+   download stands in. */
+async function printDoctorReport(checkinIndex){
+  if (!state.checkins.length) return;
+  const win = window.open("", "_blank");
+  if (!win) { await downloadDoctorReport(checkinIndex); return; }
+  try {
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(t("home.report.working"))}</title></head><body style="font-family:Arial,sans-serif;padding:24px">${escapeHtml(t("home.report.working"))}</body></html>`);
+    track("report_downloaded", { checkins: state.checkins.length, format: "pdf" });
+    const r = await buildDoctorReport(checkinIndex);
+    const printer = `<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},150);});<\/script>`;
+    win.document.open();
+    win.document.write(r.html.replace("</body>", printer + "</body>"));
+    win.document.close();
+  } catch (e) {
+    try { win.close(); } catch (e2) {}
+    await downloadDoctorReport(checkinIndex);
+  }
 }
 
 let reportPickerSelectedIndex = 0;
@@ -1858,6 +1889,13 @@ if (reportPickerDownload) {
     toastT("toast.report_downloaded");
   });
 }
+const reportPickerPdf = document.getElementById("reportPickerPdf");
+if (reportPickerPdf) {
+  reportPickerPdf.addEventListener("click", ()=>{
+    printDoctorReport(reportPickerSelectedIndex);
+    closeReportPickerModal();
+  });
+}
 
 const checkinViewBackdrop = document.getElementById("checkinViewBackdrop");
 const checkinViewClose = document.getElementById("checkinViewClose");
@@ -2116,6 +2154,71 @@ function renderContactBox(){
   contactBox.innerHTML = "";
 }
 
+/* The three Home scores. Mirrors mobile ScoreRow.tsx: every value states its
+   unit, because the three are not on one scale (0-100, 0-100, 0-10) and bare
+   numbers side by side read as a collapse in body systems. An unanswered score
+   shows a dash with the reason it is empty — never a zero. Each row deep-links
+   into Insights (step 7), and the report row below saves the latest check-in
+   as a PDF. */
+function renderHomeScores(){
+  const weekly = computeWeeklyHealthScore();
+  const completion = computeMedicationCompletion();
+  const systems = computeBodySystemsView();
+  const answered = (n, total) => t("home.score.answered", { n, total });
+
+  const row = (o) => {
+    const has = typeof o.value === "number" && Number.isFinite(o.value);
+    const foot = has ? o.answered : o.empty;
+    const aria = has
+      ? `${o.title}, ${o.value} ${o.unit}${o.answered ? ", " + o.answered : ""}`
+      : `${o.title}, ${o.empty || ""}`;
+    return `
+      <div class="scoreRow" role="button" tabindex="0" data-go="7" aria-label="${escapeHtml(aria)}">
+        <span class="scoreRowMeta">
+          <span class="scoreRowTitle">${escapeHtml(o.title)}</span>
+          <span class="scoreRowDesc">${escapeHtml(o.desc)}</span>
+          ${foot ? `<span class="scoreRowFoot">${escapeHtml(foot)}</span>` : ""}
+        </span>
+        <span class="scoreRowVal">
+          ${has
+            ? `<span class="scoreRowNum" style="color:${o.tint}">${o.value}</span><span class="scoreRowUnit">${escapeHtml(o.unit)}</span>${o.delta ? `<span class="scoreRowDelta">${escapeHtml(o.delta)}</span>` : ""}`
+            : `<span class="scoreRowDash">&mdash;</span>`}
+        </span>
+      </div>`;
+  };
+
+  const last = latestCheckin();
+  const report = (last && state.checkins.length) ? `
+    <div class="reportRow">
+      <span class="reportRowIcon" aria-hidden="true">&#8595;</span>
+      <span class="reportRowMeta">
+        <span class="reportRowTitle">${escapeHtml(t("home.report.title"))}</span>
+        <span class="reportRowSub">${escapeHtml(t("home.report.sub", { date: fmtDate(last.dateISO) }))}</span>
+      </span>
+      <button type="button" class="primary mini" data-report-pdf>${escapeHtml(t("home.report.action"))}</button>
+    </div>
+    <div class="fineprint" style="margin-top:6px">${escapeHtml(t("home.report.web_hint"))}</div>` : "";
+
+  return `
+    <div class="scoreRows">
+      ${row({ title: t("home.score.week"), desc: t("home.score.week_desc"), value: weekly.score, unit: t("home.score.out_of_100"), tint: "var(--cyan)", empty: t("home.score.week_empty"), delta: (typeof weekly.delta === "number" && weekly.delta > 0) ? `\u25B2 ${weekly.delta}` : null })}
+      ${row({ title: t("home.score.completion"), desc: t("home.score.completion_desc"), value: completion.score, unit: t("home.score.out_of_100"), tint: "var(--violet)", answered: answered(completion.answered, completion.total), empty: t("home.score.completion_empty") })}
+      ${row({ title: t("home.score.systems"), desc: t("home.score.systems_desc"), value: systems.average, unit: t("home.score.out_of_10"), tint: "var(--amber)", answered: answered(systems.answered, systems.total), empty: t("home.score.systems_empty") })}
+      <div class="fineprint scoreRowsNote">${escapeHtml(t("home.score.self_reported"))}</div>
+    </div>
+    ${report}`;
+}
+
+function wireHomeScores(root){
+  root.querySelectorAll(".scoreRow[data-go]").forEach(el=>{
+    const go = ()=> setStep(parseInt(el.getAttribute("data-go"),10));
+    el.addEventListener("click", go);
+    el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); go(); } });
+  });
+  const pdf = root.querySelector("[data-report-pdf]");
+  if(pdf) pdf.addEventListener("click", ()=> printDoctorReport(state.checkins.length - 1));
+}
+
 function renderSummaryTop(){
   const medsCount = state.meds.length;
   const symCount = state.symptoms.selected.length;
@@ -2141,10 +2244,12 @@ function renderSummaryTop(){
         <button type="button" class="qaBtn ghost" data-go="7">${escapeHtml(t("step.7"))}</button>
       </div>
     </div>
+    ${renderHomeScores()}
   `;
-  summaryTop.querySelectorAll("[data-go]").forEach(b=>{
+  summaryTop.querySelectorAll(".qaBtn[data-go]").forEach(b=>{
     b.addEventListener("click", ()=> setStep(parseInt(b.getAttribute("data-go"),10)));
   });
+  wireHomeScores(summaryTop);
 }
 
 function renderSide(){
@@ -2193,7 +2298,13 @@ function navButtons(prev=true,next=true,nextLabelKey="nav.continue"){
   }
   if(next){
     const b = document.createElement("button");
-    b.textContent = t(nextLabelKey);
+    /* Name the destination: "Continue" alone does not say what happens next.
+       Mirrors the forward button in mobile WizardScreen.tsx. A caller that
+       passes a specific key keeps it. */
+    const dest = nextStep(state.step);
+    b.textContent = (nextLabelKey === "nav.continue" && dest !== state.step)
+      ? t("nav.next_named", { step: t(`step.${dest}.short`) })
+      : t(nextLabelKey);
     b.className = "primary";
     b.addEventListener("click", ()=> setStep(nextStep(state.step)));
     wrap.appendChild(b);
@@ -3609,6 +3720,10 @@ function renderInsights(){
 
   const dash = "&mdash;";
   const num  = v => (typeof v === "number") ? String(v) : dash;
+  /* Units, because these tiles are not on one scale: completion and the
+     depletion score are 0-100, the body-systems average is 0-10. Same defect
+     that was fixed on Home and in mobile InsightsStep.tsx. */
+  const unit = (v, key) => (typeof v === "number") ? `<span class="metricUnit">${escapeHtml(t(key))}</span>` : "";
 
   /* ---- §1 at a glance ---- */
   const s1 = document.createElement("div");
@@ -3619,21 +3734,26 @@ function renderInsights(){
     : `${weekly.delta >= 0 ? "&#9650;" : "&#9660;"} ${Math.abs(weekly.delta)} ${escapeHtml(t("insights.vs_last_week"))}`;
   s1.innerHTML = `
     <div class="tagline"><strong>${escapeHtml(t("insights.title"))}</strong><div class="fineprint">${escapeHtml(t("insights.sub"))}</div></div>
-    <div class="metricGrid">
+    <div class="metricGrid metricGrid--4">
       <div class="metricCard">
         <div class="k">${escapeHtml(t("insights.this_week"))}</div>
-        <div class="v" style="font-size:26px;font-weight:800">${num(weekly.score)}</div>
+        <div class="v metricVal">${num(weekly.score)}${unit(weekly.score, "insights.of_100")}</div>
         <div class="fineprint">${deltaTxt}</div>
       </div>
       <div class="metricCard">
         <div class="k">${escapeHtml(t("insights.completion"))}</div>
-        <div class="v" style="font-size:26px;font-weight:800">${num(completion.score)}</div>
+        <div class="v metricVal">${num(completion.score)}${unit(completion.score, "insights.of_100")}</div>
         <div class="fineprint">${escapeHtml(t("insights.answered_of", {answered: completion.answered, total: completion.total}))}</div>
       </div>
       <div class="metricCard">
         <div class="k">${escapeHtml(t("insights.top_risk"))}</div>
-        <div class="v" style="font-size:26px;font-weight:800">${top ? top[1] : dash}</div>
+        <div class="v metricVal">${top ? top[1] : dash}${top ? unit(top[1], "insights.of_100") : ""}</div>
         <div class="fineprint">${top ? escapeHtml(top[0]) : escapeHtml(t("insights.none_yet"))}</div>
+      </div>
+      <div class="metricCard">
+        <div class="k">${escapeHtml(t("insights.systems"))}</div>
+        <div class="v metricVal">${num(systems.average)}${unit(systems.average, "insights.of_10")}</div>
+        <div class="fineprint">${escapeHtml(t("insights.answered_of", {answered: systems.answered, total: systems.total}))}</div>
       </div>
     </div>`;
   mainEl.appendChild(s1);
@@ -3793,6 +3913,14 @@ function renderSummaryTab(){
   mainEl.appendChild(sStory);
   sStory.querySelector("#summarySnapshotBtn").addEventListener("click", openSnapshotModal);
   sStory.querySelector("#summaryInsightBtn").addEventListener("click", openInsightModal);
+
+  /* The three Home scores and the report row, as the side panel shows them on
+     every other step — that panel is hidden on this one. */
+  const sScores = document.createElement("div");
+  sScores.className = "section";
+  sScores.innerHTML = renderHomeScores();
+  mainEl.appendChild(sScores);
+  wireHomeScores(sScores);
 
   const s1 = document.createElement("div");
   s1.className = "section";

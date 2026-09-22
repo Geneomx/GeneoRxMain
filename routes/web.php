@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DoctorPortalController;
 use App\Http\Controllers\EmailOtpController;
 use App\Http\Controllers\GuestController;
 use App\Http\Controllers\HomeController;
@@ -69,6 +70,15 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/api/profile', [HomeController::class, 'getProfile'])->name('api.profile.get');
     Route::post('/api/profile', [HomeController::class, 'saveProfile'])->name('api.profile.save');
+
+    // Ask a doctor — the web twin of the mobile screen. A guest session is
+    // signed in as the shared guest account, so it reaches these; the
+    // controller shows it a sign-in card and refuses the writes.
+    Route::get('/doctor', [DoctorPortalController::class, 'index'])->name('doctor');
+    Route::post('/doctor/messages', [DoctorPortalController::class, 'storeMessage'])
+        ->middleware('throttle:10,1')->name('doctor.message');
+    Route::post('/doctor/appointments', [DoctorPortalController::class, 'storeAppointment'])
+        ->middleware('throttle:10,1')->name('doctor.appointment');
 
     // Account settings
     Route::get('/account/settings', [AccountController::class, 'settings'])->name('account.settings');

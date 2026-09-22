@@ -146,7 +146,9 @@
     .portal-top{margin-bottom:18px}
     .portal-brand{min-width:0}
     .portal-status{gap:8px}
-    .portal-link-btn{text-decoration:none}
+    .portal-link-btn{display:inline-flex;align-items:center;text-decoration:none;
+      border:1px solid rgba(255,255,255,.14);border-radius:12px;color:var(--txt);
+      box-shadow:0 10px 22px rgba(0,0,0,.18)}
     .portal-menu{position:relative;display:inline-flex}
     .portal-menu-panel{
       position:absolute;top:calc(100% + 8px);right:0;min-width:220px;
@@ -199,8 +201,10 @@
       display:block;
     }
     .hd-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .hd h2{margin:0;font-size:15px}
-    .hd .desc{margin:6px 0 0 0;color:var(--muted);font-size:14px;line-height:1.45}
+    /* 20px/15px rather than 15px/14px: most users are older adults, and the
+       step title is the first thing they read. Mirrors the mobile header. */
+    .hd h2{margin:0;font-size:20px;letter-spacing:-.3px}
+    .hd .desc{margin:6px 0 0 0;color:var(--muted);font-size:15px;line-height:1.45}
     .bd{padding:18px}
 
     /* Tabs */
@@ -211,12 +215,15 @@
       padding-bottom:2px}
     .steps::-webkit-scrollbar{display:none}
     .step{flex:0 0 auto}
+    /* 15px on a 44px pill, up from 13px/36px: a step name is the one thing on
+       this row the user has to read. Mirrors the mobile tray. */
     .step{
-      padding:9px 12px;border-radius:999px;
+      display:inline-flex;align-items:center;min-height:44px;
+      padding:10px 14px;border-radius:999px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(7,10,18,.35);
       color: var(--muted);
-      font-size:13px;cursor:pointer;user-select:none;
+      font-size:15px;font-weight:600;cursor:pointer;user-select:none;
       box-shadow: 0 10px 20px rgba(0,0,0,.16);
       transition: transform .05s ease, filter .15s ease;
     }
@@ -577,6 +584,35 @@
     .metricGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
     @media (max-width:780px){.metricGrid{grid-template-columns:1fr}}
     .metricCard{border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(7,10,18,.22);padding:12px}
+    .metricGrid--4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    @media (max-width:980px){.metricGrid--4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:520px){.metricGrid--4{grid-template-columns:1fr}}
+    .metricVal{font-size:26px;font-weight:800}
+    .metricUnit{font-size:12px;font-weight:600;color:var(--muted);margin-left:4px}
+
+    /* Home scores — mirrors mobile ScoreRow.tsx and ReportDownloadRow.tsx. */
+    .scoreRows{margin-top:12px}
+    .scoreRow{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+      padding:13px 6px;min-height:52px;border-bottom:1px solid rgba(255,255,255,.10);
+      cursor:pointer;border-radius:8px}
+    .scoreRow:hover,.scoreRow:focus-visible{background:rgba(40,225,255,.06);outline:none}
+    .scoreRowMeta{display:flex;flex-direction:column;min-width:0;flex:1}
+    .scoreRowTitle{font-size:16px;font-weight:700;color:var(--txt)}
+    .scoreRowDesc{font-size:14px;line-height:1.35;color:var(--muted);margin-top:2px}
+    .scoreRowFoot{font-size:11px;color:var(--muted2);margin-top:4px;letter-spacing:.3px}
+    .scoreRowVal{display:flex;flex-direction:column;align-items:flex-end;flex:0 0 auto}
+    .scoreRowNum{font-size:26px;font-weight:800;line-height:1.05;letter-spacing:-.6px;font-variant-numeric:tabular-nums}
+    .scoreRowUnit{font-size:11px;color:var(--muted)}
+    .scoreRowDelta{font-size:13px;font-weight:700;color:var(--green);margin-top:2px}
+    .scoreRowDash{font-size:26px;font-weight:600;line-height:1.05;color:var(--muted2)}
+    .scoreRowsNote{margin-top:10px;font-size:13px}
+    .reportRow{display:flex;align-items:center;gap:10px;margin-top:12px;padding:12px 14px;min-height:52px;
+      border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(15,23,54,.50)}
+    .reportRowIcon{width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
+      background:rgba(40,225,255,.14);color:var(--cyan);font-size:17px;font-weight:800;flex:0 0 auto}
+    .reportRowMeta{display:flex;flex-direction:column;min-width:0;flex:1}
+    .reportRowTitle{font-size:15px;font-weight:700;color:var(--txt)}
+    .reportRowSub{font-size:13px;color:var(--muted);margin-top:2px}
 
   
     .firstRun{border-color:rgba(40,225,255,.28);background:rgba(40,225,255,.06)}

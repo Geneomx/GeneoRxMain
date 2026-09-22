@@ -162,6 +162,7 @@
       <div class="list" id="reportPickerList"></div>
       <div class="btns" style="margin-top:14px">
         <button class="primary" id="reportPickerDownload" data-i18n="modal.report.download">Download selected report</button>
+        <button class="ghost" id="reportPickerPdf" data-i18n="modal.report.pdf">Save as PDF</button>
       </div>
     </div>
   </div>

@@ -1,6 +1,11 @@
 <?php
 
 $en = [
+    // Ask a doctor (web page) and the report as a PDF. Web-only; the shared
+    // doctor.* and home.report.* strings live in site_translations.php.
+    'doctor.back' => 'Back to dashboard',
+    'modal.report.pdf' => 'Save as PDF',
+    'home.report.web_hint' => 'Your browser\'s print window will open. Choose "Save as PDF".',
     // Account
     'account.welcome' => 'Welcome',
     'account.welcome_sub' => 'personalized guidance based on medications, symptoms, and outcomes.',
@@ -624,6 +629,9 @@ $en = [
 return [
     'en' => $en,
     'es' => array_merge($en, [
+        'doctor.back' => 'Volver al panel',
+        'modal.report.pdf' => 'Guardar como PDF',
+        'home.report.web_hint' => 'Se abrirá la ventana de impresión de tu navegador. Elige "Guardar como PDF".',
         // Account
         'account.welcome' => 'Bienvenido',
         'account.welcome_sub' => 'orientación personalizada según medicamentos, síntomas y resultados.',
@@ -1175,6 +1183,9 @@ return [
         'engine.coach.bullet_empty' => '—',
     ]),
     'fr' => array_merge($en, [
+        'doctor.back' => 'Retour au tableau de bord',
+        'modal.report.pdf' => 'Enregistrer en PDF',
+        'home.report.web_hint' => 'La fenêtre d\'impression de votre navigateur va s\'ouvrir. Choisissez « Enregistrer en PDF ».',
         // Account
         'account.welcome' => 'Bienvenue',
         'account.welcome_sub' => 'conseils personnalisés basés sur vos médicaments, symptômes et résultats.',
