@@ -154,7 +154,7 @@ final class DoctorSchedule
                 throw new SlotTakenException;
             }
 
-            return AppointmentRequest::create($extra + [
+            $appointment = AppointmentRequest::create($extra + [
                 'user_id' => $user->id,
                 'doctor_id' => $locked->id,
                 'slot_at' => $at->utc(),
@@ -165,6 +165,10 @@ final class DoctorSchedule
                 'preferred_time' => self::windowFor($at),
                 'status' => 'requested',
             ]);
+
+            ConsultAlerts::bookingToDoctor($appointment->fresh());
+
+            return $appointment;
         });
     }
 

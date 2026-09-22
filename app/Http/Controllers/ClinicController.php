@@ -6,6 +6,7 @@ use App\Models\AppointmentRequest;
 use App\Models\ConsultMessage;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
+use App\Support\ConsultAlerts;
 use App\Support\ConsultChat;
 use App\Support\DoctorSchedule;
 use Illuminate\Contracts\View\View;
@@ -74,6 +75,8 @@ class ClinicController extends Controller
             'admin_note' => $data['admin_note'] ?? $appointment->admin_note,
             'responded_at' => now(),
         ]);
+
+        ConsultAlerts::bookingDecision($appointment->fresh(), $data['status']);
 
         return back()->with('clinic_success', 'appointment_'.$data['status']);
     }

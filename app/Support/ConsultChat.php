@@ -82,6 +82,8 @@ final class ConsultChat
             'body' => $body,
         ]);
 
+        $wasAnswered = $thread->status === 'answered';
+
         if ($sender === ConsultMessage::DOCTOR) {
             $thread->update([
                 // reply_body is what app builds before chat read. Keeping the
@@ -92,8 +94,14 @@ final class ConsultChat
                 'replied_at' => now(),
                 'replied_by' => $author?->id,
             ]);
-        } elseif ($thread->status !== 'closed') {
-            $thread->update(['status' => 'new']);
+            ConsultAlerts::replyToPatient($thread, $body);
+        } else {
+            if ($thread->status !== 'closed') {
+                $thread->update(['status' => 'new']);
+            }
+            // A follow-up reads differently from a first question, and the
+            // doctor is owed both.
+            ConsultAlerts::messageToDoctor($thread, $body, $wasAnswered);
         }
 
         return $turn;

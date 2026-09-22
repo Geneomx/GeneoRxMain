@@ -95,19 +95,25 @@ final class DoctorConsults
     /** @param  array<string, mixed>  $data  Already validated against messageRules(). */
     public static function leaveQuestion(User $user, array $data): DoctorMessage
     {
-        return DoctorMessage::create([
+        $thread = DoctorMessage::create([
             'user_id' => $user->id,
             'doctor_id' => self::doctorId($data),
             'body' => $data['body'],
             'contact_mobile' => $data['contact_mobile'] ?? null,
             'status' => 'new',
         ]);
+
+        // The opening question lives on the thread row rather than as a turn,
+        // so it does not pass through ConsultChat and needs telling here.
+        ConsultAlerts::messageToDoctor($thread->fresh(), $data['body'], false);
+
+        return $thread;
     }
 
     /** @param  array<string, mixed>  $data  Already validated against appointmentRules(). */
     public static function requestAppointment(User $user, array $data): AppointmentRequest
     {
-        return AppointmentRequest::create([
+        $appointment = AppointmentRequest::create([
             'user_id' => $user->id,
             'doctor_id' => self::doctorId($data),
             'preferred_date' => $data['preferred_date'] ?? null,
@@ -117,6 +123,10 @@ final class DoctorConsults
             'contact_mobile' => $data['contact_mobile'] ?? null,
             'status' => 'requested',
         ]);
+
+        ConsultAlerts::bookingToDoctor($appointment->fresh());
+
+        return $appointment;
     }
 
     /** Why a day cannot be booked: 'past' | 'too_far' | null. */

@@ -8,6 +8,7 @@ use App\Models\ConsultMessage;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
 use App\Models\User;
+use App\Support\ConsultAlerts;
 use App\Support\ConsultChat;
 use App\Support\DoctorSchedule;
 use Illuminate\Http\RedirectResponse;
@@ -296,6 +297,8 @@ class AdminDoctorController extends Controller
             'doctor_id' => ($data['doctor_id'] ?? null) ?: $appointment->doctor_id,
             'responded_at' => now(),
         ]);
+
+        ConsultAlerts::bookingDecision($appointment->fresh(), $data['status']);
 
         AdminAuditLog::record('appointment.'.$data['status'], $appointment, [
             'doctor_id' => $appointment->doctor_id,
