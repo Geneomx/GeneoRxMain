@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
+import { useAuth } from '@/auth/AuthContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
 import { colors, radius, spacing, touchMin } from '@/theme';
@@ -57,11 +58,13 @@ function prettyDate(iso: string | null): string {
 export const DoctorScreen: React.FC = () => {
   const { t } = useTranslation();
   const { page, scrollBottom } = useResponsiveLayout();
+  const { isGuest, signOut } = useAuth();
 
   const [tab, setTab] = useState<Tab>('ask');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [messages, setMessages] = useState<DoctorMessage[]>([]);
@@ -76,6 +79,15 @@ export const DoctorScreen: React.FC = () => {
   const [note, setNote] = useState('');
 
   const load = useCallback(async () => {
+    // Every doctor endpoint needs a real account (auth:sanctum). A guest holds
+    // a local placeholder token, so the request would 401 — and an empty
+    // directory with no explanation is the worst possible way to show that.
+    if (isGuest) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+    setLoadError(false);
     try {
       const [d, m, a] = await Promise.all([
         fetchDoctors(),
@@ -86,13 +98,14 @@ export const DoctorScreen: React.FC = () => {
       setMessages(m);
       setAppointments(a);
     } catch {
-      // Offline or a server hiccup. The lists simply stay as they were rather
-      // than the screen throwing — nothing here is safety-critical to display.
+      // Say so. Swallowing this silently is how a 401, a missing table and
+      // "no doctors yet" all looked identical on the phone.
+      setLoadError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [isGuest]);
 
   useEffect(() => {
     load();
@@ -189,10 +202,28 @@ export const DoctorScreen: React.FC = () => {
           <Text style={styles.noticeText}>{t('doctor.not_emergency')}</Text>
         </View>
 
+        {isGuest ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t('doctor.guest_title')}</Text>
+            <Text style={styles.sub}>{t('doctor.guest_body')}</Text>
+            <View style={{ marginTop: spacing.sm }}>
+              {/* For a guest, signOut() clears the placeholder token, which
+                  returns the app to the sign-in / create-account screen. */}
+              <Button title={t('doctor.guest_cta')} onPress={() => signOut()} />
+            </View>
+          </View>
+        ) : null}
+
+        {loadError && !isGuest ? (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>{t('doctor.load_failed')}</Text>
+          </View>
+        ) : null}
+
         {loading ? <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.lg }} /> : null}
 
         {/* ── Who to ask ── */}
-        {!loading ? (
+        {!loading && !isGuest ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>{t('doctor.who')}</Text>
             <View style={styles.chips}>
@@ -223,7 +254,7 @@ export const DoctorScreen: React.FC = () => {
         ) : null}
 
         {/* ── Ask ── */}
-        {!loading && tab === 'ask' ? (
+        {!loading && !isGuest && tab === 'ask' ? (
           <>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>{t('doctor.your_question')}</Text>
@@ -292,7 +323,7 @@ export const DoctorScreen: React.FC = () => {
         ) : null}
 
         {/* ── Appointments ── */}
-        {!loading && tab === 'appointments' ? (
+        {!loading && !isGuest && tab === 'appointments' ? (
           <>
             {openRequest ? (
               <View style={styles.card}>

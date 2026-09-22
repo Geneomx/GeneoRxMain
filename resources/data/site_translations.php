@@ -1,6 +1,10 @@
 <?php
 
 $en = [
+    'doctor.guest_title' => 'Sign in to ask a doctor',
+    'doctor.guest_body' => 'You need an account so a doctor can reply to you. Create one or sign in, and your questions will be kept here.',
+    'doctor.guest_cta' => 'Sign in or create an account',
+    'doctor.load_failed' => 'We could not load this right now. Pull down to try again.',
     // Doctor directory: ask a question, request an appointment.
     'doctor.nav' => 'Ask a doctor',
     'doctor.title' => 'Ask a doctor',
@@ -141,7 +145,7 @@ $en = [
     'step.8' => 'Summary',
     'step.9' => 'Feedback',
     'step.0.short' => 'Account',
-    'step.1.short' => 'Meds',
+    'step.1.short' => 'Medications',
     'step.2.short' => 'Symptoms',
     'step.3.short' => 'Wellbeing',
     'step.4.short' => 'Results',
@@ -617,6 +621,10 @@ $en = [
 return [
     'en' => $en,
     'es' => array_merge($en, [
+        'doctor.guest_title' => 'Inicia sesión para preguntar a un médico',
+        'doctor.guest_body' => 'Necesitas una cuenta para que un médico pueda responderte. Crea una o inicia sesión y tus preguntas se guardarán aquí.',
+        'doctor.guest_cta' => 'Iniciar sesión o crear cuenta',
+        'doctor.load_failed' => 'No pudimos cargar esto ahora. Desliza hacia abajo para reintentar.',
         // Doctor directory: ask a question, request an appointment.
         'doctor.nav' => 'Preguntar a un médico',
         'doctor.title' => 'Preguntar a un médico',
@@ -780,7 +788,7 @@ return [
         'step.8' => 'Resumen',
         'step.9' => 'Comentarios',
         'step.0.short' => 'Cuenta',
-        'step.1.short' => 'Meds',
+        'step.1.short' => 'Medicamentos',
         'step.2.short' => 'Síntomas',
         'step.3.short' => 'Bienestar',
         'step.4.short' => 'Resultados',
@@ -836,6 +844,10 @@ return [
         'mobile.wizard.complete_sub' => 'Tu registro y reporte están guardados. Vuelve al panel para ver tu resumen.',
     ]),
     'fr' => array_merge($en, [
+        'doctor.guest_title' => 'Connectez-vous pour poser une question',
+        'doctor.guest_body' => 'Un médecin a besoin d\'un compte pour vous répondre. Créez-en un ou connectez-vous, et vos questions resteront ici.',
+        'doctor.guest_cta' => 'Se connecter ou créer un compte',
+        'doctor.load_failed' => 'Impossible de charger pour le moment. Tirez vers le bas pour réessayer.',
         // Doctor directory: ask a question, request an appointment.
         'doctor.nav' => 'Poser une question à un médecin',
         'doctor.title' => 'Poser une question',
@@ -984,6 +996,10 @@ return [
         'mobile.wizard.complete_sub' => 'Votre suivi et rapport sont enregistrés. Retournez au tableau de bord pour voir votre résumé.',
     ]),
     'ar' => array_merge($en, [
+        'doctor.guest_title' => 'سجّل الدخول لتسأل طبيباً',
+        'doctor.guest_body' => 'يحتاج الطبيب إلى حساب ليرد عليه. أنشئ حساباً أو سجّل الدخول، وستُحفظ أسئلتك هنا.',
+        'doctor.guest_cta' => 'تسجيل الدخول أو إنشاء حساب',
+        'doctor.load_failed' => 'تعذّر التحميل الآن. اسحب للأسفل للمحاولة مجدداً.',
         // Doctor directory: ask a question, request an appointment.
         'doctor.nav' => 'اسأل طبيباً',
         'doctor.title' => 'اسأل طبيباً',
@@ -1105,6 +1121,10 @@ return [
         'slide.3.title' => 'باختصار',
     ]),
     'ur' => array_merge($en, [
+        'doctor.guest_title' => 'ڈاکٹر سے پوچھنے کے لیے سائن ان کریں',
+        'doctor.guest_body' => 'جواب دینے کے لیے ڈاکٹر کو ایک اکاؤنٹ درکار ہے۔ اکاؤنٹ بنائیں یا سائن ان کریں، اور آپ کے سوالات یہاں محفوظ رہیں گے۔',
+        'doctor.guest_cta' => 'سائن ان یا اکاؤنٹ بنائیں',
+        'doctor.load_failed' => 'ابھی لوڈ نہیں ہو سکا۔ دوبارہ کوشش کے لیے نیچے کھینچیں۔',
         // Doctor directory: ask a question, request an appointment.
         'doctor.nav' => 'ڈاکٹر سے پوچھیں',
         'doctor.title' => 'ڈاکٹر سے پوچھیں',
@@ -1226,6 +1246,10 @@ return [
         'slide.3.title' => ' مختصراً',
     ]),
     'sw' => array_merge($en, [
+        'doctor.guest_title' => 'Ingia ili kumuuliza daktari',
+        'doctor.guest_body' => 'Daktari anahitaji akaunti ya kujibu. Fungua moja au ingia, na maswali yako yatahifadhiwa hapa.',
+        'doctor.guest_cta' => 'Ingia au fungua akaunti',
+        'doctor.load_failed' => 'Hatukuweza kupakia hii sasa. Vuta chini ili kujaribu tena.',
         // Doctor directory: ask a question, request an appointment.
         'doctor.nav' => 'Muulize daktari',
         'doctor.title' => 'Muulize daktari',
