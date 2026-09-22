@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,28 +16,41 @@ import { Button } from '@/components/Button';
 import { useAuth } from '@/auth/AuthContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
+import { ApiError } from '@/api/client';
 import { colors, radius, spacing, touchMin } from '@/theme';
 import {
   askDoctor,
   fetchAppointments,
   fetchDoctorMessages,
+  fetchDoctorSlots,
   fetchDoctors,
+  replyToThread,
   requestAppointment,
+  type AppointmentMode,
   type AppointmentRequest,
+  type DaySlots,
   type Doctor,
   type DoctorMessage,
-  type TimeWindow,
 } from '@/api/doctors';
 
 type Tab = 'ask' | 'appointments';
 
-const TIME_WINDOWS: TimeWindow[] = ['morning', 'afternoon', 'evening'];
+const MODES: AppointmentMode[] = ['chat', 'call', 'visit'];
 
-/** YYYY-MM-DD, n days from today. Used for the quick date choices. */
+/** How far ahead to offer days. The server allows 30. */
+const DAYS_SHOWN = 14;
+
+/** YYYY-MM-DD, n days from today. */
 function isoIn(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+/** ISO weekday (1 = Monday … 7 = Sunday) for a YYYY-MM-DD date. */
+function isoWeekday(date: string): number {
+  const day = new Date(`${date}T00:00:00`).getDay();
+  return day === 0 ? 7 : day;
 }
 
 function prettyDate(iso: string | null): string {
@@ -48,12 +61,17 @@ function prettyDate(iso: string | null): string {
 }
 
 /**
- * Ask a doctor a question, and request an appointment.
+ * Ask a doctor a question, and book an appointment.
  *
- * Both are asynchronous and the screen says so before anything is sent: a
- * message box in a health app implies somebody is reading it, and an
- * appointment "request" is not a booking. Those two notices are not decoration
- * — they are the difference between a useful feature and a dangerous one.
+ * A question is a conversation: either side adds a turn, and a follow-up puts
+ * the thread back in the doctor's queue rather than disappearing after one
+ * answer. An appointment is a real booking on the doctor's own timetable —
+ * doctor, then day, then one of their free times. A time somebody else holds
+ * stays visible but disabled, because hiding it makes a half-empty day look
+ * arbitrary.
+ *
+ * Both say plainly what they are before anything is sent: a message box in a
+ * health app implies somebody is reading it, and a reply can take days.
  */
 export const DoctorScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -70,13 +88,28 @@ export const DoctorScreen: React.FC = () => {
   const [messages, setMessages] = useState<DoctorMessage[]>([]);
   const [appointments, setAppointments] = useState<AppointmentRequest[]>([]);
 
-  // Compose state
+  // Ask a question
   const [doctorId, setDoctorId] = useState<number | null>(null);
   const [body, setBody] = useState('');
   const [mobile, setMobile] = useState('');
-  const [date, setDate] = useState<string | null>(null);
-  const [window, setWindow] = useState<TimeWindow | null>(null);
+
+  // Follow-ups, one draft per conversation.
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+
+  // Book an appointment. A booking needs a named doctor — a time belongs to
+  // somebody's calendar — so this is separate from the question's "any doctor".
+  const [apptDoctorId, setApptDoctorId] = useState<number | null>(null);
+  const [day, setDay] = useState<string | null>(null);
+  const [daySlots, setDaySlots] = useState<DaySlots | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsFailed, setSlotsFailed] = useState(false);
+  const [slotAt, setSlotAt] = useState<string | null>(null);
+  const [mode, setMode] = useState<AppointmentMode>('visit');
   const [note, setNote] = useState('');
+
+  const days = useMemo(() => Array.from({ length: DAYS_SHOWN }, (_, i) => isoIn(i)), []);
+  const apptDoctor = doctors.find((d) => d.id === apptDoctorId) ?? null;
 
   const load = useCallback(async () => {
     // Every doctor endpoint needs a real account (auth:sanctum). A guest holds
@@ -111,6 +144,29 @@ export const DoctorScreen: React.FC = () => {
     load();
   }, [load]);
 
+  /** The chosen doctor's times for the chosen day. */
+  const loadSlots = useCallback(async () => {
+    setSlotAt(null);
+    if (!apptDoctorId || !day) {
+      setDaySlots(null);
+      return;
+    }
+    setSlotsLoading(true);
+    setSlotsFailed(false);
+    try {
+      setDaySlots(await fetchDoctorSlots(apptDoctorId, day));
+    } catch {
+      setDaySlots(null);
+      setSlotsFailed(true);
+    } finally {
+      setSlotsLoading(false);
+    }
+  }, [apptDoctorId, day]);
+
+  useEffect(() => {
+    loadSlots();
+  }, [loadSlots]);
+
   const onRefresh = () => {
     setRefreshing(true);
     load();
@@ -131,38 +187,65 @@ export const DoctorScreen: React.FC = () => {
     }
   };
 
+  const sendReply = async (threadId: number) => {
+    const text = (replyDrafts[threadId] ?? '').trim();
+    if (!text || replyingTo !== null) return;
+    setReplyingTo(threadId);
+    try {
+      await replyToThread(threadId, text);
+      setReplyDrafts((prev) => ({ ...prev, [threadId]: '' }));
+      await load();
+    } catch (e) {
+      // 409 here means the doctor closed the conversation while it was open.
+      const closed = e instanceof ApiError && e.status === 409;
+      Alert.alert(t('doctor.failed_title'), closed ? t('doctor.chat_closed') : t('doctor.failed_body'));
+    } finally {
+      setReplyingTo(null);
+    }
+  };
+
   const openRequest = appointments.find((a) => a.status === 'requested');
 
-  const submitAppointment = async () => {
-    if (sending) return;
+  const book = async () => {
+    if (sending || !apptDoctorId || !slotAt) return;
     setSending(true);
     try {
       await requestAppointment({
-        doctorId,
-        preferredDate: date,
-        preferredTime: window,
+        doctorId: apptDoctorId,
+        slotAt,
+        mode,
         note: note.trim() || null,
         contactMobile: mobile.trim() || null,
       });
       setNote('');
-      setDate(null);
-      setWindow(null);
+      setSlotAt(null);
       Alert.alert(t('doctor.appt_sent_title'), t('doctor.appt_sent_body'));
       await load();
+      await loadSlots();
     } catch (e) {
-      // The server returns 409 when one is already open. That is worth saying
-      // plainly, because the patient's first request is still live.
-      const already = String((e as Error)?.message ?? '').includes('409');
+      // 409 twice over: this patient already has an open request, or somebody
+      // else took the time first. Each deserves its own sentence.
+      const code = e instanceof ApiError ? (e.body as { code?: string } | null)?.code : undefined;
+      const taken = code === 'slot_taken';
       Alert.alert(
         t('doctor.failed_title'),
-        already ? t('doctor.appt_already') : t('doctor.failed_body'),
+        taken
+          ? t('doctor.appt_slot_taken')
+          : code === 'open_request'
+            ? t('doctor.appt_already')
+            : t('doctor.failed_body'),
       );
+      // Their list is out of date if somebody beat them to it.
+      if (taken) await loadSlots();
     } finally {
       setSending(false);
     }
   };
 
   const statusLabel = (s: string) => t(`doctor.status.${s}`);
+
+  /** Times worth showing: one already gone is noise, one booked is not. */
+  const bookable = (daySlots?.slots ?? []).filter((s) => s.reason !== 'past');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -222,42 +305,35 @@ export const DoctorScreen: React.FC = () => {
 
         {loading ? <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.lg }} /> : null}
 
-        {/* ── Who to ask ── */}
-        {!loading && !isGuest ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t('doctor.who')}</Text>
-            <View style={styles.chips}>
-              <Pressable
-                onPress={() => setDoctorId(null)}
-                style={[styles.chip, doctorId === null && styles.chipOn]}
-              >
-                <Text style={[styles.chipText, doctorId === null && styles.chipTextOn]}>
-                  {t('doctor.any')}
-                </Text>
-              </Pressable>
-              {doctors.map((d) => (
-                <Pressable
-                  key={d.id}
-                  onPress={() => setDoctorId(d.id)}
-                  style={[styles.chip, doctorId === d.id && styles.chipOn]}
-                >
-                  <Text style={[styles.chipText, doctorId === d.id && styles.chipTextOn]}>
-                    {d.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            {doctors.length === 0 ? (
-              <Text style={styles.fine}>{t('doctor.none_yet')}</Text>
-            ) : null}
-          </View>
-        ) : null}
-
         {/* ── Ask ── */}
         {!loading && !isGuest && tab === 'ask' ? (
           <>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{t('doctor.your_question')}</Text>
+              <Text style={styles.cardTitle}>{t('doctor.who')}</Text>
+              <View style={styles.chips}>
+                <Pressable
+                  onPress={() => setDoctorId(null)}
+                  style={[styles.chip, doctorId === null && styles.chipOn]}
+                >
+                  <Text style={[styles.chipText, doctorId === null && styles.chipTextOn]}>
+                    {t('doctor.any')}
+                  </Text>
+                </Pressable>
+                {doctors.map((d) => (
+                  <Pressable
+                    key={d.id}
+                    onPress={() => setDoctorId(d.id)}
+                    style={[styles.chip, doctorId === d.id && styles.chipOn]}
+                  >
+                    <Text style={[styles.chipText, doctorId === d.id && styles.chipTextOn]}>
+                      {d.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              {doctors.length === 0 ? <Text style={styles.fine}>{t('doctor.none_yet')}</Text> : null}
+
+              <Text style={styles.label}>{t('doctor.your_question')}</Text>
               <TextInput
                 value={body}
                 onChangeText={setBody}
@@ -299,22 +375,72 @@ export const DoctorScreen: React.FC = () => {
                 <View key={m.id} style={styles.card}>
                   <View style={styles.rowTop}>
                     <Text style={styles.who}>{m.doctor ?? t('doctor.any')}</Text>
-                    <View style={[styles.pill, m.reply ? styles.pillOk : styles.pillWait]}>
-                      <Text style={[styles.pillText, m.reply ? styles.pillTextOk : styles.pillTextWait]}>
+                    <View
+                      style={[
+                        styles.pill,
+                        m.status === 'answered'
+                          ? styles.pillOk
+                          : m.status === 'closed'
+                            ? styles.pillDone
+                            : styles.pillWait,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pillText,
+                          m.status === 'answered'
+                            ? styles.pillTextOk
+                            : m.status === 'closed'
+                              ? styles.pillTextDone
+                              : styles.pillTextWait,
+                        ]}
+                      >
                         {statusLabel(m.status)}
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.msgBody}>{m.body}</Text>
-                  {m.reply ? (
-                    <View style={styles.reply}>
-                      <Text style={styles.replyWho}>
-                        {m.doctor ? t('doctor.reply_from', { name: m.doctor }) : t('doctor.reply')}
-                      </Text>
-                      <Text style={styles.replyBody}>{m.reply}</Text>
-                    </View>
+
+                  {/* The conversation, oldest first, opening question included. */}
+                  <View style={styles.chat}>
+                    {m.thread.map((turn, i) => (
+                      <View
+                        key={`${turn.from}-${turn.id}-${i}`}
+                        style={[styles.turn, turn.from === 'doctor' ? styles.turnRight : styles.turnLeft]}
+                      >
+                        <View style={[styles.bubble, turn.from === 'doctor' && styles.bubbleDoctor]}>
+                          <Text style={styles.bubbleText}>{turn.body}</Text>
+                        </View>
+                        <Text style={styles.turnWho}>
+                          {turn.from === 'doctor' ? (m.doctor ?? t('doctor.reply')) : t('doctor.you')}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {m.status === 'closed' ? (
+                    <Text style={styles.fine}>{t('doctor.chat_closed')}</Text>
                   ) : (
-                    <Text style={styles.fine}>{t('doctor.waiting')}</Text>
+                    <>
+                      {m.thread.length < 2 ? <Text style={styles.fine}>{t('doctor.waiting')}</Text> : null}
+                      <Text style={styles.label}>{t('doctor.chat_reply_label')}</Text>
+                      <TextInput
+                        value={replyDrafts[m.id] ?? ''}
+                        onChangeText={(v) => setReplyDrafts((prev) => ({ ...prev, [m.id]: v }))}
+                        placeholder={t('doctor.chat_reply_hint')}
+                        placeholderTextColor={colors.textDim}
+                        multiline
+                        maxLength={4000}
+                        style={[styles.input, styles.inputMid]}
+                      />
+                      <View style={{ marginTop: spacing.sm }}>
+                        <Button
+                          title={replyingTo === m.id ? t('doctor.sending') : t('doctor.chat_send')}
+                          variant="secondary"
+                          onPress={() => sendReply(m.id)}
+                          disabled={replyingTo !== null || !(replyDrafts[m.id] ?? '').trim()}
+                        />
+                      </View>
+                    </>
                   )}
                 </View>
               ))
@@ -330,43 +456,99 @@ export const DoctorScreen: React.FC = () => {
                 <Text style={styles.cardTitle}>{t('doctor.appt_open_title')}</Text>
                 <Text style={styles.fine}>{t('doctor.appt_open_body')}</Text>
               </View>
+            ) : doctors.length === 0 ? (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>{t('doctor.appt_new')}</Text>
+                <Text style={styles.fine}>{t('doctor.appt_no_doctors')}</Text>
+              </View>
             ) : (
               <View style={styles.card}>
                 <Text style={styles.cardTitle}>{t('doctor.appt_new')}</Text>
                 <Text style={styles.fine}>{t('doctor.appt_not_booking')}</Text>
 
-                <Text style={styles.label}>{t('doctor.appt_when')}</Text>
+                <Text style={styles.label}>{t('doctor.appt_pick_doctor')}</Text>
                 <View style={styles.chips}>
-                  {[1, 3, 7, 14].map((n) => {
-                    const iso = isoIn(n);
+                  {doctors.map((d) => (
+                    <Pressable
+                      key={d.id}
+                      onPress={() => {
+                        setApptDoctorId(d.id);
+                        // A day this doctor does not work must not stay chosen.
+                        if (day && !d.available_days.includes(isoWeekday(day))) setDay(null);
+                      }}
+                      style={[styles.chip, apptDoctorId === d.id && styles.chipOn]}
+                    >
+                      <Text style={[styles.chipText, apptDoctorId === d.id && styles.chipTextOn]}>
+                        {d.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Text style={styles.label}>{t('doctor.appt_pick_day')}</Text>
+                <View style={styles.chips}>
+                  {days.map((iso) => {
+                    // Closed days are greyed rather than hidden: a patient should
+                    // see that the day exists and this doctor is off.
+                    const closed = !!apptDoctor && !apptDoctor.available_days.includes(isoWeekday(iso));
                     return (
                       <Pressable
-                        key={n}
-                        onPress={() => setDate(date === iso ? null : iso)}
-                        style={[styles.chip, date === iso && styles.chipOn]}
+                        key={iso}
+                        onPress={() => !closed && setDay(iso)}
+                        disabled={closed}
+                        style={[styles.chip, day === iso && styles.chipOn, closed && styles.chipOff]}
                       >
-                        <Text style={[styles.chipText, date === iso && styles.chipTextOn]}>
+                        <Text style={[styles.chipText, day === iso && styles.chipTextOn]}>
                           {prettyDate(iso)}
                         </Text>
+                        {closed ? <Text style={styles.chipTag}>{t('doctor.appt_closed')}</Text> : null}
                       </Pressable>
                     );
                   })}
                 </View>
 
-                <Text style={styles.label}>{t('doctor.appt_time')}</Text>
+                <Text style={styles.label}>{t('doctor.appt_pick_time')}</Text>
+                {!apptDoctorId || !day ? (
+                  <Text style={styles.fine}>{t('doctor.appt_choose_first')}</Text>
+                ) : slotsLoading ? (
+                  <ActivityIndicator color={colors.primary} style={styles.slotsSpinner} />
+                ) : slotsFailed ? (
+                  <Text style={styles.fine}>{t('doctor.appt_times_failed')}</Text>
+                ) : !daySlots?.open || bookable.length === 0 ? (
+                  <Text style={styles.fine}>{t('doctor.appt_no_times')}</Text>
+                ) : (
+                  <View style={styles.chips}>
+                    {bookable.map((s) => (
+                      <Pressable
+                        key={s.at}
+                        onPress={() => s.available && setSlotAt(s.at)}
+                        disabled={!s.available}
+                        style={[styles.chip, slotAt === s.at && styles.chipOn, !s.available && styles.chipOff]}
+                      >
+                        <Text style={[styles.chipText, slotAt === s.at && styles.chipTextOn]}>
+                          {s.time}–{s.ends}
+                        </Text>
+                        {!s.available ? <Text style={styles.chipTag}>{t('doctor.appt_booked')}</Text> : null}
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+
+                <Text style={styles.label}>{t('doctor.appt_mode')}</Text>
                 <View style={styles.chips}>
-                  {TIME_WINDOWS.map((w) => (
+                  {MODES.map((m) => (
                     <Pressable
-                      key={w}
-                      onPress={() => setWindow(window === w ? null : w)}
-                      style={[styles.chip, window === w && styles.chipOn]}
+                      key={m}
+                      onPress={() => setMode(m)}
+                      style={[styles.chip, mode === m && styles.chipOn]}
                     >
-                      <Text style={[styles.chipText, window === w && styles.chipTextOn]}>
-                        {t(`doctor.window.${w}`)}
+                      <Text style={[styles.chipText, mode === m && styles.chipTextOn]}>
+                        {t(`doctor.mode.${m}`)}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
+                <Text style={styles.fine}>{t('doctor.appt_mode_note')}</Text>
 
                 <Text style={styles.label}>{t('doctor.appt_note')}</Text>
                 <TextInput
@@ -392,9 +574,9 @@ export const DoctorScreen: React.FC = () => {
 
                 <View style={{ marginTop: spacing.md }}>
                   <Button
-                    title={sending ? t('doctor.sending') : t('doctor.appt_send')}
-                    onPress={submitAppointment}
-                    disabled={sending}
+                    title={sending ? t('doctor.sending') : t('doctor.appt_book')}
+                    onPress={book}
+                    disabled={sending || !slotAt}
                   />
                 </View>
               </View>
@@ -413,15 +595,21 @@ export const DoctorScreen: React.FC = () => {
                     <View
                       style={[
                         styles.pill,
-                        a.status === 'confirmed' ? styles.pillOk
-                          : a.status === 'declined' ? styles.pillNo : styles.pillWait,
+                        a.status === 'confirmed'
+                          ? styles.pillOk
+                          : a.status === 'declined'
+                            ? styles.pillNo
+                            : styles.pillWait,
                       ]}
                     >
                       <Text
                         style={[
                           styles.pillText,
-                          a.status === 'confirmed' ? styles.pillTextOk
-                            : a.status === 'declined' ? styles.pillTextNo : styles.pillTextWait,
+                          a.status === 'confirmed'
+                            ? styles.pillTextOk
+                            : a.status === 'declined'
+                              ? styles.pillTextNo
+                              : styles.pillTextWait,
                         ]}
                       >
                         {statusLabel(a.status)}
@@ -430,7 +618,11 @@ export const DoctorScreen: React.FC = () => {
                   </View>
                   <Text style={styles.msgBody}>
                     {a.preferred_date ? prettyDate(a.preferred_date) : t('doctor.appt_no_date')}
-                    {a.preferred_time ? ` · ${t(`doctor.window.${a.preferred_time}`)}` : ''}
+                    {/* A booked slot shows its real time; a plain request from an
+                        older build still only has a time of day. */}
+                    {a.slot_time ? ` · ${a.slot_time}–${a.slot_ends}` : ''}
+                    {!a.slot_time && a.preferred_time ? ` · ${t(`doctor.window.${a.preferred_time}`)}` : ''}
+                    {` · ${t(`doctor.mode.${a.mode}`)}`}
                   </Text>
                   {a.note ? <Text style={styles.fine}>{a.note}</Text> : null}
                   {a.response ? (
@@ -516,6 +708,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   inputTall: { minHeight: 104, textAlignVertical: 'top' },
+  inputMid: { minHeight: 76, textAlignVertical: 'top' },
   fine: { fontSize: 13, lineHeight: 19, color: colors.textDim },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
@@ -529,21 +722,50 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ghostBg,
   },
   chipOn: { backgroundColor: colors.primary100, borderColor: colors.primary },
+  /** A closed day, or a time somebody already holds: shown, not hidden. */
+  chipOff: { opacity: 0.45 },
   chipText: { fontSize: 15, color: colors.textSoft },
   chipTextOn: { color: colors.primary, fontWeight: '700' },
+  chipTag: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4, color: colors.textDim, marginTop: 1 },
+  slotsSpinner: { alignSelf: 'flex-start', marginTop: 6 },
 
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   who: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.text },
   msgBody: { fontSize: 16, lineHeight: 23, color: colors.text },
 
+  /* Conversation bubbles: the patient on the left, the doctor on the right. */
+  chat: { gap: spacing.sm, marginTop: 2 },
+  turn: { maxWidth: '86%' },
+  turnLeft: { alignSelf: 'flex-start', alignItems: 'flex-start' },
+  turnRight: { alignSelf: 'flex-end', alignItems: 'flex-end' },
+  bubble: {
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.buttonBg,
+    borderRadius: radius.md,
+    borderBottomLeftRadius: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+  },
+  bubbleDoctor: {
+    borderColor: 'rgba(52, 211, 153, 0.32)',
+    backgroundColor: colors.successBg,
+    borderBottomLeftRadius: radius.md,
+    borderBottomRightRadius: 4,
+  },
+  bubbleText: { fontSize: 16, lineHeight: 23, color: colors.text },
+  turnWho: { fontSize: 12, color: colors.textDim, marginTop: 3 },
+
   pill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
   pillWait: { backgroundColor: colors.warningBg },
   pillOk: { backgroundColor: colors.successBg },
   pillNo: { backgroundColor: colors.dangerBg },
+  pillDone: { backgroundColor: colors.ghostBg },
   pillText: { fontSize: 12, fontWeight: '800' },
   pillTextWait: { color: colors.warning },
   pillTextOk: { color: colors.success },
   pillTextNo: { color: colors.danger },
+  pillTextDone: { color: colors.textMuted },
 
   reply: {
     borderLeftWidth: 3,

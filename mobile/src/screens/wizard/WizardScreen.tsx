@@ -87,17 +87,6 @@ export const WizardScreen: React.FC = () => {
       { text: t('mobile.reset.confirm'), style: 'destructive', onPress: reset },
     ]);
 
-  // Keeps the active pill visible in the horizontal tray without the user
-  // having to hunt for it after a jump.
-  const trayRef = useRef<ScrollView | null>(null);
-  const trayX = useRef<Record<number, number>>({});
-  useEffect(() => {
-    const x = trayX.current[step];
-    if (x === undefined) return;
-    // Nudge it left of centre so the following steps stay hinted at.
-    trayRef.current?.scrollTo({ x: Math.max(0, x - 80), animated: true });
-  }, [step]);
-
   // A new step means new content, so start it at the top rather than wherever
   // the previous step happened to be scrolled to.
   const bodyRef = useRef<ScrollView | null>(null);
@@ -139,22 +128,18 @@ export const WizardScreen: React.FC = () => {
         </View>
         <Text style={styles.sub} numberOfLines={3}>{t(`step.${step}.sub`)}</Text>
 
-        <ScrollView
-          ref={trayRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabs}
-          keyboardShouldPersistTaps="handled"
-        >
+        {/* Every step on screen at once. This used to be one horizontal
+            scrolling row, which put the earlier steps off the left edge as
+            soon as you were past Results — you had to swipe sideways to see
+            where you were in your own wizard. Three rows of pills beats a row
+            you cannot see the ends of. */}
+        <View style={styles.tabs}>
           {steps.map((idx) => {
             const isOn = idx === step;
             return (
               <Pressable
                 key={idx}
                 onPress={() => setStep(idx)}
-                onLayout={(e) => {
-                  trayX.current[idx] = e.nativeEvent.layout.x;
-                }}
                 hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
                 style={[styles.tab, isOn && styles.tabOn]}
                 accessibilityRole="tab"
@@ -170,13 +155,13 @@ export const WizardScreen: React.FC = () => {
                 )}
                 <Text style={[styles.tabText, isOn && styles.tabTextOn]} numberOfLines={1}>
                   {/* step.N.short exists in every pack and was unused; the
-                      full labels are what forced the tray to wrap. */}
+                      full labels are what made the pills too wide. */}
                   {t(`step.${idx}.short`)}
                 </Text>
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
 
       <ScrollView
@@ -213,16 +198,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
 
-  /* Pill tab tray — one scrolling row. Deliberately NOT flexWrap: with nine
-     steps the wrapping version ran to three rows and cost ~120px before any
-     content rendered. */
-  tabs: { flexDirection: 'row', gap: 8, paddingVertical: 2, paddingRight: 12 },
+  /* Pill tab tray — wraps so all nine steps are visible without swiping. */
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 2 },
   tab: {
     // 48px tall rather than 36. Still short of theme `touchMin` (52) because
-    // the tray is a horizontal strip competing for height with the content, so
-    // the row carries hitSlop as well — see the Pressable.
+    // the tray competes for height with the content, so the row carries
+    // hitSlop as well — see the Pressable.
     minHeight: 48,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,

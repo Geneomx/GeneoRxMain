@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppointmentRequest;
+use App\Models\ConsultMessage;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
+use App\Support\ConsultChat;
 use App\Support\DoctorConsults;
 use App\Support\DoctorSchedule;
 use App\Support\SlotTakenException;
@@ -39,7 +41,9 @@ class DoctorController extends Controller
     /** GET /api/mobile/doctor-messages — this user's own threads, newest first. */
     public function messages(Request $request): JsonResponse
     {
-        $items = DoctorMessage::with('doctor')
+        // `turns` is eager-loaded because each thread's payload carries the
+        // whole conversation; without it this is fifty extra queries.
+        $items = DoctorMessage::with(['doctor', 'turns'])
             ->where('user_id', $request->user()->id)
             ->latest()
             ->limit(50)
@@ -62,6 +66,31 @@ class DoctorController extends Controller
         $message = DoctorConsults::leaveQuestion($request->user(), $data);
 
         return response()->json(['ok' => true, 'id' => $message->id], 201);
+    }
+
+    /**
+     * POST /api/mobile/doctor-messages/{message}/reply — a follow-up.
+     *
+     * A patient writing again puts the thread back in the doctor's queue, so a
+     * question asked after an answer is not lost.
+     */
+    public function replyToMessage(Request $request, DoctorMessage $message): JsonResponse
+    {
+        // Somebody else's conversation is not readable, let alone writable.
+        abort_unless($message->user_id === $request->user()->id, 403);
+
+        if ($message->status === 'closed') {
+            return response()->json([
+                'message' => 'This conversation is closed.',
+                'code' => 'closed',
+            ], 409);
+        }
+
+        $data = $request->validate(['body' => ['required', 'string', 'max:4000']]);
+
+        $turn = ConsultChat::post($message, ConsultMessage::PATIENT, $request->user(), $data['body']);
+
+        return response()->json(['ok' => true, 'id' => $turn->id], 201);
     }
 
     /** GET /api/mobile/appointments — this user's own requests. */

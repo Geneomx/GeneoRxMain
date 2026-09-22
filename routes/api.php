@@ -61,6 +61,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/mobile/doctor-messages', [DoctorController::class, 'messages']);
     Route::post('/mobile/doctor-messages', [DoctorController::class, 'storeMessage'])
         ->middleware('throttle:10,1');
+    Route::post('/mobile/doctor-messages/{message}/reply', [DoctorController::class, 'replyToMessage'])
+        ->middleware('throttle:20,1');
     Route::get('/mobile/appointments', [DoctorController::class, 'appointments']);
     Route::post('/mobile/appointments', [DoctorController::class, 'storeAppointment'])
         ->middleware('throttle:10,1');

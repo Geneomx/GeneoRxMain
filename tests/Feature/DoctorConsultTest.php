@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\AdminAuditLog;
 use App\Models\AppointmentRequest;
+use App\Models\ConsultMessage;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
 use App\Models\User;
+use App\Support\ConsultChat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -218,6 +220,89 @@ class DoctorConsultTest extends TestCase
 
         $this->postJson('/api/mobile/appointments', ['note' => 'next one'])->assertCreated();
         $this->assertDatabaseCount('appointment_requests', 2);
+    }
+
+    // -- Follow-ups from the app -------------------------------------------
+
+    public function test_a_patient_adds_a_follow_up_to_their_own_thread(): void
+    {
+        $patient = $this->patient();
+        $doctor = Doctor::factory()->create();
+        $thread = DoctorMessage::create([
+            'user_id' => $patient->id,
+            'doctor_id' => $doctor->id,
+            'body' => 'Should I take this with food?',
+            'status' => 'answered',
+            'reply_body' => 'Yes, with a meal.',
+            'replied_at' => now(),
+        ]);
+
+        Sanctum::actingAs($patient);
+        $this->postJson("/api/mobile/doctor-messages/{$thread->id}/reply", ['body' => 'And with coffee?'])
+            ->assertCreated();
+
+        // Writing again puts it back in the doctor's queue.
+        $this->assertSame('new', $thread->fresh()->status);
+        $this->assertSame('And with coffee?', $thread->fresh()->turns()->latest('id')->value('body'));
+    }
+
+    public function test_the_thread_payload_carries_the_whole_conversation(): void
+    {
+        $patient = $this->patient();
+        $doctor = Doctor::factory()->create(['name' => 'Dr Thread']);
+        $thread = DoctorMessage::create([
+            'user_id' => $patient->id,
+            'doctor_id' => $doctor->id,
+            'body' => 'opening question',
+            'status' => 'new',
+        ]);
+        ConsultChat::post($thread, ConsultMessage::DOCTOR, null, 'the answer');
+
+        Sanctum::actingAs($patient);
+        $this->getJson('/api/mobile/doctor-messages')
+            ->assertOk()
+            ->assertJsonPath('messages.0.thread.0.from', 'patient')
+            ->assertJsonPath('messages.0.thread.0.body', 'opening question')
+            ->assertJsonPath('messages.0.thread.1.from', 'doctor')
+            ->assertJsonPath('messages.0.thread.1.body', 'the answer')
+            // Older builds read this single field; it stays the newest answer.
+            ->assertJsonPath('messages.0.reply', 'the answer');
+    }
+
+    public function test_a_patient_cannot_write_into_another_patients_thread(): void
+    {
+        $mine = $this->patient();
+        $theirs = $this->patient();
+        $thread = DoctorMessage::create(['user_id' => $theirs->id, 'body' => 'theirs', 'status' => 'new']);
+
+        Sanctum::actingAs($mine);
+        $this->postJson("/api/mobile/doctor-messages/{$thread->id}/reply", ['body' => 'let me in'])
+            ->assertForbidden();
+
+        $this->assertSame(0, $thread->turns()->count());
+    }
+
+    public function test_a_closed_conversation_refuses_a_follow_up(): void
+    {
+        $patient = $this->patient();
+        $thread = DoctorMessage::create(['user_id' => $patient->id, 'body' => 'q', 'status' => 'closed']);
+
+        Sanctum::actingAs($patient);
+        $this->postJson("/api/mobile/doctor-messages/{$thread->id}/reply", ['body' => 'one more'])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'closed');
+
+        $this->assertSame(0, $thread->turns()->count());
+    }
+
+    public function test_an_empty_follow_up_is_rejected(): void
+    {
+        $patient = $this->patient();
+        $thread = DoctorMessage::create(['user_id' => $patient->id, 'body' => 'q', 'status' => 'new']);
+
+        Sanctum::actingAs($patient);
+        $this->postJson("/api/mobile/doctor-messages/{$thread->id}/reply", ['body' => ''])
+            ->assertStatus(422)->assertJsonValidationErrors('body');
     }
 
     // ── Admin: registration ────────────────────────────────────────────────
