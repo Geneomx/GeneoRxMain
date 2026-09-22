@@ -57,6 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Signed-in only, unlike feedback: a question to a named clinician needs an
     // account to reply to.
     Route::get('/mobile/doctors', [DoctorController::class, 'index']);
+    Route::get('/mobile/doctors/{doctor}/slots', [DoctorController::class, 'slots']);
     Route::get('/mobile/doctor-messages', [DoctorController::class, 'messages']);
     Route::post('/mobile/doctor-messages', [DoctorController::class, 'storeMessage'])
         ->middleware('throttle:10,1');

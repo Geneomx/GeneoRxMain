@@ -6,7 +6,10 @@ use App\Models\AppointmentRequest;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
 use App\Support\DoctorConsults;
+use App\Support\DoctorSchedule;
+use App\Support\SlotTakenException;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -23,9 +26,6 @@ use Illuminate\Http\Request;
  */
 class DoctorPortalController extends Controller
 {
-    /** Quick date choices, in days from today. Mirrors the mobile chips. */
-    private const QUICK_DAYS = [1, 3, 7, 14];
-
     public function index(Request $request): View
     {
         $guest = (bool) session('is_web_guest');
@@ -68,8 +68,28 @@ class DoctorPortalController extends Controller
             'appointments' => $appointments,
             'openRequest' => $appointments->first(fn (array $a) => $a['status'] === 'requested'),
             'tab' => $request->query('tab') === 'appointments' ? 'appointments' : 'ask',
-            'quickDates' => array_map(fn (int $n) => now()->addDays($n)->toDateString(), self::QUICK_DAYS),
+            // The day picker: two weeks from today at the clinic. Which of them
+            // a given doctor works is decided in the browser from the directory.
+            'days' => DoctorSchedule::upcomingDays(14),
         ]);
+    }
+
+    /** GET /doctor/slots?doctor=ID&date=YYYY-MM-DD — same shape as the app's endpoint. */
+    public function slots(Request $request): JsonResponse
+    {
+        abort_if(session('is_web_guest'), 403);
+
+        $data = $request->validate([
+            'doctor' => ['required', 'integer'],
+            'date' => ['required', 'date_format:Y-m-d'],
+        ]);
+        $doctor = Doctor::active()->findOrFail($data['doctor']);
+
+        if (DoctorConsults::dayProblem($data['date'])) {
+            return response()->json(['message' => DoctorConsults::SLOT_UNAVAILABLE], 422);
+        }
+
+        return response()->json(DoctorSchedule::slotsFor($doctor, $data['date']));
     }
 
     public function storeMessage(Request $request): RedirectResponse
@@ -100,8 +120,9 @@ class DoctorPortalController extends Controller
         }
 
         $data = $request->validate(DoctorConsults::appointmentRules());
+        $doctorId = DoctorConsults::doctorId($data);
 
-        if (! DoctorConsults::acceptsNew(DoctorConsults::doctorId($data))) {
+        if (! DoctorConsults::acceptsNew($doctorId)) {
             return $to->withInput()->with('doctor_error', 'inactive');
         }
 
@@ -109,7 +130,22 @@ class DoctorPortalController extends Controller
             return $to->with('doctor_error', 'already');
         }
 
-        DoctorConsults::requestAppointment($request->user(), $data);
+        // The web form always books a time; there is no plain-request path
+        // here, so a post without one is a form that was not finished.
+        if ($doctorId === null) {
+            return $to->withInput()->with('doctor_error', 'slot_needs_doctor');
+        }
+        $doctor = Doctor::findOrFail($doctorId);
+        $at = DoctorSchedule::parseSlot($data['slot_at'] ?? null);
+        if (! $at || DoctorConsults::slotProblem($doctor, $at)) {
+            return $to->withInput()->with('doctor_error', 'slot_unavailable');
+        }
+
+        try {
+            DoctorConsults::bookSlot($request->user(), $doctor, $at, $data);
+        } catch (SlotTakenException) {
+            return $to->withInput()->with('doctor_error', 'slot_taken');
+        }
 
         return $to->with('doctor_sent', 'appointment');
     }

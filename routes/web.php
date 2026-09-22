@@ -75,6 +75,7 @@ Route::middleware('auth')->group(function () {
     // signed in as the shared guest account, so it reaches these; the
     // controller shows it a sign-in card and refuses the writes.
     Route::get('/doctor', [DoctorPortalController::class, 'index'])->name('doctor');
+    Route::get('/doctor/slots', [DoctorPortalController::class, 'slots'])->name('doctor.slots');
     Route::post('/doctor/messages', [DoctorPortalController::class, 'storeMessage'])
         ->middleware('throttle:10,1')->name('doctor.message');
     Route::post('/doctor/appointments', [DoctorPortalController::class, 'storeAppointment'])

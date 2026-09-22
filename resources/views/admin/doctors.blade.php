@@ -57,6 +57,12 @@
       </label>
       <textarea name="bio" rows="2" maxlength="2000" style="width:100%;">{{ old('bio') }}</textarea>
     </div>
+    @include('admin.partials.doctor-availability', [
+      'days' => array_map('intval', (array) old('available_days', \App\Support\DoctorSchedule::DEFAULT_DAYS)),
+      'from' => old('available_from', \App\Support\DoctorSchedule::DEFAULT_FROM),
+      'to' => old('available_to', \App\Support\DoctorSchedule::DEFAULT_TO),
+      'slot' => old('slot_minutes', \App\Support\DoctorSchedule::DEFAULT_SLOT_MINUTES),
+    ])
     <div style="margin-top:14px;">
       <button type="submit" class="btn btn-primary">Add to directory</button>
     </div>
@@ -119,6 +125,10 @@
               @endif
             </div>
 
+            <div style="font-size:13px;color:var(--text-muted);margin-top:5px;">
+              Bookable {{ $doctor->availabilitySummary() }}
+            </div>
+
             @if ($doctor->bio)
               <div style="font-size:13px;color:var(--text);margin-top:8px;max-width:70ch;">{{ $doctor->bio }}</div>
             @endif
@@ -154,6 +164,12 @@
             </div>
             <textarea name="bio" rows="2" maxlength="2000" placeholder="Bio"
                       style="width:100%;margin-top:12px;">{{ $doctor->bio }}</textarea>
+            @include('admin.partials.doctor-availability', [
+              'days' => $doctor->availableDays(),
+              'from' => $doctor->available_from ?? \App\Support\DoctorSchedule::DEFAULT_FROM,
+              'to' => $doctor->available_to ?? \App\Support\DoctorSchedule::DEFAULT_TO,
+              'slot' => $doctor->slot_minutes ?: \App\Support\DoctorSchedule::DEFAULT_SLOT_MINUTES,
+            ])
             <button type="submit" class="btn btn-primary" style="margin-top:12px;">Save changes</button>
           </form>
         </details>

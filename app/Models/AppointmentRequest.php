@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\DoctorSchedule;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +30,8 @@ class AppointmentRequest extends Model
         'doctor_id',
         'preferred_date',
         'preferred_time',
+        'slot_at',
+        'slot_minutes',
         'note',
         'contact_mobile',
         'status',
@@ -39,6 +43,8 @@ class AppointmentRequest extends Model
     {
         return [
             'preferred_date' => 'date',
+            'slot_at' => 'datetime',
+            'slot_minutes' => 'integer',
             'responded_at' => 'datetime',
         ];
     }
@@ -58,14 +64,32 @@ class AppointmentRequest extends Model
         return $this->status === 'requested';
     }
 
+    /** Clinic-local start of the booked slot; null for a plain request. */
+    public function slotStart(): ?CarbonImmutable
+    {
+        return $this->slot_at?->toImmutable()->setTimezone(DoctorSchedule::timezone());
+    }
+
+    /** Clinic-local end of the booked slot; null for a plain request. */
+    public function slotEnd(): ?CarbonImmutable
+    {
+        return $this->slotStart()?->addMinutes((int) ($this->slot_minutes ?: 0));
+    }
+
     public function toPatientArray(): array
     {
+        $start = $this->slotStart();
+
         return [
             'id' => $this->id,
             'doctor' => $this->doctor?->name,
             'doctor_specialty' => $this->doctor?->specialty,
             'preferred_date' => $this->preferred_date?->toDateString(),
             'preferred_time' => $this->preferred_time,
+            // A booked slot, clinic wall-clock. Null on a plain request.
+            'slot_at' => $start?->toIso8601String(),
+            'slot_time' => $start?->format('H:i'),
+            'slot_ends' => $this->slotEnd()?->format('H:i'),
             'note' => $this->note,
             'status' => $this->status,
             // The admin note is shown to the patient: it is where "Tuesday at 3

@@ -7,6 +7,8 @@ use App\Models\AppointmentRequest;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
 use App\Support\DoctorConsults;
+use App\Support\DoctorSchedule;
+use App\Support\SlotTakenException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -76,17 +78,60 @@ class DoctorController extends Controller
         return response()->json(['appointments' => $items]);
     }
 
-    /** POST /api/mobile/appointments — ask for an appointment. Not a booking. */
+    /**
+     * GET /api/mobile/doctors/{doctor}/slots?date=YYYY-MM-DD — the doctor's
+     * times for one day, with the held and past ones marked.
+     */
+    public function slots(Request $request, Doctor $doctor): JsonResponse
+    {
+        abort_unless($doctor->is_active, 404);
+
+        $data = $request->validate(['date' => ['required', 'date_format:Y-m-d']]);
+
+        if (DoctorConsults::dayProblem($data['date'])) {
+            return response()->json(['message' => DoctorConsults::SLOT_UNAVAILABLE], 422);
+        }
+
+        return response()->json(DoctorSchedule::slotsFor($doctor, $data['date']));
+    }
+
+    /**
+     * POST /api/mobile/appointments — book a slot on the doctor's grid.
+     *
+     * A client that sends `slot_at` holds that time (or is told it has gone).
+     * Older app builds send only a day and a time of day; that stays a plain
+     * request the clinic answers by hand.
+     */
     public function storeAppointment(Request $request): JsonResponse
     {
         $data = $request->validate(DoctorConsults::appointmentRules());
+        $doctorId = DoctorConsults::doctorId($data);
 
-        if (! DoctorConsults::acceptsNew(DoctorConsults::doctorId($data))) {
+        if (! DoctorConsults::acceptsNew($doctorId)) {
             return response()->json(['message' => DoctorConsults::INACTIVE_APPOINTMENT], 422);
         }
 
         if (DoctorConsults::hasOpenRequest($request->user())) {
-            return response()->json(['message' => DoctorConsults::OPEN_REQUEST], 409);
+            return response()->json(['message' => DoctorConsults::OPEN_REQUEST, 'code' => 'open_request'], 409);
+        }
+
+        if (filled($data['slot_at'] ?? null)) {
+            if ($doctorId === null) {
+                return response()->json(['message' => DoctorConsults::SLOT_NEEDS_DOCTOR], 422);
+            }
+            $doctor = Doctor::findOrFail($doctorId);
+            $at = DoctorSchedule::parseSlot($data['slot_at']);
+            if (! $at || DoctorConsults::slotProblem($doctor, $at)) {
+                return response()->json(['message' => DoctorConsults::SLOT_UNAVAILABLE], 422);
+            }
+
+            try {
+                $appointment = DoctorConsults::bookSlot($request->user(), $doctor, $at, $data);
+            } catch (SlotTakenException $e) {
+                return response()->json(['message' => $e->getMessage(), 'code' => 'slot_taken'], 409);
+            }
+
+            return response()->json(['ok' => true, 'id' => $appointment->id], 201);
         }
 
         $appointment = DoctorConsults::requestAppointment($request->user(), $data);

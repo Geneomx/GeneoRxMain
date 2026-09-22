@@ -23,6 +23,10 @@ class DoctorFactory extends Factory
             'email' => $this->faker->unique()->safeEmail(),
             'bio' => $this->faker->sentence(),
             'is_active' => true,
+            'available_days' => '1,2,3,4,5',
+            'available_from' => '09:00',
+            'available_to' => '17:00',
+            'slot_minutes' => 30,
         ];
     }
 

@@ -6,6 +6,7 @@ use App\Models\AdminAuditLog;
 use App\Models\AppointmentRequest;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
+use App\Support\DoctorSchedule;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -50,17 +51,55 @@ class AdminDoctorController extends Controller
         return view('admin.doctors', compact('doctors', 'counts'));
     }
 
-    public function store(Request $request): RedirectResponse
+    /**
+     * The registration form's rules. Availability is optional on the wire and
+     * defaults to Mon–Fri, 09:00–17:00, 30 minutes per patient, so a doctor is
+     * bookable from the moment they are listed.
+     *
+     * @return array<string, array<int, string>>
+     */
+    private static function rules(): array
     {
-        $this->requireWrite();
-
-        $data = $request->validate([
+        return [
             'name' => ['required', 'string', 'max:160'],
             'specialty' => ['nullable', 'string', 'max:120'],
             'mobile' => ['nullable', 'string', 'max:40'],
             'email' => ['nullable', 'email', 'max:255'],
             'bio' => ['nullable', 'string', 'max:2000'],
-        ]);
+            'available_days' => ['nullable', 'array', 'min:1'],
+            'available_days.*' => ['integer', 'between:1,7'],
+            'available_from' => ['nullable', 'date_format:H:i'],
+            'available_to' => ['nullable', 'date_format:H:i', 'after:available_from'],
+            'slot_minutes' => ['nullable', 'integer', 'between:5,180'],
+        ];
+    }
+
+    /**
+     * Availability as it is stored: days as "1,2,3", and the defaults wherever
+     * the form sent nothing.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private static function withAvailability(array $data): array
+    {
+        $days = array_map('intval', (array) ($data['available_days'] ?? DoctorSchedule::DEFAULT_DAYS));
+        $days = array_values(array_unique($days));
+        sort($days);
+
+        $data['available_days'] = implode(',', $days);
+        $data['available_from'] = $data['available_from'] ?? DoctorSchedule::DEFAULT_FROM;
+        $data['available_to'] = $data['available_to'] ?? DoctorSchedule::DEFAULT_TO;
+        $data['slot_minutes'] = (int) ($data['slot_minutes'] ?? DoctorSchedule::DEFAULT_SLOT_MINUTES);
+
+        return $data;
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $this->requireWrite();
+
+        $data = self::withAvailability($request->validate(self::rules()));
 
         $doctor = Doctor::create($data + [
             'is_active' => true,
@@ -81,13 +120,7 @@ class AdminDoctorController extends Controller
     {
         $this->requireWrite();
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:160'],
-            'specialty' => ['nullable', 'string', 'max:120'],
-            'mobile' => ['nullable', 'string', 'max:40'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'bio' => ['nullable', 'string', 'max:2000'],
-        ]);
+        $data = self::withAvailability($request->validate(self::rules()));
 
         $doctor->update($data);
 

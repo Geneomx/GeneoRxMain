@@ -6,7 +6,9 @@ use App\Models\AppointmentRequest;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
 use App\Models\User;
+use App\Support\DoctorSchedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
@@ -175,15 +177,17 @@ class DoctorPortalTest extends TestCase
             ->assertSee('Reply from Dr Reply');
     }
 
-    public function test_a_patient_can_request_an_appointment_from_the_web(): void
+    public function test_a_patient_can_book_an_appointment_from_the_web(): void
     {
         $patient = $this->patient();
-        $date = now()->addDays(3)->toDateString();
+        $doctor = Doctor::factory()->create(); // Mon–Fri, 09:00–17:00, 30 min
+        // Next Tuesday at the clinic, 10:00 — always ahead of the real clock.
+        $slot = Carbon::now(DoctorSchedule::timezone())->next(Carbon::TUESDAY)->setTime(10, 0);
 
         $this->actingAs($patient)
             ->post('/doctor/appointments', [
-                'preferred_date' => $date,
-                'preferred_time' => 'morning',
+                'doctor_id' => $doctor->id,
+                'slot_at' => $slot->toIso8601String(),
                 'note' => 'Mornings are easier for me.',
             ])
             ->assertRedirect('/doctor?tab=appointments')
@@ -191,10 +195,12 @@ class DoctorPortalTest extends TestCase
 
         $this->assertDatabaseHas('appointment_requests', [
             'user_id' => $patient->id,
+            'doctor_id' => $doctor->id,
             'preferred_time' => 'morning',
             'note' => 'Mornings are easier for me.',
             'status' => 'requested',
         ]);
+        $this->assertSame('10:00', AppointmentRequest::sole()->slotStart()->format('H:i'));
     }
 
     public function test_a_date_in_the_past_is_rejected_on_the_web(): void

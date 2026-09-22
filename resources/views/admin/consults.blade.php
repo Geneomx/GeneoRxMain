@@ -143,8 +143,8 @@
 <div class="admin-card">
   <div class="admin-card-hd">
     <div>
-      <h2>Appointment requests</h2>
-      <p>{{ $appointments->total() }} total &mdash; these are requests, not bookings</p>
+      <h2>Appointments</h2>
+      <p>{{ $appointments->total() }} total &mdash; a booked time is held until you confirm or decline it; declining frees it for someone else</p>
     </div>
   </div>
 
@@ -176,8 +176,12 @@
 
         <div style="font-size:14px;margin-top:9px;">
           <strong>
-            {{ $a->preferred_date ? $a->preferred_date->format('D j M Y') : 'No date given' }}
-            @if ($a->preferred_time) &middot; {{ ucfirst($a->preferred_time) }} @endif
+            @if ($a->slotStart())
+              {{ $a->slotStart()->format('D j M Y') }} &middot; {{ $a->slotStart()->format('H:i') }}&ndash;{{ $a->slotEnd()->format('H:i') }}
+            @else
+              {{ $a->preferred_date ? $a->preferred_date->format('D j M Y') : 'No date given' }}
+              @if ($a->preferred_time) &middot; {{ ucfirst($a->preferred_time) }} @endif
+            @endif
           </strong>
           <span style="color:var(--text-muted);">
             &middot; {{ $a->doctor?->name ?? 'any doctor' }}

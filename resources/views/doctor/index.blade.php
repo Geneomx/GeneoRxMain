@@ -35,6 +35,9 @@
   .docChip input:checked + span{background:rgba(40,225,255,.18);border-color:rgba(40,225,255,.45);font-weight:900}
   .docChip input:focus-visible + span{outline:2px solid var(--cyan);outline-offset:2px}
   .docChip small{margin-left:6px;color:var(--muted);font-size:13px;font-weight:400}
+  .docChip input:disabled + span{opacity:.5;cursor:not-allowed}
+  .docChipNote{font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--muted2)}
+  .docChipNote[hidden]{display:none}
   .docRowTop{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .docWho{font-weight:700;font-size:15px}
   .docBody{margin-top:8px;font-size:15px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -110,6 +113,10 @@
             <strong data-i18n="doctor.failed_title">Could not send</strong><br>
             @if(session('doctor_error') === 'already')
               <span data-i18n="doctor.appt_already">You already have a request waiting for a reply.</span>
+            @elseif(session('doctor_error') === 'slot_taken')
+              <span data-i18n="doctor.appt_slot_taken">That time was just taken. Please pick another.</span>
+            @elseif(in_array(session('doctor_error'), ['slot_unavailable', 'slot_needs_doctor'], true))
+              <span data-i18n="doctor.appt_incomplete">Please choose a doctor, a day and a free time.</span>
             @elseif(session('doctor_error') === 'guest')
               <span data-i18n="doctor.guest_body">You need an account so a doctor can reply to you. Create one or sign in, and your questions will be kept here.</span>
             @else
@@ -196,33 +203,43 @@
                 <div class="docFine" data-i18n="doctor.appt_open_body">We will come back to you about it. You can send another once this one is settled.</div>
               </div>
             @else
-              <form method="POST" action="{{ route('doctor.appointment') }}" class="docCard docForm">
+              {{-- Doctor → day → the doctor's own times for that day. The day
+                   chips are all rendered; the browser greys out the ones the
+                   chosen doctor does not work, then fetches the slots. --}}
+              <form method="POST" action="{{ route('doctor.appointment') }}" class="docCard docForm" id="apptForm" data-slots-url="{{ route('doctor.slots') }}">
                 @csrf
                 <input type="hidden" name="tab" value="appointments">
+                <input type="hidden" name="slot_at" id="apptSlotAt" value="">
                 <h3 data-i18n="doctor.appt_new">Ask for an appointment</h3>
-                <div class="docFine" data-i18n="doctor.appt_not_booking">This is a request, not a booking. Someone will confirm a time with you.</div>
+                <div class="docFine" data-i18n="doctor.appt_not_booking">Pick a free time. It is held for you until the clinic confirms it.</div>
 
-                <label data-i18n="doctor.who">Who would you like to ask?</label>
-                @include('doctor.who', ['doctors' => $doctors])
+                <label data-i18n="doctor.appt_pick_doctor">Who would you like to see?</label>
+                @if($doctors->isEmpty())
+                  <div class="docFine" data-i18n="doctor.appt_no_doctors">No doctors are taking bookings yet.</div>
+                @else
+                  <div class="docChips" role="radiogroup">
+                    @foreach($doctors as $d)
+                      <label class="docChip">
+                        <input type="radio" name="doctor_id" value="{{ $d['id'] }}" data-days="{{ implode(',', $d['available_days']) }}" @checked((string) old('doctor_id') === (string) $d['id'])>
+                        <span>{{ $d['name'] }}@if(!empty($d['specialty']))<small>{{ $d['specialty'] }}</small>@endif</span>
+                      </label>
+                    @endforeach
+                  </div>
+                @endif
 
-                <label data-i18n="doctor.appt_when">Which day suits you?</label>
-                <div class="docChips" role="radiogroup">
-                  @foreach($quickDates as $iso)
+                <label data-i18n="doctor.appt_pick_day">Which day?</label>
+                <div class="docChips" role="radiogroup" id="apptDays">
+                  @foreach($days as $day)
                     <label class="docChip">
-                      <input type="radio" name="preferred_date" value="{{ $iso }}" @checked(old('preferred_date') === $iso)>
-                      <span data-date="{{ $iso }}">{{ \Carbon\Carbon::parse($iso)->format('D j M') }}</span>
+                      <input type="radio" name="day" value="{{ $day['date'] }}" data-dow="{{ $day['dow'] }}">
+                      <span><span data-date="{{ $day['date'] }}">{{ \Carbon\Carbon::parse($day['date'])->format('D j M') }}</span><small class="docChipNote" data-i18n="doctor.appt_closed" hidden>Closed</small></span>
                     </label>
                   @endforeach
                 </div>
 
-                <label data-i18n="doctor.appt_time">What time of day?</label>
-                <div class="docChips" role="radiogroup">
-                  @foreach(\App\Models\AppointmentRequest::TIME_WINDOWS as $w)
-                    <label class="docChip">
-                      <input type="radio" name="preferred_time" value="{{ $w }}" @checked(old('preferred_time') === $w)>
-                      <span data-i18n="doctor.window.{{ $w }}">{{ ucfirst($w) }}</span>
-                    </label>
-                  @endforeach
+                <label data-i18n="doctor.appt_pick_time">Which time?</label>
+                <div class="docChips" role="radiogroup" id="apptSlots">
+                  <div class="docFine" data-i18n="doctor.appt_choose_first">Choose a doctor and a day to see the times.</div>
                 </div>
 
                 <label for="docNote" data-i18n="doctor.appt_note">Anything they should know?</label>
@@ -232,7 +249,7 @@
                 <input id="docMobile2" type="tel" name="contact_mobile" maxlength="40" value="{{ old('contact_mobile') }}" data-i18n-placeholder="doctor.mobile_hint" placeholder="Optional">
 
                 <div class="btns">
-                  <button type="submit" class="primary" data-i18n="doctor.appt_send">Send request</button>
+                  <button type="submit" class="primary" id="apptSubmit" disabled data-i18n="doctor.appt_book">Book this time</button>
                 </div>
               </form>
             @endif
@@ -252,7 +269,9 @@
                     @else
                       <span data-i18n="doctor.appt_no_date">No day chosen</span>
                     @endif
-                    @if($a['preferred_time'])
+                    @if($a['slot_time'])
+                      · {{ $a['slot_time'] }}–{{ $a['slot_ends'] }}
+                    @elseif($a['preferred_time'])
                       · <span data-i18n="doctor.window.{{ $a['preferred_time'] }}">{{ ucfirst($a['preferred_time']) }}</span>
                     @endif
                   </div>
@@ -293,17 +312,92 @@
     });
   });
 
-  /* A day or time chip that is already chosen unchooses on a second click, so
-     "no preference" stays possible — the mobile chips toggle the same way.
-     The label's click runs before the browser activates its input, so
-     preventing it here is what stops the re-check. */
-  document.querySelectorAll('.docChip').forEach(function(label){
-    var input = label.querySelector('input[type=radio]');
-    if (!input || input.name === 'doctor_id') return;
-    label.addEventListener('click', function(e){
-      if (input.checked) { e.preventDefault(); input.checked = false; }
-    });
-  });
+  /* Booking: doctor → day → that doctor's times for the day. Days the chosen
+     doctor does not work are greyed with "Closed" rather than hidden; a time
+     somebody already holds stays visible, disabled, marked "Booked". */
+  var form = document.getElementById('apptForm');
+  if (form) {
+    var slotsUrl = form.getAttribute('data-slots-url');
+    var slotAtInput = document.getElementById('apptSlotAt');
+    var slotsBox = document.getElementById('apptSlots');
+    var submit = document.getElementById('apptSubmit');
+    /* The site translator is a deferred script, so it does not exist yet when
+       this runs. English defaults stand in until it does — a raw key must
+       never reach the screen — and retranslate() fixes the labels up once the
+       selector announces a language (it fires that on init too). */
+    var FALLBACK = {
+      'doctor.appt_booked': 'Booked',
+      'doctor.appt_choose_first': 'Choose a doctor and a day to see the times.',
+      'doctor.appt_loading_times': 'Loading times…',
+      'doctor.appt_times_failed': 'Could not load the times. Please try again.',
+      'doctor.appt_no_times': 'No free times on this day. Please try another day.'
+    };
+    var tr = function(key){
+      var f = window.geneorxTranslate;
+      var s = typeof f === 'function' ? f(key, document.documentElement.lang || 'en') : null;
+      return (s && s !== key) ? s : (FALLBACK[key] || key);
+    };
+    function retranslate(){
+      slotsBox.querySelectorAll('[data-i18n]').forEach(function(el){
+        el.textContent = tr(el.getAttribute('data-i18n'));
+      });
+    }
+    window.addEventListener('geneorx:languagechange', retranslate);
+    var chosenDoctor = function(){ return form.querySelector('input[name=doctor_id]:checked'); };
+    var chosenDay = function(){ return form.querySelector('input[name=day]:checked'); };
+
+    function refreshDays(){
+      var doc = chosenDoctor();
+      var open = doc ? doc.getAttribute('data-days').split(',') : null;
+      form.querySelectorAll('input[name=day]').forEach(function(inp){
+        var closed = !!open && open.indexOf(inp.getAttribute('data-dow')) === -1;
+        inp.disabled = closed;
+        var note = inp.parentNode.querySelector('.docChipNote');
+        if (note) note.hidden = !closed;
+        if (closed && inp.checked) inp.checked = false;
+      });
+    }
+    function setSlot(at){ slotAtInput.value = at || ''; submit.disabled = !at; }
+    function showText(key){
+      slotsBox.innerHTML = '';
+      var d = document.createElement('div');
+      d.className = 'docFine'; d.setAttribute('data-i18n', key); d.textContent = tr(key);
+      slotsBox.appendChild(d);
+    }
+    function loadSlots(){
+      setSlot('');
+      var doc = chosenDoctor(), day = chosenDay();
+      if (!doc || !day) { showText('doctor.appt_choose_first'); return; }
+      showText('doctor.appt_loading_times');
+      var url = slotsUrl + '?doctor=' + encodeURIComponent(doc.value) + '&date=' + encodeURIComponent(day.value);
+      fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+        .then(function(r){ if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then(function(data){
+          // Past slots are not worth a disabled chip; booked ones are.
+          var bookable = (data.slots || []).filter(function(s){ return s.reason !== 'past'; });
+          if (!data.open || !bookable.length) { showText('doctor.appt_no_times'); return; }
+          slotsBox.innerHTML = '';
+          bookable.forEach(function(s){
+            var label = document.createElement('label'); label.className = 'docChip';
+            var input = document.createElement('input');
+            input.type = 'radio'; input.name = 'slot'; input.value = s.at; input.disabled = !s.available;
+            var span = document.createElement('span'); span.textContent = s.time + '–' + s.ends;
+            if (!s.available) {
+              var n = document.createElement('small');
+              n.className = 'docChipNote'; n.setAttribute('data-i18n', 'doctor.appt_booked'); n.textContent = tr('doctor.appt_booked');
+              span.appendChild(n);
+            }
+            input.addEventListener('change', function(){ if (input.checked) setSlot(s.at); });
+            label.appendChild(input); label.appendChild(span); slotsBox.appendChild(label);
+          });
+        })
+        .catch(function(){ showText('doctor.appt_times_failed'); });
+    }
+    form.querySelectorAll('input[name=doctor_id]').forEach(function(i){ i.addEventListener('change', function(){ refreshDays(); loadSlots(); }); });
+    form.querySelectorAll('input[name=day]').forEach(function(i){ i.addEventListener('change', loadSlots); });
+    refreshDays();
+    loadSlots();
+  }
 
   /* Dates in the visitor's own locale, like the mobile screen. */
   document.querySelectorAll('[data-date]').forEach(function(el){

@@ -6,6 +6,7 @@ use App\Models\AppointmentRequest;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 
 /**
  * The patient side of the doctor directory, shared by the mobile API and the
@@ -19,6 +20,10 @@ final class DoctorConsults
     public const INACTIVE_APPOINTMENT = 'That doctor is not currently taking appointments.';
 
     public const OPEN_REQUEST = 'You already have a request waiting for a reply.';
+
+    public const SLOT_UNAVAILABLE = 'That time is not available.';
+
+    public const SLOT_NEEDS_DOCTOR = 'Choose a doctor to book a time.';
 
     /** @return array<string, array<int, string>> */
     public static function messageRules(): array
@@ -43,6 +48,9 @@ final class DoctorConsults
             'preferred_time' => ['nullable', 'in:'.implode(',', AppointmentRequest::TIME_WINDOWS)],
             'note' => ['nullable', 'string', 'max:2000'],
             'contact_mobile' => ['nullable', 'string', 'max:40'],
+            // A slot start as the slots endpoint returned it (ISO 8601). When
+            // present the request becomes a booking on the doctor's grid.
+            'slot_at' => ['nullable', 'string', 'max:40'],
         ];
     }
 
@@ -104,6 +112,52 @@ final class DoctorConsults
             'note' => $data['note'] ?? null,
             'contact_mobile' => $data['contact_mobile'] ?? null,
             'status' => 'requested',
+        ]);
+    }
+
+    /** Why a day cannot be booked: 'past' | 'too_far' | null. */
+    public static function dayProblem(string $date): ?string
+    {
+        $today = DoctorSchedule::now()->startOfDay();
+        try {
+            $day = CarbonImmutable::parse($date, DoctorSchedule::timezone())->startOfDay();
+        } catch (\Throwable) {
+            return 'past';
+        }
+        if ($day->lt($today)) {
+            return 'past';
+        }
+        if ($day->gt($today->addDays(DoctorSchedule::DAYS_AHEAD))) {
+            return 'too_far';
+        }
+
+        return null;
+    }
+
+    /** Why a slot cannot be booked: 'past' | 'too_far' | 'off_grid' | null. */
+    public static function slotProblem(Doctor $doctor, CarbonImmutable $at): ?string
+    {
+        if ($at->lte(DoctorSchedule::now())) {
+            return 'past';
+        }
+        if ($problem = self::dayProblem($at->toDateString())) {
+            return $problem;
+        }
+
+        return DoctorSchedule::isGridSlot($doctor, $at) ? null : 'off_grid';
+    }
+
+    /**
+     * Hold a slot for the patient. Throws SlotTakenException if somebody got
+     * there first.
+     *
+     * @param  array<string, mixed>  $data  Already validated against appointmentRules().
+     */
+    public static function bookSlot(User $user, Doctor $doctor, CarbonImmutable $at, array $data): AppointmentRequest
+    {
+        return DoctorSchedule::book($user, $doctor, $at, [
+            'note' => $data['note'] ?? null,
+            'contact_mobile' => $data['contact_mobile'] ?? null,
         ]);
     }
 }
