@@ -22,6 +22,8 @@ export interface Doctor {
   available_to: string | null;
   /** Length of one appointment. */
   slot_minutes: number;
+  /** Whether this patient has shared their health summary with this doctor. */
+  shared: boolean;
 }
 
 export type DoctorMessageStatus = 'new' | 'answered' | 'closed';
@@ -99,6 +101,19 @@ export async function fetchDoctors(): Promise<Doctor[]> {
 /** A doctor's times for one day (YYYY-MM-DD), with taken ones marked. */
 export async function fetchDoctorSlots(doctorId: number, date: string): Promise<DaySlots> {
   return apiRequest<DaySlots>(`/mobile/doctors/${doctorId}/slots?date=${encodeURIComponent(date)}`);
+}
+
+/**
+ * Share this patient's health summary with one named doctor, or take it back.
+ *
+ * Per doctor and revocable: telling the clinician you asked about your
+ * medications should not tell the whole directory.
+ */
+export function setDoctorShare(doctorId: number, shared: boolean): Promise<{ ok: boolean; shared: boolean }> {
+  return apiRequest('/mobile/doctor-shares', {
+    method: 'POST',
+    body: { doctor_id: doctorId, shared },
+  });
 }
 
 export async function fetchDoctorMessages(): Promise<DoctorMessage[]> {

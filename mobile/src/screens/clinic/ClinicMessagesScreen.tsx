@@ -19,9 +19,11 @@ import { colors, radius, spacing } from '@/theme';
 import {
   closeThread,
   fetchClinicThreads,
+  fetchPatientSummary,
   markThreadRead,
   replyAsDoctor,
   type ClinicThread,
+  type PatientSummary,
 } from '@/api/clinic';
 
 /**
@@ -42,6 +44,8 @@ export const ClinicMessagesScreen: React.FC = () => {
   const [failed, setFailed] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [summary, setSummary] = useState<PatientSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   const open = threads.find((x) => x.id === openId) ?? null;
 
@@ -65,6 +69,8 @@ export const ClinicMessagesScreen: React.FC = () => {
   const openThread = async (thread: ClinicThread) => {
     setOpenId(thread.id);
     setDraft('');
+    // A new conversation means a different patient's summary.
+    setSummary(null);
     if (thread.unread > 0) {
       // Opening it is what marks the patient's turns as seen.
       try {
@@ -88,6 +94,22 @@ export const ClinicMessagesScreen: React.FC = () => {
       await load();
     } finally {
       setSending(false);
+    }
+  };
+
+  /**
+   * Fetched only when the doctor asks for it, so a patient's medications are
+   * never carried around inside a list of conversations.
+   */
+  const loadSummary = async () => {
+    if (!open?.patient_id || summaryLoading) return;
+    setSummaryLoading(true);
+    try {
+      setSummary(await fetchPatientSummary(open.patient_id));
+    } catch {
+      Alert.alert(t('clinic.failed_title'), t('clinic.summary_failed'));
+    } finally {
+      setSummaryLoading(false);
     }
   };
 
@@ -157,6 +179,88 @@ export const ClinicMessagesScreen: React.FC = () => {
         ) : null}
 
         {/* ── One conversation ── */}
+        {/* Only offered when this patient has chosen to share it. */}
+        {!loading && open && open.summary_shared ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t('clinic.summary_title')}</Text>
+            {!summary ? (
+              <>
+                <Text style={styles.fine}>{t('clinic.summary_intro')}</Text>
+                <View style={{ marginTop: spacing.sm }}>
+                  <Button
+                    title={summaryLoading ? t('clinic.summary_loading') : t('clinic.summary_view')}
+                    variant="secondary"
+                    onPress={loadSummary}
+                    disabled={summaryLoading}
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.sumLine}>
+                  {t('clinic.summary_age')}: {summary.age ?? '—'} · {t('clinic.summary_gender')}:{' '}
+                  {summary.gender ?? '—'} · {t('clinic.summary_checkins')}: {summary.checkins_total}
+                </Text>
+
+                {summary.flags.length ? (
+                  <View style={styles.flags}>
+                    {summary.flags.map((f) => (
+                      <View key={f} style={styles.flag}>
+                        <Text style={styles.flagText}>{f}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                <Text style={styles.sumLine}>
+                  {t('clinic.summary_medicines')}:{' '}
+                  {summary.medications.length ? summary.medications.join(', ') : t('clinic.summary_none')}
+                </Text>
+                <Text style={styles.sumLine}>
+                  {t('clinic.summary_symptoms')}:{' '}
+                  {summary.symptoms.length ? summary.symptoms.join(', ') : t('clinic.summary_none')}
+                </Text>
+
+                {summary.latest_checkin ? (
+                  <>
+                    <Text style={styles.sumLine}>
+                      {t('clinic.summary_last_checkin')}: {summary.latest_checkin.date ?? '—'}
+                      {summary.latest_checkin.adherence !== null
+                        ? ` · ${t('clinic.summary_took', { percent: summary.latest_checkin.adherence })}`
+                        : ''}
+                    </Text>
+                    <View style={styles.ratings}>
+                      {Object.entries(summary.latest_checkin.ratings).map(([key, value]) => (
+                        <View key={key} style={styles.rating}>
+                          {/* A skipped rating shows a dash. Never a zero — a
+                              zero reads as "terrible", not "not answered". */}
+                          <Text style={styles.ratingText}>
+                            {key} {value === null ? '—' : `${value}/10`}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                    {summary.latest_checkin.side_effects.length ? (
+                      <Text style={styles.sumLine}>
+                        {t('clinic.summary_side_effects')}: {summary.latest_checkin.side_effects.join(', ')}
+                      </Text>
+                    ) : null}
+                    {summary.latest_checkin.notes ? (
+                      <Text style={styles.sumLine}>
+                        {t('clinic.summary_notes')}: {summary.latest_checkin.notes}
+                      </Text>
+                    ) : null}
+                  </>
+                ) : (
+                  <Text style={styles.sumLine}>{t('clinic.summary_no_checkin')}</Text>
+                )}
+
+                <Text style={styles.fine}>{t('clinic.summary_self_reported')}</Text>
+              </>
+            )}
+          </View>
+        ) : null}
+
         {!loading && open ? (
           <View style={styles.card}>
             <View style={styles.chat}>
@@ -271,6 +375,27 @@ const styles = StyleSheet.create({
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   who: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.text },
   preview: { fontSize: 15, lineHeight: 21, color: colors.textSoft },
+  cardTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
+  sumLine: { fontSize: 15, lineHeight: 22, color: colors.text },
+  flags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  flag: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.warningBg,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.32)',
+  },
+  flagText: { fontSize: 12, fontWeight: '800', color: colors.warning },
+  ratings: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  rating: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  ratingText: { fontSize: 13, color: colors.textSoft },
   fine: { fontSize: 13, lineHeight: 19, color: colors.textDim },
   closeLink: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
 

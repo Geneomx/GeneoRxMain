@@ -26,6 +26,7 @@ import {
   fetchDoctors,
   replyToThread,
   requestAppointment,
+  setDoctorShare,
   type AppointmentMode,
   type AppointmentRequest,
   type DaySlots,
@@ -96,6 +97,7 @@ export const DoctorScreen: React.FC = () => {
   // Follow-ups, one draft per conversation.
   const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [sharingWith, setSharingWith] = useState<number | null>(null);
 
   // Book an appointment. A booking needs a named doctor — a time belongs to
   // somebody's calendar — so this is separate from the question's "any doctor".
@@ -201,6 +203,20 @@ export const DoctorScreen: React.FC = () => {
       Alert.alert(t('doctor.failed_title'), closed ? t('doctor.chat_closed') : t('doctor.failed_body'));
     } finally {
       setReplyingTo(null);
+    }
+  };
+
+  /** Let one named doctor see the health summary, or take it back. */
+  const toggleShare = async (d: Doctor) => {
+    if (sharingWith !== null) return;
+    setSharingWith(d.id);
+    try {
+      const res = await setDoctorShare(d.id, !d.shared);
+      setDoctors((prev) => prev.map((x) => (x.id === d.id ? { ...x, shared: res.shared } : x)));
+    } catch {
+      Alert.alert(t('doctor.failed_title'), t('doctor.failed_body'));
+    } finally {
+      setSharingWith(null);
     }
   };
 
@@ -364,6 +380,37 @@ export const DoctorScreen: React.FC = () => {
                 />
               </View>
             </View>
+
+            {/* Sharing is per doctor and revocable. */}
+            {doctors.length ? (
+              <>
+                <Text style={styles.sectionTitle}>{t('doctor.share_title')}</Text>
+                <View style={styles.card}>
+                  <Text style={styles.fine}>{t('doctor.share_intro')}</Text>
+                  {doctors.map((d) => (
+                    <View key={d.id} style={styles.shareRow}>
+                      <View style={styles.shareMeta}>
+                        <Text style={styles.shareName}>{d.name}</Text>
+                        <Text style={[styles.shareState, d.shared && styles.shareStateOn]}>
+                          {d.shared ? t('doctor.share_on') : t('doctor.share_off')}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => toggleShare(d)}
+                        disabled={sharingWith !== null}
+                        style={[styles.chip, d.shared && styles.chipOn, sharingWith === d.id && styles.chipOff]}
+                        accessibilityRole="button"
+                      >
+                        <Text style={[styles.chipText, d.shared && styles.chipTextOn]}>
+                          {d.shared ? t('doctor.share_stop') : t('doctor.share_start')}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                  <Text style={styles.fine}>{t('doctor.share_note')}</Text>
+                </View>
+              </>
+            ) : null}
 
             <Text style={styles.sectionTitle}>{t('doctor.your_questions')}</Text>
             {messages.length === 0 ? (
@@ -727,6 +774,19 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 15, color: colors.textSoft },
   chipTextOn: { color: colors.primary, fontWeight: '700' },
   chipTag: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4, color: colors.textDim, marginTop: 1 },
+
+  shareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+  },
+  shareMeta: { flex: 1, minWidth: 0 },
+  shareName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  shareState: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3, color: colors.textDim, marginTop: 2 },
+  shareStateOn: { color: colors.success },
   slotsSpinner: { alignSelf: 'flex-start', marginTop: 6 },
 
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

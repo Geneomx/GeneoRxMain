@@ -77,6 +77,7 @@ Route::middleware('auth')->group(function () {
     // controller shows it a sign-in card and refuses the writes.
     Route::get('/doctor', [DoctorPortalController::class, 'index'])->name('doctor');
     Route::get('/doctor/slots', [DoctorPortalController::class, 'slots'])->name('doctor.slots');
+    Route::post('/doctor/share', [DoctorPortalController::class, 'setShare'])->name('doctor.share');
     Route::post('/doctor/messages', [DoctorPortalController::class, 'storeMessage'])
         ->middleware('throttle:10,1')->name('doctor.message');
     Route::post('/doctor/messages/{message}/reply', [DoctorPortalController::class, 'replyToThread'])

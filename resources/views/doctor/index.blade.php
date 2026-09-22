@@ -55,6 +55,14 @@
   .docReplyForm{margin-top:12px}
   .docReplyForm label{display:block;margin:0 0 6px;font-size:14px;font-weight:600;color:var(--muted)}
   .docReplyForm textarea{min-height:76px}
+  .docShareRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0;padding:10px 0;
+    border-bottom:1px solid rgba(255,255,255,.08)}
+  .docShareRow:last-of-type{border-bottom:0}
+  .docShareName{flex:1;min-width:0;font-size:15px;font-weight:600}
+  .docShareOn,.docShareOff{margin-left:8px;font-size:11.5px;font-weight:800;letter-spacing:.3px;
+    text-transform:uppercase;border-radius:999px;padding:2px 8px}
+  .docShareOn{color:var(--green);border:1px solid rgba(52,211,153,.35);background:rgba(52,211,153,.10)}
+  .docShareOff{color:var(--muted2);border:1px solid rgba(255,255,255,.12)}
   .docModeTag{margin-left:8px;font-size:11.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
     color:var(--cyan);border:1px solid rgba(40,225,255,.28);background:rgba(40,225,255,.10);
     border-radius:999px;padding:2px 8px;vertical-align:middle}
@@ -112,7 +120,15 @@
         {{-- The boundary, before anything can be sent. --}}
         <div class="docNotice" data-i18n="doctor.not_emergency">Not for emergencies. If something feels urgent, call your doctor or emergency services. A reply can take a few days.</div>
 
-        @if(session('doctor_sent') === 'question')
+        @if(session('doctor_sent') === 'shared')
+          <div class="docFlash" role="status">
+            <span data-i18n="doctor.share_started">Your health summary is now shared with that doctor.</span>
+          </div>
+        @elseif(session('doctor_sent') === 'unshared')
+          <div class="docFlash" role="status">
+            <span data-i18n="doctor.share_stopped">That doctor can no longer see your health summary.</span>
+          </div>
+        @elseif(session('doctor_sent') === 'question')
           <div class="docFlash" role="status">
             <strong data-i18n="doctor.sent_title">Question sent</strong><br>
             <span data-i18n="doctor.sent_body">A doctor will reply here. You will see the answer in this screen.</span>
@@ -182,6 +198,38 @@
                 <button type="submit" class="primary" data-i18n="doctor.send">Send question</button>
               </div>
             </form>
+
+            {{-- Sharing is per doctor and revocable: telling one clinician
+                 about your medications should not tell the whole directory. --}}
+            @if($doctors->isNotEmpty())
+              <div class="docSectionTitle" data-i18n="doctor.share_title">YOUR HEALTH SUMMARY</div>
+              <div class="docCard">
+                <div class="docFine" data-i18n="doctor.share_intro">Share your medicines, symptoms and latest check-in with a doctor so they can answer with the full picture. You can stop sharing at any time.</div>
+                @foreach($doctors as $d)
+                  <form method="POST" action="{{ route('doctor.share') }}" class="docShareRow">
+                    @csrf
+                    <input type="hidden" name="doctor_id" value="{{ $d['id'] }}">
+                    <input type="hidden" name="shared" value="{{ $d['shared'] ? 0 : 1 }}">
+                    <span class="docShareName">
+                      {{ $d['name'] }}
+                      @if($d['shared'])
+                        <small class="docShareOn" data-i18n="doctor.share_on">Shared</small>
+                      @else
+                        <small class="docShareOff" data-i18n="doctor.share_off">Not shared</small>
+                      @endif
+                    </span>
+                    <button type="submit" class="ghost mini">
+                      @if($d['shared'])
+                        <span data-i18n="doctor.share_stop">Stop sharing</span>
+                      @else
+                        <span data-i18n="doctor.share_start">Share</span>
+                      @endif
+                    </button>
+                  </form>
+                @endforeach
+                <div class="docFine" data-i18n="doctor.share_note">Only the doctor you choose can see it, and only while you share it.</div>
+              </div>
+            @endif
 
             <div class="docSectionTitle" data-i18n="doctor.your_questions">YOUR QUESTIONS</div>
             <div class="docList">

@@ -104,7 +104,9 @@ class AppointmentRequest extends Model
         return [
             'id' => $this->id,
             'patient' => $this->user?->name,
+            'patient_id' => $this->user_id,
             'contact_mobile' => $this->contact_mobile,
+            'summary_shared' => DoctorShare::allows($this->user_id, $this->doctor_id),
             'preferred_date' => $this->preferred_date?->toDateString(),
             'preferred_time' => $this->preferred_time,
             'mode' => $this->mode ?? 'visit',

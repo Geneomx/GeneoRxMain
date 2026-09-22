@@ -6,6 +6,7 @@ use App\Models\AppointmentRequest;
 use App\Models\ConsultMessage;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
+use App\Models\DoctorShare;
 use App\Support\ConsultChat;
 use App\Support\DoctorConsults;
 use App\Support\DoctorSchedule;
@@ -36,10 +37,16 @@ class DoctorPortalController extends Controller
         // toPublicArray() withholds the clinician's own mobile and email; a
         // server-rendered page can leak what a JSON endpoint withholds, so the
         // view only ever sees this shape.
+        $sharedWith = $guest ? [] : DoctorShare::where('user_id', $user->id)
+            ->whereNotNull('granted_at')
+            ->whereNull('revoked_at')
+            ->pluck('doctor_id')
+            ->all();
+
         $doctors = Doctor::active()
             ->orderBy('name')
             ->get()
-            ->map(fn (Doctor $d) => $d->toPublicArray())
+            ->map(fn (Doctor $d) => $d->toPublicArray() + ['shared' => in_array($d->id, $sharedWith, true)])
             ->values();
 
         $messages = collect();
@@ -118,6 +125,29 @@ class DoctorPortalController extends Controller
         ConsultChat::post($message, ConsultMessage::PATIENT, $request->user(), $data['body']);
 
         return $to->with('doctor_sent', 'question');
+    }
+
+    /** Share this patient's health summary with one doctor, or take it back. */
+    public function setShare(Request $request): RedirectResponse
+    {
+        $to = redirect()->route('doctor');
+
+        if (session('is_web_guest')) {
+            return $to->with('doctor_error', 'guest');
+        }
+
+        $data = $request->validate([
+            'doctor_id' => ['required', 'integer', 'exists:doctors,id'],
+            'shared' => ['required', 'boolean'],
+        ]);
+
+        if ($data['shared']) {
+            DoctorShare::grant($request->user()->id, (int) $data['doctor_id']);
+        } else {
+            DoctorShare::revoke($request->user()->id, (int) $data['doctor_id']);
+        }
+
+        return $to->with('doctor_sent', $data['shared'] ? 'shared' : 'unshared');
     }
 
     public function storeMessage(Request $request): RedirectResponse

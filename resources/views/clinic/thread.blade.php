@@ -14,6 +14,16 @@
   .turn--doctor .bubble{background:var(--teal-50);border-color:var(--teal-100);
     border-bottom-left-radius:14px;border-bottom-right-radius:5px}
   .turn-meta{font-size:11.5px;color:var(--text-dim);margin-top:5px}
+  .sum-grid{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:12px}
+  .sum-grid span{display:block;font-size:12px}
+  .sum-grid b{font-size:17px;font-weight:800}
+  .sum-flags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .sum-line{display:flex;gap:14px;padding:7px 0;border-top:1px solid var(--border-soft);font-size:14.5px}
+  .sum-line .muted{flex:0 0 120px}
+  .sum-ratings{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .sum-rating{font-size:13px;color:var(--text-muted);border:1px solid var(--border);
+    border-radius:999px;padding:5px 11px}
+  .sum-rating b{color:var(--text);margin-left:5px}
 @endsection
 
 @section('content')
@@ -32,6 +42,70 @@
     <a href="{{ route('clinic.messages') }}" class="btn btn-ghost btn-sm">All messages</a>
   </div>
 </div>
+
+@if ($summary)
+  {{-- Only here because this patient chose to share it, and only while they
+       still do. Everything in it is their own record, not a diagnosis. --}}
+  <div class="card">
+    <div class="card-hd">
+      <h2>Health summary</h2>
+      <p>Shared with you by {{ $summary['patient'] }} &mdash; self-reported, not a clinical record</p>
+    </div>
+    <div class="row">
+      <div class="sum-grid">
+        <div><span class="muted">Age</span><b>{{ $summary['age'] ?? '—' }}</b></div>
+        <div><span class="muted">Gender</span><b>{{ $summary['gender'] ?? '—' }}</b></div>
+        <div><span class="muted">Check-ins</span><b>{{ $summary['checkins_total'] }}</b></div>
+      </div>
+
+      @if (count($summary['flags']))
+        <div class="sum-flags">
+          @foreach ($summary['flags'] as $flag)
+            <span class="badge badge-warn">{{ $flag }}</span>
+          @endforeach
+        </div>
+      @endif
+
+      <div class="sum-line">
+        <span class="muted">Medicines</span>
+        <span>{{ count($summary['medications']) ? implode(', ', $summary['medications']) : 'None recorded' }}</span>
+      </div>
+      <div class="sum-line">
+        <span class="muted">Symptoms</span>
+        <span>{{ count($summary['symptoms']) ? implode(', ', $summary['symptoms']) : 'None recorded' }}</span>
+      </div>
+
+      @if ($summary['latest_checkin'])
+        @php $c = $summary['latest_checkin']; @endphp
+        <div class="sum-line">
+          <span class="muted">Last check-in</span>
+          <span>
+            {{ $c['date'] ?? '—' }}
+            @if ($c['adherence'] !== null) &middot; took {{ $c['adherence'] }}% of their medicine @endif
+          </span>
+        </div>
+        <div class="sum-ratings">
+          @foreach ($c['ratings'] as $key => $value)
+            <span class="sum-rating">
+              {{ ucfirst($key) }}
+              {{-- A skipped rating shows a dash. Never a zero: a zero reads as
+                   "terrible" rather than "not answered". --}}
+              <b>{{ $value === null ? '—' : $value.'/10' }}</b>
+            </span>
+          @endforeach
+        </div>
+        @if (count($c['side_effects']))
+          <div class="sum-line"><span class="muted">Side effects</span><span>{{ implode(', ', $c['side_effects']) }}</span></div>
+        @endif
+        @if ($c['notes'])
+          <div class="sum-line"><span class="muted">Their notes</span><span>{{ $c['notes'] }}</span></div>
+        @endif
+      @else
+        <div class="sum-line"><span class="muted">Last check-in</span><span>None yet</span></div>
+      @endif
+    </div>
+  </div>
+@endif
 
 <div class="card">
   <div class="chat">

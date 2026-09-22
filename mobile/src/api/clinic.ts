@@ -29,6 +29,8 @@ export type ClinicAppointmentStatus = 'requested' | 'confirmed' | 'declined' | '
 export interface ClinicAppointment {
   id: number;
   patient: string | null;
+  patient_id: number | null;
+  summary_shared: boolean;
   contact_mobile: string | null;
   preferred_date: string | null;
   preferred_time: string | null;
@@ -45,9 +47,32 @@ export interface ClinicAppointment {
   created_at: string | null;
 }
 
+/** What a patient chose to share. Their own record, not a clinical one. */
+export interface PatientSummary {
+  patient: string | null;
+  age: number | null;
+  gender: string | null;
+  flags: string[];
+  medications: string[];
+  symptoms: string[];
+  latest_checkin: {
+    date: string | null;
+    adherence: number | null;
+    /** A rating they skipped stays null — never zero. */
+    ratings: Record<string, number | null>;
+    side_effects: string[];
+    notes: string | null;
+  } | null;
+  checkins_total: number;
+  self_reported: boolean;
+}
+
 export interface ClinicThread {
   id: number;
   patient: string | null;
+  patient_id: number | null;
+  /** True when this patient has shared their summary with this doctor. */
+  summary_shared: boolean;
   contact_mobile: string | null;
   status: 'new' | 'answered' | 'closed';
   unread: number;
@@ -104,6 +129,15 @@ export function markThreadRead(id: number): Promise<{ ok: boolean; unread: numbe
 /** The server answers 409 if the conversation has since been closed. */
 export function replyAsDoctor(id: number, body: string): Promise<{ ok: boolean; thread: ClinicThread }> {
   return apiRequest(`/mobile/clinic/messages/${id}/reply`, { method: 'POST', body: { body } });
+}
+
+/**
+ * The patient's shared summary. Fetched only when asked for, so it is never
+ * carried around inside a list of conversations.
+ */
+export async function fetchPatientSummary(patientId: number): Promise<PatientSummary> {
+  const res = await apiRequest<{ summary: PatientSummary }>(`/mobile/clinic/patients/${patientId}/summary`);
+  return res.summary;
 }
 
 export function closeThread(id: number): Promise<{ ok: boolean }> {

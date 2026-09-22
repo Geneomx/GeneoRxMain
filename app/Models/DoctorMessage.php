@@ -87,7 +87,12 @@ class DoctorMessage extends Model
         return [
             'id' => $this->id,
             'patient' => $this->user?->name,
+            'patient_id' => $this->user_id,
             'contact_mobile' => $this->contact_mobile,
+            // Whether this patient has shared their health summary with the
+            // doctor this thread belongs to. The summary itself is a separate
+            // request, so it is never carried around in a list.
+            'summary_shared' => DoctorShare::allows($this->user_id, $this->doctor_id),
             'status' => $this->status,
             'unread' => (int) ($this->unread_count ?? ConsultChat::unreadFor($this, ConsultMessage::DOCTOR)),
             'latest' => $this->latestLine(),

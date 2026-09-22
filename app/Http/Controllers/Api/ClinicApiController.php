@@ -7,8 +7,11 @@ use App\Models\AppointmentRequest;
 use App\Models\ConsultMessage;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
+use App\Models\DoctorShare;
+use App\Models\User;
 use App\Support\ConsultAlerts;
 use App\Support\ConsultChat;
+use App\Support\PatientSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -154,6 +157,33 @@ class ClinicApiController extends Controller
         $message->update(['status' => 'closed']);
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * GET /api/mobile/clinic/patients/{user}/summary
+     *
+     * Only what that patient chose to share, and only while they still share
+     * it. Two gates: the patient must have granted this doctor access, and
+     * the patient must actually be one of this doctor's own.
+     */
+    public function patientSummary(Request $request, User $user): JsonResponse
+    {
+        $doctor = $this->doctor($request);
+
+        abort_unless($this->isMyPatient($doctor, $user), 403);
+
+        if (! DoctorShare::allows($user->id, $doctor->id)) {
+            return response()->json(['message' => 'This patient has not shared their profile.', 'code' => 'not_shared'], 403);
+        }
+
+        return response()->json(['summary' => PatientSummary::for($user)]);
+    }
+
+    /** Somebody who has written to, or booked with, this doctor. */
+    private function isMyPatient(Doctor $doctor, User $user): bool
+    {
+        return DoctorMessage::where('doctor_id', $doctor->id)->where('user_id', $user->id)->exists()
+            || AppointmentRequest::where('doctor_id', $doctor->id)->where('user_id', $user->id)->exists();
     }
 
     private function waitingCount(Doctor $doctor): int

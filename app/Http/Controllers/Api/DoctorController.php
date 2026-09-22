@@ -7,6 +7,7 @@ use App\Models\AppointmentRequest;
 use App\Models\ConsultMessage;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
+use App\Models\DoctorShare;
 use App\Support\ConsultChat;
 use App\Support\DoctorConsults;
 use App\Support\DoctorSchedule;
@@ -25,17 +26,51 @@ use Illuminate\Http\Request;
 class DoctorController extends Controller
 {
     /** GET /api/mobile/doctors — the active directory. */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $shared = DoctorShare::where('user_id', $request->user()->id)
+            ->whereNotNull('granted_at')
+            ->whereNull('revoked_at')
+            ->pluck('doctor_id')
+            ->all();
+
         // toPublicArray() withholds the clinician's own mobile and email. Those
         // are held so an admin can reach them, not published to every account.
         $doctors = Doctor::active()
             ->orderBy('name')
             ->get()
-            ->map(fn (Doctor $d) => $d->toPublicArray())
+            ->map(fn (Doctor $d) => $d->toPublicArray() + [
+                // Whether this patient has let this doctor see their summary.
+                'shared' => in_array($d->id, $shared, true),
+            ])
             ->values();
 
         return response()->json(['doctors' => $doctors]);
+    }
+
+    /**
+     * POST /api/mobile/doctor-shares — share the patient's own health summary
+     * with one named doctor, or take it back.
+     *
+     * Per doctor, never blanket: sharing with the clinician you asked does not
+     * hand your medications to the whole directory.
+     */
+    public function setShare(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'doctor_id' => ['required', 'integer', 'exists:doctors,id'],
+            'shared' => ['required', 'boolean'],
+        ]);
+
+        if ($data['shared']) {
+            abort_unless(Doctor::active()->whereKey($data['doctor_id'])->exists(), 422);
+            DoctorShare::grant($request->user()->id, (int) $data['doctor_id']);
+        } else {
+            // Revoking an inactive doctor must still work.
+            DoctorShare::revoke($request->user()->id, (int) $data['doctor_id']);
+        }
+
+        return response()->json(['ok' => true, 'shared' => (bool) $data['shared']]);
     }
 
     /** GET /api/mobile/doctor-messages — this user's own threads, newest first. */

@@ -6,9 +6,11 @@ use App\Models\AppointmentRequest;
 use App\Models\ConsultMessage;
 use App\Models\Doctor;
 use App\Models\DoctorMessage;
+use App\Models\DoctorShare;
 use App\Support\ConsultAlerts;
 use App\Support\ConsultChat;
 use App\Support\DoctorSchedule;
+use App\Support\PatientSummary;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -109,10 +111,17 @@ class ClinicController extends Controller
         // Opening the thread is what marks the patient's turns as seen.
         ConsultChat::markRead($message, ConsultMessage::DOCTOR);
 
+        $message->load('user');
+
         return view('clinic.thread', [
             'doctor' => $doctor,
-            'thread' => $message->load('user'),
+            'thread' => $message,
             'transcript' => ConsultChat::transcript($message),
+            // Only if this patient has chosen to share it, and only while
+            // they still do.
+            'summary' => $message->user && DoctorShare::allows($message->user_id, $doctor->id)
+                ? PatientSummary::for($message->user)
+                : null,
             'waiting' => $this->waitingAppointments($doctor),
             'unread' => $this->unreadCount($doctor),
         ]);

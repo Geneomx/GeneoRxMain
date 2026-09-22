@@ -60,6 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/mobile/doctors', [DoctorController::class, 'index']);
     Route::get('/mobile/doctors/{doctor}/slots', [DoctorController::class, 'slots']);
     Route::get('/mobile/doctor-messages', [DoctorController::class, 'messages']);
+    Route::post('/mobile/doctor-shares', [DoctorController::class, 'setShare']);
     Route::post('/mobile/doctor-messages', [DoctorController::class, 'storeMessage'])
         ->middleware('throttle:10,1');
     Route::post('/mobile/doctor-messages/{message}/reply', [DoctorController::class, 'replyToMessage'])
@@ -75,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/overview', [ClinicApiController::class, 'overview']);
         Route::get('/appointments', [ClinicApiController::class, 'appointments']);
         Route::post('/appointments/{appointment}', [ClinicApiController::class, 'respondAppointment']);
+        Route::get('/patients/{user}/summary', [ClinicApiController::class, 'patientSummary']);
         Route::get('/messages', [ClinicApiController::class, 'messages']);
         Route::post('/messages/{message}/read', [ClinicApiController::class, 'markRead']);
         Route::post('/messages/{message}/reply', [ClinicApiController::class, 'reply'])
