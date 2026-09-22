@@ -80,6 +80,8 @@ $en = [
     'doctor.mode.chat' => 'Chat',
     'doctor.mode.call' => 'Phone call',
     'doctor.mode.visit' => 'In person',
+    'portal.admin' => 'Admin',
+    'portal.clinic' => 'Clinic',
     // The forward button names the step it goes to: "Continue" alone does not
     // say what happens next, and the step names already exist in every language.
     'nav.next_named' => 'Next: {step}',
@@ -723,6 +725,8 @@ return [
         'doctor.mode.chat' => 'Chat',
         'doctor.mode.call' => 'Llamada',
         'doctor.mode.visit' => 'En persona',
+        'portal.admin' => 'Administración',
+        'portal.clinic' => 'Clínica',
         // The forward button names the step it goes to: "Continue" alone does not
         // say what happens next, and the step names already exist in every language.
         'nav.next_named' => 'Siguiente: {step}',
@@ -969,6 +973,8 @@ return [
         'doctor.mode.chat' => 'Chat',
         'doctor.mode.call' => 'Appel téléphonique',
         'doctor.mode.visit' => 'En personne',
+        'portal.admin' => 'Administration',
+        'portal.clinic' => 'Clinique',
         // The forward button names the step it goes to: "Continue" alone does not
         // say what happens next, and the step names already exist in every language.
         'nav.next_named' => 'Suivant : {step}',
@@ -1144,6 +1150,8 @@ return [
         'doctor.mode.chat' => 'محادثة',
         'doctor.mode.call' => 'مكالمة هاتفية',
         'doctor.mode.visit' => 'حضور شخصي',
+        'portal.admin' => 'الإدارة',
+        'portal.clinic' => 'العيادة',
         // The forward button names the step it goes to: "Continue" alone does not
         // say what happens next, and the step names already exist in every language.
         'nav.next_named' => 'التالي: {step}',
@@ -1292,6 +1300,8 @@ return [
         'doctor.mode.chat' => 'چیٹ',
         'doctor.mode.call' => 'فون کال',
         'doctor.mode.visit' => 'بالمشافہ',
+        'portal.admin' => 'ایڈمن',
+        'portal.clinic' => 'کلینک',
         // The forward button names the step it goes to: "Continue" alone does not
         // say what happens next, and the step names already exist in every language.
         'nav.next_named' => 'اگلا: {step}',
@@ -1440,6 +1450,8 @@ return [
         'doctor.mode.chat' => 'Gumzo',
         'doctor.mode.call' => 'Simu',
         'doctor.mode.visit' => 'Ana kwa ana',
+        'portal.admin' => 'Usimamizi',
+        'portal.clinic' => 'Kliniki',
         // The forward button names the step it goes to: "Continue" alone does not
         // say what happens next, and the step names already exist in every language.
         'nav.next_named' => 'Inayofuata: {step}',

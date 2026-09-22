@@ -149,6 +149,14 @@
     .portal-link-btn{display:inline-flex;align-items:center;text-decoration:none;
       border:1px solid rgba(255,255,255,.14);border-radius:12px;color:var(--txt);
       box-shadow:0 10px 22px rgba(0,0,0,.18)}
+    /* Admin and Clinic are staff doors, not patient features: tinted so they
+       read as a different kind of thing in a row of patient buttons. */
+    .portal-staff-btn{
+      border-color:rgba(167,139,250,.45);
+      background:rgba(167,139,250,.12);
+      color:var(--txt);font-weight:800;
+    }
+    .portal-staff-btn:hover{background:rgba(167,139,250,.20)}
     .portal-menu{position:relative;display:inline-flex}
     .portal-menu-panel{
       position:absolute;top:calc(100% + 8px);right:0;min-width:220px;

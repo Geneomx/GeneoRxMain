@@ -1739,6 +1739,12 @@
       <div class="nav-cta">
         @include('partials.language-selector')
         @auth
+          @if(auth()->user()->isDoctor())
+            <a href="{{ route('clinic.appointments') }}" class="btn btn-outline nav-cta-extra" data-i18n="portal.clinic">Clinic</a>
+          @endif
+          @if(auth()->user()->is_admin ?? false)
+            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline nav-cta-extra" data-i18n="portal.admin">Admin</a>
+          @endif
           <a href="{{ route('treatments') }}" class="btn btn-primary" data-i18n="nav.dashboard">Open dashboard</a>
         @else
           <a href="{{ route('guest') }}"    class="btn btn-ghost nav-cta-extra" data-i18n="nav.guest">Guest login</a>
@@ -1764,6 +1770,12 @@
     </div>
     <div class="mobile-menu-cta">
       @auth
+        @if(auth()->user()->isDoctor())
+          <a href="{{ route('clinic.appointments') }}" class="btn btn-outline" data-i18n="portal.clinic">Clinic</a>
+        @endif
+        @if(auth()->user()->is_admin ?? false)
+          <a href="{{ route('admin.dashboard') }}" class="btn btn-outline" data-i18n="portal.admin">Admin</a>
+        @endif
         <a href="{{ route('treatments') }}" class="btn btn-primary" data-i18n="nav.dashboard">Open dashboard</a>
       @else
         <a href="{{ route('guest') }}"    class="btn btn-ghost" data-i18n="nav.guest">Guest login</a>

@@ -1150,6 +1150,9 @@
       <div class="nav-links">
         @auth
           <a href="{{ route('treatments') }}" class="nav-link {{ request()->routeIs('treatments') ? 'active' : '' }}">Dashboard</a>
+          @if(auth()->user()->isDoctor())
+            <a href="{{ route('clinic.appointments') }}" class="nav-link {{ request()->routeIs('clinic.*') ? 'active' : '' }}">Clinic</a>
+          @endif
           @if(auth()->user()->is_admin ?? false)
             <a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.*') ? 'active' : '' }}">Admin</a>
           @endif

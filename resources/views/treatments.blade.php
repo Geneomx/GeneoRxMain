@@ -24,6 +24,7 @@
     </div>
     <div class="status portal-status">
       @include('partials.language-selector')
+      @include('partials.staff-links')
       <a href="{{ route('doctor') }}" class="ghost mini portal-link-btn" data-i18n="doctor.nav">Ask a doctor</a>
       <button class="ghost mini" id="btnMyCheckins" data-i18n="portal.mycheckins">My check-ins</button>
       <button class="ghost mini" id="btnShare" data-i18n="portal.share">Share for review</button>
@@ -41,6 +42,12 @@
               <div class="portal-menu-email" id="portalProfileEmail">{{ Auth::user()->email }}</div>
               <button type="button" class="portal-menu-item" id="btnHealthProfile" data-i18n="portal.health_profile">Health profile</button>
               <a href="{{ route('account.settings') }}" class="portal-menu-item" data-i18n="portal.account_settings">Account settings</a>
+              @if(auth()->user()->isDoctor())
+                <a href="{{ route('clinic.appointments') }}" class="portal-menu-item" data-i18n="portal.clinic">Clinic</a>
+              @endif
+              @if(auth()->user()->is_admin ?? false)
+                <a href="{{ route('admin.dashboard') }}" class="portal-menu-item" data-i18n="portal.admin">Admin</a>
+              @endif
               <form method="POST" action="{{ route('logout') }}" class="portal-menu-logout">
                 @csrf
                 <button type="submit" class="portal-menu-item portal-menu-item--danger" data-i18n="portal.logout">Logout</button>

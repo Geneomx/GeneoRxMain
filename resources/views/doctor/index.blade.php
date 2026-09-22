@@ -86,6 +86,7 @@
     </div>
     <div class="status portal-status">
       @include('partials.language-selector')
+      @include('partials.staff-links')
       <a href="{{ route('treatments') }}" class="ghost mini portal-link-btn" data-i18n="doctor.back">Back to dashboard</a>
     </div>
   </div>
