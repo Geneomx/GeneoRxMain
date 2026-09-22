@@ -90,6 +90,36 @@ class AppointmentRequest extends Model
         return $this->slotStart()?->addMinutes((int) ($this->slot_minutes ?: 0));
     }
 
+    /**
+     * The clinician's view of a booking. Carries who it is with and the number
+     * the patient supplied for a reply — but nothing from their health record,
+     * which is theirs to share and not ours to hand over.
+     *
+     * @return array<string, mixed>
+     */
+    public function toDoctorArray(): array
+    {
+        $start = $this->slotStart();
+
+        return [
+            'id' => $this->id,
+            'patient' => $this->user?->name,
+            'contact_mobile' => $this->contact_mobile,
+            'preferred_date' => $this->preferred_date?->toDateString(),
+            'preferred_time' => $this->preferred_time,
+            'mode' => $this->mode ?? 'visit',
+            'mode_label' => $this->modeLabel(),
+            'slot_at' => $start?->toIso8601String(),
+            'slot_date' => $start?->toDateString(),
+            'slot_time' => $start?->format('H:i'),
+            'slot_ends' => $this->slotEnd()?->format('H:i'),
+            'note' => $this->note,
+            'status' => $this->status,
+            'response' => $this->admin_note,
+            'created_at' => $this->created_at?->toIso8601String(),
+        ];
+    }
+
     public function toPatientArray(): array
     {
         $start = $this->slotStart();

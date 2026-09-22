@@ -17,6 +17,8 @@ const DEFAULT_PROFILE: ProfileData = {
 export function emptyGuestProfile(): ProfileResponse {
   return {
     user: { name: 'Guest', email: 'guest@geneorx.local', emailVerified: true },
+    // A guest is never a clinician: the clinic is for registered doctors only.
+    doctor: null,
     profile: null,
     account: { email: 'guest@geneorx.local', consent: false },
     plan: null,

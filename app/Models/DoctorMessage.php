@@ -76,6 +76,29 @@ class DoctorMessage extends Model
      * purpose: the answer is attributed to the doctor, not to whichever admin
      * account happened to type it in.
      */
+    /**
+     * The clinician's view of a conversation: who asked, the whole transcript,
+     * and how many of the patient's turns they have not opened yet.
+     *
+     * @return array<string, mixed>
+     */
+    public function toDoctorArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'patient' => $this->user?->name,
+            'contact_mobile' => $this->contact_mobile,
+            'status' => $this->status,
+            'unread' => (int) ($this->unread_count ?? ConsultChat::unreadFor($this, ConsultMessage::DOCTOR)),
+            'latest' => $this->latestLine(),
+            'thread' => ConsultChat::transcript($this)
+                ->map(fn (ConsultMessage $m) => $m->toPatientArray())
+                ->values()->all(),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
+        ];
+    }
+
     public function toPatientArray(): array
     {
         return [

@@ -222,6 +222,9 @@ export function wizardToSavePayload(state: WizardState, medDb: MedEntry[]): Save
 export function wizardToProfileResponse(state: WizardState, user: ProfileResponse['user']): ProfileResponse {
   return {
     user,
+    // Rebuilt from locally stored wizard state, which never carries a doctor
+    // identity — that only ever comes from the server.
+    doctor: null,
     profile: {
       age: state.profile.age,
       gender: state.profile.gender,

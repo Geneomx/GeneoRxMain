@@ -5,17 +5,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { AppTabsParamList } from '@/navigation/AppTabs';
+import type { ClinicTabsParamList } from '@/navigation/ClinicTabs';
 import { TAB_BAR_HEIGHT } from '@/hooks/useResponsiveLayout';
 import { colors, gradients, radius, touchMin } from '@/theme';
 
-type TabKey = keyof AppTabsParamList;
-
-const TAB_ORDER: TabKey[] = ['Home', 'Guided', 'Profile'];
+/**
+ * This bar is shared by the patient tabs and the clinician's two, so the order
+ * comes from whichever navigator rendered it rather than a list here — a fixed
+ * list silently rendered nothing at all for the clinic.
+ */
+type TabKey = keyof AppTabsParamList | keyof ClinicTabsParamList;
 
 const TAB_LABEL_KEYS: Record<TabKey, string> = {
   Home: 'mobile.tab.home',
   Guided: 'mobile.tab.guided',
   Profile: 'mobile.tab.profile',
+  Appointments: 'clinic.tab.appointments',
+  Messages: 'clinic.tab.messages',
 };
 
 const ICON_SIZE = 22;
@@ -28,16 +34,10 @@ export const AppTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, nav
   const iconOnly = width < 360;
   const bottomInset = Math.max(insets.bottom, 8);
 
-  const routesByName = Object.fromEntries(state.routes.map((r) => [r.name, r]));
-
   return (
     <View style={[styles.wrap, { height: TAB_BAR_HEIGHT + bottomInset, paddingBottom: bottomInset }]}>
       <View style={styles.row}>
-        {TAB_ORDER.map((name) => {
-          const route = routesByName[name];
-          if (!route) return null;
-
-          const index = state.routes.findIndex((r) => r.key === route.key);
+        {state.routes.map((route, index) => {
           const focused = state.index === index;
           const { options } = descriptors[route.key];
           const icon = options.tabBarIcon?.({
@@ -46,7 +46,7 @@ export const AppTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, nav
             size: iconOnly ? ICON_SIZE_COMPACT : ICON_SIZE,
           });
 
-          const label = t(TAB_LABEL_KEYS[name]);
+          const label = t(TAB_LABEL_KEYS[route.name as TabKey] ?? route.name);
 
           const onPress = () => {
             const event = navigation.emit({

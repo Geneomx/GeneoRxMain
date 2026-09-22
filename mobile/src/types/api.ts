@@ -64,8 +64,16 @@ export interface AccountData {
   consent: boolean;
 }
 
+/** Present only when the signed-in account is a registered, active doctor. */
+export interface DoctorIdentity {
+  id: number;
+  name: string;
+  specialty: string | null;
+}
+
 export interface ProfileResponse {
   user: AuthUser;
+  doctor: DoctorIdentity | null;
   profile: ProfileData | null;
   account: AccountData;
   plan: unknown;

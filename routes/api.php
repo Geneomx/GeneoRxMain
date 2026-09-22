@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Api\AiSummaryController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AssistantController;
+use App\Http\Controllers\Api\ClinicApiController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\EmailOtpController;
 use App\Http\Controllers\Api\FeedbackController;
@@ -66,6 +67,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/mobile/appointments', [DoctorController::class, 'appointments']);
     Route::post('/mobile/appointments', [DoctorController::class, 'storeAppointment'])
         ->middleware('throttle:10,1');
+
+    // ── The clinician's own side of the app ───────────────────────────────
+    // Registered, active doctors only; every query is scoped to their own
+    // directory entry by the controller.
+    Route::middleware('doctor')->prefix('mobile/clinic')->group(function () {
+        Route::get('/overview', [ClinicApiController::class, 'overview']);
+        Route::get('/appointments', [ClinicApiController::class, 'appointments']);
+        Route::post('/appointments/{appointment}', [ClinicApiController::class, 'respondAppointment']);
+        Route::get('/messages', [ClinicApiController::class, 'messages']);
+        Route::post('/messages/{message}/read', [ClinicApiController::class, 'markRead']);
+        Route::post('/messages/{message}/reply', [ClinicApiController::class, 'reply'])
+            ->middleware('throttle:30,1');
+        Route::post('/messages/{message}/close', [ClinicApiController::class, 'close']);
+    });
 
     // Account management (Apple requires in-app account deletion)
     Route::put('/account/password', [AccountController::class, 'changePasswordApi']);

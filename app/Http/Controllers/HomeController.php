@@ -42,6 +42,7 @@ class HomeController extends Controller
         if (session('is_web_guest')) {
             return response()->json([
                 'user' => ['name' => 'Guest', 'email' => '', 'emailVerified' => true],
+                'doctor' => null,
                 'profile' => null,
                 'account' => ['email' => '', 'consent' => false, 'subscribed' => false],
                 'plan' => null,
@@ -70,6 +71,13 @@ class HomeController extends Controller
                 'emailVerified' => (bool) $user->email_verified_at,
                 'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ],
+            // Present only for a registered, active clinician. The app shows
+            // them their own clinic rather than the patient wizard.
+            'doctor' => $user->isDoctor() ? [
+                'id' => $user->doctorProfile->id,
+                'name' => $user->doctorProfile->name,
+                'specialty' => $user->doctorProfile->specialty,
+            ] : null,
             'profile' => $profile ? [
                 'age' => $profile->date_of_birth ? $this->calculateAge($profile->date_of_birth) : '',
                 'gender' => $profile->gender ?? '',

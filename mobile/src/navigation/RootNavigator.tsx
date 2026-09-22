@@ -12,6 +12,7 @@ import { useProfile } from '@/store/ProfileContext';
 import { refreshPushRegistration } from '@/notifications/push';
 import { AuthStack } from './AuthStack';
 import { AppTabs } from './AppTabs';
+import { ClinicTabs } from './ClinicTabs';
 import { VerifyEmailScreen } from '@/screens/VerifyEmailScreen';
 import { Loader } from '@/components/Loader';
 import { colors } from '@/theme';
@@ -60,6 +61,8 @@ export const RootNavigator: React.FC = () => {
   const handledResponseId = useRef<string | null>(null);
 
   const isSignedIn = Boolean(token) && !isGuest && emailVerified;
+  // Only a registered, active clinician gets this; the server decides.
+  const isDoctor = Boolean(profile?.doctor);
 
   // Silently refresh this device's push token whenever a signed-in, verified
   // user opens the app. No-op (and no prompt) unless they've opted in before.
@@ -102,7 +105,17 @@ export const RootNavigator: React.FC = () => {
       linking={linking}
       onReady={() => setNavReady(true)}
     >
-      {!token ? <AuthStack /> : needsVerification ? <VerifyEmailScreen /> : <AppTabs />}
+      {!token ? (
+        <AuthStack />
+      ) : needsVerification ? (
+        <VerifyEmailScreen />
+      ) : isDoctor ? (
+        /* A clinician signing in used to land in the patient's own health
+           journey — Home, the wizard, "my plan" — none of which is theirs. */
+        <ClinicTabs />
+      ) : (
+        <AppTabs />
+      )}
     </NavigationContainer>
   );
 };
