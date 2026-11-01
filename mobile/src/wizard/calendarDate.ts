@@ -8,7 +8,10 @@
 
 /** Today as a local YYYY-MM-DD string. */
 export function todayISO(): string {
-  const d = new Date();
+  return localCalendarDate(new Date());
+}
+
+export function localCalendarDate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -48,6 +51,11 @@ export function isoFromCalendarDate(input: string): string | null {
 /** Whether a typed value is a usable calendar date. */
 export function isValidCalendarDate(input: string): boolean {
   return isoFromCalendarDate(input) !== null;
+}
+
+/** A check-in describes a real day, never a future day; compare local dates. */
+export function isPastOrToday(input: string, now = new Date()): boolean {
+  return isValidCalendarDate(input) && input <= localCalendarDate(now);
 }
 
 /**

@@ -5,7 +5,7 @@ import {
   LinkingOptions,
   createNavigationContainerRef,
 } from '@react-navigation/native';
-import * as Notifications from 'expo-notifications';
+import { useLastNotificationResponse } from '@/notifications/runtime';
 import { useAuth } from '@/auth/AuthContext';
 import { useWizard } from '@/store/WizardContext';
 import { useProfile } from '@/store/ProfileContext';
@@ -54,10 +54,10 @@ const navTheme = {
 
 export const RootNavigator: React.FC = () => {
   const { token, loading, isGuest, emailVerified } = useAuth();
-  const { setStep } = useWizard();
+  const { setStep, hydrated } = useWizard();
   const { data: profile } = useProfile();
   const [navReady, setNavReady] = useState(false);
-  const lastResponse = Notifications.useLastNotificationResponse();
+  const lastResponse = useLastNotificationResponse();
   const handledResponseId = useRef<string | null>(null);
 
   const isSignedIn = Boolean(token) && !isGuest && emailVerified;
@@ -93,7 +93,7 @@ export const RootNavigator: React.FC = () => {
     }
   }, [lastResponse, navReady, isSignedIn, setStep]);
 
-  if (loading) return <Loader />;
+  if (loading || (token && !hydrated)) return <Loader />;
 
   // Mirrors the website flow: register → email code verification → portal.
   const needsVerification = Boolean(token) && !isGuest && !emailVerified;

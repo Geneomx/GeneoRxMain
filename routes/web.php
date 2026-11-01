@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\AiSummaryController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\FeedbackController;
+use App\Http\Controllers\Api\SymptomSuggestionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClinicController;
 use App\Http\Controllers\DoctorPortalController;
@@ -54,10 +55,14 @@ Route::post('/api/feedback', [FeedbackController::class, 'store'])
 // Ask GeneoRx assistant (same handler as the mobile API; session-authed here).
 Route::post('/api/assistant', AssistantController::class)
     ->middleware('throttle:20,1')->name('api.assistant');
+Route::get('/api/assistant/options', [AssistantController::class, 'options']);
 
 // AI summary — powers the doctor-report AI visit summary (and the weekly digest).
 Route::post('/api/ai-summary', AiSummaryController::class)
     ->middleware('throttle:10,1')->name('api.ai-summary');
+
+Route::post('/api/symptom-suggestions', SymptomSuggestionController::class)
+    ->middleware('throttle:20,1')->name('api.symptom-suggestions');
 
 // Legal pages
 Route::get('/legal/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');

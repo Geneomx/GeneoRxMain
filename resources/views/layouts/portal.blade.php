@@ -110,9 +110,10 @@
     }
     .save-account-cta-title { font-weight: 900; font-size: 15px; margin-bottom: 6px; }
   </style>
+  <link rel="stylesheet" href="{{ asset('css/clean-ui.css') }}">
 </head>
-<body>
-  @include('partials.logo-bg-animation')
+<body class="gx-clean">
+  <a class="skip-link" href="#main-content">Skip to content</a>
   <div id="toast" class="toast" data-i18n="toast.saved">Saved ✓</div>
 
   <div id="backdrop" class="modalBackdrop"></div>
@@ -295,9 +296,9 @@
     </div>
   </div>
 
-  <div class="wrap">
+  <main class="wrap" id="main-content">
     @yield('content')
-  </div>
+  </main>
 
   @yield('scripts')
 </body>

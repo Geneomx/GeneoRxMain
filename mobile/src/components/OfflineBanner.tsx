@@ -1,22 +1,26 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { colors, radius } from '@/theme';
+import { colors } from '@/theme';
+import { useWizard } from '@/store/WizardContext';
 
 /** Inline offline notice — sits in layout flow (does not overlap headers). */
-export const OfflineBanner: React.FC = () => {
+export const OfflineBanner: React.FC<{ respectStatusBar?: boolean }> = ({ respectStatusBar = false }) => {
   const { t } = useTranslation();
   const { online, ready } = useNetworkStatus();
+  const { saveStatus, hydrated } = useWizard();
   const insets = useSafeAreaInsets();
 
   if (!ready || online) return null;
 
   return (
-    <View style={[styles.wrap, { paddingTop: insets.top > 0 ? 4 : 8 }]}>
+    <View style={[styles.wrap, { paddingTop: (respectStatusBar ? insets.top : 0) + 4 }]} accessibilityLiveRegion="polite">
       <View style={styles.banner}>
-        <Text style={styles.bannerText}>{t('mobile.offline.banner')}</Text>
+        <View style={styles.dot} accessible={false} />
+        <Text style={styles.bannerText}>{t(hydrated && ['saved', 'device', 'pending'].includes(saveStatus) ? 'polish.offline_saved' : 'polish.offline')}</Text>
       </View>
     </View>
   );
@@ -24,23 +28,22 @@ export const OfflineBanner: React.FC = () => {
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 2,
     backgroundColor: colors.background,
   },
   banner: {
-    backgroundColor: colors.warningBg,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.35)',
-    borderRadius: radius.button,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    flexDirection: 'row',
+    gap: 7,
+    paddingVertical: 2,
     alignItems: 'center',
   },
   bannerText: {
-    fontSize: 12.5,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '500',
     color: colors.warning,
-    textAlign: 'center',
+    flex: 1,
+    lineHeight: 21,
   },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.warning },
 });

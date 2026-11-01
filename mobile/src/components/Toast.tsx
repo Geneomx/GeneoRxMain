@@ -12,7 +12,7 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
-const DURATION = 2200;
+const DURATION = 5000;
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const insets = useSafeAreaInsets();
@@ -67,7 +67,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             <Text style={[styles.icon, { color: isError ? colors.danger : colors.success }]}>
               {isError ? '!' : '✓'}
             </Text>
-            <Text style={[styles.text, { color: isError ? colors.danger : colors.success }]} numberOfLines={2}>
+            <Text style={[styles.text, { color: isError ? colors.danger : colors.success }]}>
               {toast.message}
             </Text>
           </View>
@@ -103,12 +103,12 @@ const styles = StyleSheet.create({
     ...shadow.raised,
   },
   icon: {
-    fontSize: 14,
-    fontWeight: '900',
+    fontSize: 17,
+    fontWeight: '500',
     width: 18,
-    height: 18,
-    lineHeight: 18,
+    minHeight: 24,
+    lineHeight: 22,
     textAlign: 'center',
   },
-  text: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
+  text: { fontSize: 17, fontWeight: '500', flexShrink: 1 },
 });

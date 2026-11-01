@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/auth/AuthContext';
 import { fetchMedicationCatalog } from '@/api/medications';
 import { MED_DB as FALLBACK_MED_DB, type MedEntry } from '@/content/wizardData';
 
@@ -21,6 +22,7 @@ function mergeCatalog(base: MedEntry[], extras: MedEntry[]): MedEntry[] {
 }
 
 export const MedCatalogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isGuest } = useAuth();
   const [catalog, setCatalog] = useState<MedEntry[]>(FALLBACK_MED_DB);
   const [hydrated, setHydrated] = useState(false);
 
@@ -41,6 +43,10 @@ export const MedCatalogProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!entries.length) return;
     setCatalog((prev) => mergeCatalog(prev, entries));
   }, []);
+
+  useEffect(() => {
+    setCatalog(prev => prev.filter(m => !String(m.id).includes('custom')));
+  }, [user?.email, isGuest]);
 
   useEffect(() => {
     void refresh();

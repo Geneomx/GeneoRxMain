@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     minHeight: touchMin,
     borderRadius: radius.button,
-    backgroundColor: 'rgba(15, 23, 54, 0.50)',
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
     borderColor: colors.borderSoft,
     paddingHorizontal: spacing.md,
@@ -94,12 +94,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconText: { fontSize: 17, fontWeight: '800', color: colors.primary },
+  iconText: { fontSize: 17, fontWeight: '500', color: colors.primary },
 
   meta: { flex: 1, minWidth: 0 },
-  title: { fontSize: 15, fontWeight: '700', color: colors.text },
-  sub: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  title: { fontSize: 17, fontWeight: '500', color: colors.text },
+  sub: { fontSize: 16, color: colors.textMuted, marginTop: 2 },
 
   btn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.primary },
-  btnText: { fontSize: 13, fontWeight: '800', color: colors.onPrimary },
+  btnText: { fontSize: 16, fontWeight: '500', color: colors.onPrimary },
 });

@@ -1,12 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { colors, radius, spacing, touchMin, typography } from '@/theme';
 
 export type DropdownOption = {
@@ -21,6 +15,8 @@ type Props = {
   options: DropdownOption[];
   onChange: (value: string) => void;
   disabled?: boolean;
+  inline?: boolean;
+  accessibilityLabel?: string;
 };
 
 export const DropdownSelect: React.FC<Props> = ({
@@ -30,6 +26,8 @@ export const DropdownSelect: React.FC<Props> = ({
   options,
   onChange,
   disabled = false,
+  inline = false,
+  accessibilityLabel,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -51,14 +49,17 @@ export const DropdownSelect: React.FC<Props> = ({
         disabled={disabled}
         style={({ pressed }) => [
           styles.trigger,
+          inline && styles.triggerInline,
           disabled && styles.triggerDisabled,
           pressed && !disabled && { opacity: 0.85 },
         ]}
         accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel || label || placeholder}
+        accessibilityValue={{ text: selectedLabel ?? placeholder }}
+        accessibilityState={{ disabled }}
       >
         <Text
           style={[styles.triggerText, !selectedLabel && styles.triggerPlaceholder]}
-          numberOfLines={1}
         >
           {selectedLabel ?? placeholder}
         </Text>
@@ -110,11 +111,11 @@ const styles = StyleSheet.create({
   label: { ...typography.label },
   trigger: {
     minHeight: touchMin,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderBottomWidth: 1,
+    borderColor: colors.controlBorder,
     backgroundColor: colors.inputBg,
-    borderRadius: radius.button,
-    paddingHorizontal: spacing.md,
+    borderRadius: 0,
+    paddingHorizontal: 0,
     paddingVertical: spacing.sm + 2,
     flexDirection: 'row',
     alignItems: 'center',
@@ -122,9 +123,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   triggerDisabled: { opacity: 0.55 },
-  triggerText: { flex: 1, fontSize: 16, color: colors.text, fontWeight: '500' },
+  triggerInline: { borderBottomWidth: 0, paddingHorizontal: 0, backgroundColor: 'transparent' },
+  triggerText: { flex: 1, fontSize: 17, color: colors.text, fontWeight: '500' },
   triggerPlaceholder: { color: colors.textMuted, fontWeight: '400' },
-  chevron: { fontSize: 14, color: colors.textMuted },
+  chevron: { fontSize: 17, color: colors.textMuted },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
@@ -141,8 +143,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
   },
   sheetTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '500',
     color: colors.text,
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.sm,
@@ -164,8 +166,8 @@ const styles = StyleSheet.create({
     borderColor: colors.primary100,
   },
   optionPlaceholder: { borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
-  optionLabel: { flex: 1, fontSize: 16, color: colors.text, fontWeight: '500' },
-  optionLabelSelected: { color: colors.primary, fontWeight: '700' },
+  optionLabel: { flex: 1, fontSize: 17, color: colors.text, fontWeight: '500' },
+  optionLabelSelected: { color: colors.primary, fontWeight: '500' },
   optionLabelPlaceholder: { color: colors.textMuted },
-  check: { fontSize: 16, fontWeight: '800', color: colors.primary },
+  check: { fontSize: 17, fontWeight: '500', color: colors.primary },
 });

@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
+import { localCalendarDate } from '@/wizard/calendarDate';
 import { useAuth } from '@/auth/AuthContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -45,7 +46,7 @@ const DAYS_SHOWN = 14;
 function isoIn(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return localCalendarDate(d);
 }
 
 /** ISO weekday (1 = Monday … 7 = Sunday) for a YYYY-MM-DD date. */
@@ -692,8 +693,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
   head: { paddingTop: spacing.sm, gap: 4 },
-  h1: { fontSize: 24, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
-  sub: { fontSize: 15, lineHeight: 21, color: colors.textMuted },
+  h1: { fontSize: 24, fontWeight: '500', color: colors.text, letterSpacing: -0.5 },
+  sub: { fontSize: 17, lineHeight: 25, color: colors.textMuted },
 
   segment: {
     flexDirection: 'row',
@@ -711,7 +712,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   segOn: { backgroundColor: colors.primary50, borderColor: colors.primary },
-  segText: { fontSize: 15, fontWeight: '700', color: colors.textSoft },
+  segText: { fontSize: 17, fontWeight: '500', color: colors.textSoft },
   segTextOn: { color: colors.primary },
 
   body: { gap: spacing.sm, paddingTop: spacing.sm },
@@ -723,7 +724,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
   },
-  noticeText: { fontSize: 14, lineHeight: 20, color: colors.text },
+  noticeText: { fontSize: 17, lineHeight: 24, color: colors.text },
 
   card: {
     borderWidth: 1,
@@ -733,16 +734,16 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
+  cardTitle: { fontSize: 17, fontWeight: '500', color: colors.text },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '500',
     color: colors.textMuted,
     marginTop: spacing.md,
     letterSpacing: 0.2,
   },
 
-  label: { fontSize: 14, fontWeight: '600', color: colors.textSoft, marginTop: spacing.sm },
+  label: { fontSize: 17, fontWeight: '500', color: colors.textSoft, marginTop: spacing.sm },
   input: {
     minHeight: touchMin,
     borderWidth: 1,
@@ -751,12 +752,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    fontSize: 16,
+    fontSize: 17,
     color: colors.text,
   },
   inputTall: { minHeight: 104, textAlignVertical: 'top' },
   inputMid: { minHeight: 76, textAlignVertical: 'top' },
-  fine: { fontSize: 13, lineHeight: 19, color: colors.textDim },
+  fine: { fontSize: 16, lineHeight: 23, color: colors.textDim },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   chip: {
@@ -771,9 +772,9 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: colors.primary100, borderColor: colors.primary },
   /** A closed day, or a time somebody already holds: shown, not hidden. */
   chipOff: { opacity: 0.45 },
-  chipText: { fontSize: 15, color: colors.textSoft },
-  chipTextOn: { color: colors.primary, fontWeight: '700' },
-  chipTag: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4, color: colors.textDim, marginTop: 1 },
+  chipText: { fontSize: 17, color: colors.textSoft },
+  chipTextOn: { color: colors.primary, fontWeight: '500' },
+  chipTag: { fontSize: 10, fontWeight: '500', letterSpacing: 0.4, color: colors.textDim, marginTop: 1 },
 
   shareRow: {
     flexDirection: 'row',
@@ -784,14 +785,14 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderSoft,
   },
   shareMeta: { flex: 1, minWidth: 0 },
-  shareName: { fontSize: 16, fontWeight: '700', color: colors.text },
-  shareState: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3, color: colors.textDim, marginTop: 2 },
+  shareName: { fontSize: 17, fontWeight: '500', color: colors.text },
+  shareState: { fontSize: 15, fontWeight: '500', letterSpacing: 0.3, color: colors.textDim, marginTop: 2 },
   shareStateOn: { color: colors.success },
   slotsSpinner: { alignSelf: 'flex-start', marginTop: 6 },
 
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  who: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.text },
-  msgBody: { fontSize: 16, lineHeight: 23, color: colors.text },
+  who: { flex: 1, fontSize: 17, fontWeight: '500', color: colors.text },
+  msgBody: { fontSize: 17, lineHeight: 23, color: colors.text },
 
   /* Conversation bubbles: the patient on the left, the doctor on the right. */
   chat: { gap: spacing.sm, marginTop: 2 },
@@ -813,15 +814,15 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: radius.md,
     borderBottomRightRadius: 4,
   },
-  bubbleText: { fontSize: 16, lineHeight: 23, color: colors.text },
-  turnWho: { fontSize: 12, color: colors.textDim, marginTop: 3 },
+  bubbleText: { fontSize: 17, lineHeight: 23, color: colors.text },
+  turnWho: { fontSize: 15, color: colors.textDim, marginTop: 3 },
 
   pill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
   pillWait: { backgroundColor: colors.warningBg },
   pillOk: { backgroundColor: colors.successBg },
   pillNo: { backgroundColor: colors.dangerBg },
   pillDone: { backgroundColor: colors.ghostBg },
-  pillText: { fontSize: 12, fontWeight: '800' },
+  pillText: { fontSize: 15, fontWeight: '500' },
   pillTextWait: { color: colors.warning },
   pillTextOk: { color: colors.success },
   pillTextNo: { color: colors.danger },
@@ -835,6 +836,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: 4,
   },
-  replyWho: { fontSize: 13, fontWeight: '700', color: colors.primary },
-  replyBody: { fontSize: 16, lineHeight: 23, color: colors.text },
+  replyWho: { fontSize: 16, fontWeight: '500', color: colors.primary },
+  replyBody: { fontSize: 17, lineHeight: 23, color: colors.text },
 });

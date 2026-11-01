@@ -69,7 +69,7 @@ export const MED_DB: MedEntry[] = [
     symptomChips: ['GI discomfort', 'Fatigue', 'Dizziness', 'Muscle cramps', 'Brain fog'],
     aliases: ['Prilosec', 'Losec', 'Omez', 'Zegerid'],
     claims: [
-      { nutrient: 'Magnesium', source_quality: 'High', citations: ['PMID:22392879'],
+      { nutrient: 'Magnesium', source_quality: 'High', citations: ['https://ods.od.nih.gov/factsheets/Magnesium-HealthProfessional/'],
         notes: ['Long-term PPI use has a hypomagnesemia safety signal; consider Mg evaluation if symptomatic.'] },
       { nutrient: 'Vitamin B12', source_quality: 'Moderate', citations: ['PMCID:PMC4110863'],
         notes: ['Reduced gastric acid may impair B12 absorption over time.'] },
@@ -81,8 +81,8 @@ export const MED_DB: MedEntry[] = [
     symptomChips: ['GI discomfort', 'Fatigue', 'Dizziness', 'Muscle cramps'],
     aliases: ['Protonix', 'Pantoloc', 'Controloc', 'Pantocid'],
     claims: [
-      { nutrient: 'Magnesium', source_quality: 'High', citations: ['PMID:22392879'],
-        notes: ['Class effect: long-term PPI use reduces gastric acid needed for Mg absorption.'] },
+      { nutrient: 'Magnesium', source_quality: 'High', citations: ['https://ods.od.nih.gov/factsheets/Magnesium-HealthProfessional/'],
+        notes: ['Prolonged PPI use can cause low magnesium; this does not establish an individual deficiency.'] },
       { nutrient: 'Vitamin B12', source_quality: 'Moderate', citations: ['PMCID:PMC4110863'],
         notes: ['Reduced gastric acid may impair B12 release from dietary protein over time.'] },
     ],
@@ -327,7 +327,7 @@ export const STEP_SUBS: Record<string, string> = {
  * why this feature needed no renumbering: every hardcoded setStep(4/5/6),
  * CHECKIN_STEP and step.N key is untouched.
  */
-export const HIDDEN_STEPS = new Set([9]);
+export const HIDDEN_STEPS = new Set([7, 9]);
 
 export function visibleSteps(isGuest: boolean): number[] {
   const steps: number[] = [];

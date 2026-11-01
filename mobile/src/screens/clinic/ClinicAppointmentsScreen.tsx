@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
+import { todayISO } from '@/wizard/calendarDate';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
 import { colors, radius, spacing } from '@/theme';
@@ -32,7 +33,7 @@ function prettyDate(iso: string | null): string {
 }
 
 function isToday(date: string | null): boolean {
-  return !!date && date === new Date().toISOString().slice(0, 10);
+  return !!date && date === todayISO();
 }
 
 /**
@@ -202,7 +203,7 @@ export const ClinicAppointmentsScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <AmbientBackground />
 
       <View style={[page, styles.head]}>
@@ -249,14 +250,14 @@ export const ClinicAppointmentsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   head: { paddingTop: spacing.sm, gap: 4, paddingBottom: spacing.sm },
-  h1: { fontSize: 24, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
-  sub: { fontSize: 15, lineHeight: 21, color: colors.textMuted },
+  h1: { fontSize: 24, fontWeight: '500', color: colors.text, letterSpacing: -0.5 },
+  sub: { fontSize: 17, lineHeight: 25, color: colors.textMuted },
 
   bodyWrap: { gap: spacing.sm, paddingTop: spacing.sm },
 
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '500',
     color: colors.textMuted,
     marginTop: spacing.md,
     letterSpacing: 0.2,
@@ -271,12 +272,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  when: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.text },
-  meta: { fontSize: 14, color: colors.textMuted },
-  body: { fontSize: 16, lineHeight: 23, color: colors.text },
-  fine: { fontSize: 13, lineHeight: 19, color: colors.textDim },
+  when: { flex: 1, fontSize: 17, fontWeight: '500', color: colors.text },
+  meta: { fontSize: 17, color: colors.textMuted },
+  body: { fontSize: 17, lineHeight: 23, color: colors.text },
+  fine: { fontSize: 16, lineHeight: 23, color: colors.textDim },
 
-  label: { fontSize: 14, fontWeight: '600', color: colors.textSoft, marginTop: 2 },
+  label: { fontSize: 17, fontWeight: '500', color: colors.textSoft, marginTop: 2 },
   input: {
     minHeight: 76,
     textAlignVertical: 'top',
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    fontSize: 16,
+    fontSize: 17,
     color: colors.text,
   },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
@@ -300,8 +301,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: 4,
   },
-  saidWho: { fontSize: 13, fontWeight: '700', color: colors.primary },
-  saidBody: { fontSize: 16, lineHeight: 23, color: colors.text },
+  saidWho: { fontSize: 16, fontWeight: '500', color: colors.primary },
+  saidBody: { fontSize: 17, lineHeight: 23, color: colors.text },
 
   notice: {
     borderWidth: 1,
@@ -310,14 +311,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
   },
-  noticeText: { fontSize: 14, lineHeight: 20, color: colors.text },
+  noticeText: { fontSize: 17, lineHeight: 24, color: colors.text },
 
   pill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
   pillWait: { backgroundColor: colors.warningBg },
   pillOk: { backgroundColor: colors.successBg },
   pillNo: { backgroundColor: colors.dangerBg },
   pillDone: { backgroundColor: colors.ghostBg },
-  pillText: { fontSize: 12, fontWeight: '800' },
+  pillText: { fontSize: 15, fontWeight: '500' },
   pillTextWait: { color: colors.warning },
   pillTextOk: { color: colors.success },
   pillTextNo: { color: colors.danger },

@@ -292,17 +292,19 @@
       .auth-top { padding: 14px 16px; }
     }
   </style>
+  <link rel="stylesheet" href="{{ asset('css/clean-ui.css') }}">
 </head>
-<body>
+<body class="gx-clean">
+  <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="auth-top">
-    @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false])
+    @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 34])
     <div class="auth-top-actions">
       @include('partials.language-selector')
       <a href="{{ route('home') }}" class="auth-top-link" data-i18n="auth.back">Back to home</a>
     </div>
   </header>
 
-  <main class="auth-main">
+  <main class="auth-main" id="main-content">
     @yield('content')
   </main>
 </body>

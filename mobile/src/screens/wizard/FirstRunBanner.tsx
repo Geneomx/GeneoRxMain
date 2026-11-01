@@ -62,8 +62,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dotOn: { backgroundColor: colors.primary, borderColor: 'transparent' },
-  dotNum: { fontSize: 10, fontWeight: '800', color: colors.onPrimary },
-  of: { marginLeft: 4, fontSize: 11, color: colors.textMuted },
-  title: { fontSize: 18, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
-  sub: { fontSize: 13, color: colors.textSoft, lineHeight: 18 },
+  dotNum: { fontSize: 10, fontWeight: '500', color: colors.onPrimary },
+  of: { marginLeft: 4, fontSize: 14, color: colors.textMuted },
+  title: { fontSize: 18, fontWeight: '500', color: colors.text, letterSpacing: -0.3 },
+  sub: { fontSize: 16, color: colors.textSoft, lineHeight: 22 },
 });

@@ -1,325 +1,93 @@
+import { medicationAdherence } from '@/wizard/medicationTracking';
+import { TrackingExplanation } from '@/components/TrackingExplanation';
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { Button } from '@/components/Button';
-import { ReportPickerModal } from '@/components/ReportPickerModal';
-import { useToast } from '@/components/Toast';
+import { DropdownSelect } from '@/components/DropdownSelect';
+import { RatingBars } from '@/components/RatingBars';
+import { recordedRatings } from '@/wizard/ratingBars';
+import { AppIcon } from '@/components/AppIcon';
+import { CheckinDetailModal } from '@/components/CheckinDetailModal';
+import { ReviewRangeSelect } from '@/components/ReviewRangeSelect';
+import { EditorSheet, ListRow, refined } from '@/components/RefinedUI';
 import { useWizard } from '@/store/WizardContext';
-import { useMedCatalog } from '@/store/MedCatalogContext';
-import {
-  buildClinicianSnapshotText,
-  computeNutrientScores,
-  computeWeeklyCoachMessage,
-  computeWeeklyHealthScore,
-  fmtDate,
-  impactLabel,
-  latestCheckin,
-} from '@/wizard/engine';
-import { shareClinicianSnapshot, downloadDoctorReport } from '@/wizard/reports';
-import { buildTrendSeries } from '@/wizard/trends';
-import { TrendChart, type TrendLine } from '@/components/TrendChart';
-import { ScoreRing } from '@/components/ScoreRing';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
-import { Divider, FinePrint, HelpNote, NoteBox, Section, Tagline } from '@/screens/wizard/ui';
-import { colors, radius, spacing } from '@/theme';
+import { wellbeingRatingSeries, checkinsInRange, knownAdherenceAverage, symptomRatingSeries, type ReviewRange } from '@/wizard/reviewData';
+import { adherenceLabel } from '@/wizard/medicationTracking';
+import { fmtDate, impactLabel, type TranslateFn } from '@/wizard/engine';
+import type { WizardCheckin } from '@/wizard/types';
+import { Section, FinePrint } from '@/screens/wizard/ui';
+import { colors } from '@/theme';
 
-const SYMPTOM_COLORS = ['#22d3ee', '#f472b6', '#fbbf24', '#a78bfa', '#34d399', '#fb923c'];
+/** The two facts shown on every check-in row, so same-day records stay tellable apart. */
+const checkinSymptomSummary = (c: WizardCheckin, t: TranslateFn) => c.symptoms.items.slice(0, 2).map(i => `${i.symptom} · ${impactLabel(i.change, t)}`).join(', ');
+const checkinAdherence = (c: WizardCheckin, t: TranslateFn) => medicationAdherence(c) !== null ? t('parity.percent_taken', { value: medicationAdherence(c)! }) : t('parity.unknown_doses');
 
 export const ProgressStep: React.FC = () => {
-  const { state } = useWizard();
-  const { catalog } = useMedCatalog();
-  const { t, language } = useTranslation();
-  const toast = useToast();
-  const goToDashboard = useDashboardNavigation();
-  const [snapOpen, setSnapOpen] = useState(false);
-  const [reportPickerOpen, setReportPickerOpen] = useState(false);
-  const [reportIndex, setReportIndex] = useState<number | undefined>();
-
-  const coach = useMemo(() => computeWeeklyCoachMessage(state, t, catalog), [state, language, t, catalog]);
-  const last = useMemo(() => latestCheckin(state), [state]);
-  const weekly = useMemo(() => computeWeeklyHealthScore(state), [state]);
-  const trends = useMemo(() => buildTrendSeries(state.checkins), [state.checkins]);
-  const snapshot = useMemo(() => buildClinicianSnapshotText(state, t, undefined, catalog), [state, language, t, catalog]);
-
-  const base = state.wellbeingBaseline;
-  const deltas = last
-    ? {
-        energy: last.wellbeing.energy - base.energy,
-        mood: last.wellbeing.mood - base.mood,
-        sleep: last.wellbeing.sleep - base.sleep,
-        focus: last.wellbeing.focus - base.focus,
-      }
-    : null;
-
-  const improvementScore = last
-    ? (last.symptoms.items || []).reduce((acc, x) => acc + (x.changeScore || 0), 0)
-    : 0;
-
-  const symptomItems = last ? last.symptoms.items || [] : [];
-  const mostImproved = symptomItems.length
-    ? symptomItems.reduce((acc, x) => ((x.changeScore || 0) > (acc.changeScore || 0) ? x : acc))
-    : null;
-  const leastImproved = symptomItems.length
-    ? symptomItems.reduce((acc, x) => ((x.changeScore || 0) < (acc.changeScore || 0) ? x : acc))
-    : null;
-  const nutrientScores = useMemo(() => computeNutrientScores(state, catalog), [state, catalog]);
-  const topDriver = nutrientScores.length ? `${nutrientScores[0][0]} (${nutrientScores[0][1]}%)` : null;
-
-  const shareSnapshot = async () => {
-    const ok = await shareClinicianSnapshot(state, t, { catalog, title: t('portal.share') });
-    if (ok) toast.show(t('toast.shared'));
-  };
-
-  const copySnapshot = async () => {
-    try {
-      await Clipboard.setStringAsync(snapshot);
-      toast.show(t('toast.copied'));
-    } catch {
-      // clipboard unavailable — nothing to surface
-    }
-  };
-
-  const downloadReport = async (idx: number) => {
-    const ok = await downloadDoctorReport(state, t, idx, catalog, language);
-    if (ok) {
-      toast.show(t('toast.report_downloaded'));
-      goToDashboard();
-    } else {
-      toast.show(t('toast.report_failed'), 'error');
-    }
-  };
-
-  return (
-    <View style={{ gap: spacing.md }}>
-      <HelpNote what={t('step.6.sub')} why={t('checkin.sub')} />
-      <Section style={styles.signal}>
-        <Text style={styles.kicker}>{t('results.coach_title').toUpperCase()}</Text>
-        <Text style={styles.head}>{coach.headline}</Text>
-        {coach.bullets.map((b, i) => (
-          <Text key={i} style={styles.bullet}>• {b}</Text>
-        ))}
-        <NoteBox>{t('results.next_best_action')} {coach.nextBestAction}</NoteBox>
-      </Section>
-
-      {/* Weekly Health Score — sits directly above the trend charts it
-          summarises, rather than in a separate place from its own evidence. */}
-      <Section>
-        <Tagline title={t('insights.this_week')} body={t('insights.weekly_basis')} />
-        <View style={styles.weeklyRow}>
-          <ScoreRing value={weekly.score} size={78} stroke={8} gradient />
-          <View style={styles.weeklyBody}>
-            {weekly.delta !== null ? (
-              <Text style={[styles.weeklyDelta, weekly.delta >= 0 ? styles.weeklyUp : styles.weeklyDown]}>
-                {weekly.delta >= 0 ? '▲' : '▼'} {Math.abs(weekly.delta)} {t('insights.vs_last_week')}
-              </Text>
-            ) : (
-              <Text style={styles.weeklyMuted}>{t('insights.no_comparison')}</Text>
-            )}
-            {weekly.drivers.map((d) => (
-              <Text key={d.key} style={styles.weeklyDriver}>
-                {t(`wellbeing.${d.key}`)} {d.delta > 0 ? '+' : ''}{d.delta}
-              </Text>
-            ))}
-          </View>
-        </View>
-      </Section>
-
-      {deltas ? (
-        <Section>
-          <Tagline title={t('progress.what_changed')} />
-          <View style={styles.deltaGrid}>
-            {(['energy', 'mood', 'sleep', 'focus'] as const).map((k) => {
-              const v = deltas[k];
-              const color = v > 0 ? colors.success : v < 0 ? colors.danger : colors.textMuted;
-              return (
-                <View key={k} style={styles.deltaCell}>
-                  <Text style={styles.deltaLabel}>{t(`wellbeing.${k}`).replace(/\s*\([^)]*\)\s*$/, '')}</Text>
-                  <Text style={[styles.deltaVal, { color }]}>{v >= 0 ? `+${v}` : v}</Text>
-                </View>
-              );
-            })}
-          </View>
-          <Divider />
-          {mostImproved ? (
-            <View style={styles.rowBetween}>
-              <Text style={styles.metaLabel}>{t('progress.most_improved')}</Text>
-              <Text style={styles.changeVal}>
-                {mostImproved.symptom} ({impactLabel(mostImproved.change, t)})
-              </Text>
-            </View>
-          ) : null}
-          {leastImproved ? (
-            <View style={styles.rowBetween}>
-              <Text style={styles.metaLabel}>{t('progress.least_improved')}</Text>
-              <Text style={styles.changeVal}>
-                {leastImproved.symptom} ({impactLabel(leastImproved.change, t)})
-              </Text>
-            </View>
-          ) : null}
-          {topDriver ? (
-            <View style={styles.rowBetween}>
-              <Text style={styles.metaLabel}>{t('progress.top_driver')}</Text>
-              <Text style={styles.changeVal}>{topDriver}</Text>
-            </View>
-          ) : null}
-          <View style={styles.rowBetween}>
-            <Text style={styles.metaLabel}>{t('progress.symptom_score')}</Text>
-            <Text style={styles.metaVal}>{improvementScore >= 0 ? `+${improvementScore}` : improvementScore}</Text>
-          </View>
-          <FinePrint>{t('progress.symptom_score_sub')}</FinePrint>
-          <View style={styles.rowBetween}>
-            <Text style={styles.metaLabel}>{t('checkin.adherence')}</Text>
-            <Text style={styles.metaVal}>{last?.adherencePct}%</Text>
-          </View>
-        </Section>
-      ) : (
-        <Section>
-          <Tagline title={t('sidebar.no_checkins')} body={t('checkin.sub')} />
-        </Section>
-      )}
-
-      <Section>
-        <Tagline title={t('modal.snapshot.title')} body={t('progress.weekly_sub')} />
-        <Button title={t('progress.snapshot_btn')} onPress={() => setSnapOpen(true)} />
-        <Button title={t('portal.share')} variant="secondary" onPress={shareSnapshot} />
-        {state.checkins.length ? (
-          <Button
-            title={t('progress.download_report')}
-            variant="secondary"
-            onPress={() => {
-              setReportIndex(undefined);
-              setReportPickerOpen(true);
-            }}
-          />
-        ) : null}
-      </Section>
-
-      {trends.window && trends.points.length ? (
-        <Section>
-          <Tagline title={t('progress.trends_title')} body={t('progress.trends_sub')} />
-          <Text style={styles.chartLabel}>{t('progress.trends_wellbeing')}</Text>
-          <TrendChart
-            fromT={trends.window.fromT}
-            toT={trends.window.toT}
-            yMax={10}
-            yCaption="0-10"
-            lines={[
-              { label: t('wellbeing.energy').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.amber, points: trends.points.map((p) => [p.t, p.energy] as [number, number]) },
-              { label: t('wellbeing.mood').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.pink, points: trends.points.map((p) => [p.t, p.mood] as [number, number]) },
-              { label: t('wellbeing.sleep').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.primary, points: trends.points.map((p) => [p.t, p.sleep] as [number, number]) },
-              { label: t('wellbeing.focus').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.violet, points: trends.points.map((p) => [p.t, p.focus] as [number, number]) },
-            ]}
-          />
-          <Text style={styles.chartLabel}>{t('checkin.adherence')}</Text>
-          <TrendChart
-            fromT={trends.window.fromT}
-            toT={trends.window.toT}
-            yMax={100}
-            yCaption="0-100%"
-            lines={[
-              { label: t('checkin.adherence'), color: colors.success, points: trends.points.map((p) => [p.t, p.adherence] as [number, number]) },
-            ]}
-          />
-          {Object.keys(trends.symptoms).length ? (
-            <>
-              <Text style={styles.chartLabel}>{t('progress.trends_symptoms')}</Text>
-              <TrendChart
-                fromT={trends.window.fromT}
-                toT={trends.window.toT}
-                yMax={10}
-                yCaption="0-10"
-                lines={Object.entries(trends.symptoms).slice(0, 6).map(([name, series], i): TrendLine => ({
-                  label: name,
-                  color: SYMPTOM_COLORS[i % SYMPTOM_COLORS.length],
-                  points: series.map((pt) => [pt.t, pt.severity] as [number, number]),
-                }))}
-              />
-              <FinePrint>{t('progress.trends_symptoms_hint')}</FinePrint>
-            </>
-          ) : null}
-        </Section>
-      ) : null}
-
-      {state.checkins.length ? (
-        <Section>
-          <Tagline title={t('progress.timeline_title')} body={t('progress.timeline_sub')} />
-          {state.checkins.map((c, idx) => (
-            <View key={idx} style={styles.timelineItem}>
-              <Text style={styles.tlTitle}>{t('checkin.label_n')} {idx + 1} • {fmtDate(c.dateISO)}</Text>
-              <Text style={styles.tlBody}>{t('common.adherence')} {c.adherencePct}%</Text>
-              {c.symptoms.items.length ? (
-                <FinePrint>{t('progress.tracked_symptoms')} {c.symptoms.items.map((x) => x.symptom).join(', ')}</FinePrint>
-              ) : null}
-              <Button
-                title={t('progress.download_report')}
-                variant="secondary"
-                onPress={() => downloadReport(idx)}
-              />
-            </View>
-          ))}
-        </Section>
-      ) : null}
-
-      <Modal visible={snapOpen} transparent animationType="fade" onRequestClose={() => setSnapOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setSnapOpen(false)} />
-        <View style={styles.modalWrap} pointerEvents="box-none">
-          <View style={styles.modal}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.snapText}>{snapshot}</Text>
-            </ScrollView>
-            <View style={{ gap: 8 }}>
-              <Button title={t('modal.snapshot.copy')} onPress={copySnapshot} />
-              <Button title={t('modal.snapshot.close')} variant="secondary" onPress={() => setSnapOpen(false)} />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <ReportPickerModal
-        visible={reportPickerOpen}
-        preferredIndex={reportIndex}
-        onClose={() => setReportPickerOpen(false)}
-        onSuccess={goToDashboard}
-      />
-
-      <Section>
-        <Button title={t('nav.home')} variant="ghost" onPress={goToDashboard} />
-      </Section>
+  const { state, setStep } = useWizard();
+  const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const [range, setRange] = useState<ReviewRange>('7');
+  const [selection, setSelection] = useState({ scope: '', key: '' });
+  const [measure, setMeasure] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [explainOpen, setExplainOpen] = useState(false);
+  const [detailIndex, setDetailIndex] = useState<number | null>(null);
+  const checkins = useMemo(() => checkinsInRange(state.checkins, range), [state.checkins, range]);
+  const symptomSeries = useMemo(() => symptomRatingSeries(checkins), [checkins]);
+  const wellbeingKeys = ['energy', 'mood', 'sleep', 'focus'] as const;
+  const choices = [...Object.keys(symptomSeries), ...wellbeingKeys];
+  const active = choices.includes(measure) ? measure : choices[0];
+  const isWellbeing = (wellbeingKeys as readonly string[]).includes(active);
+  const measureLabel = (key: string) => (wellbeingKeys as readonly string[]).includes(key) ? t(`wellbeing.${key}`).replace(/\s*\([^)]*\)\s*$/, '') : t('calm.symptom_severity', { name: key });
+  const rawPoints: Array<[number, number]> = isWellbeing ? wellbeingRatingSeries(checkins, active as typeof wellbeingKeys[number]) : symptomSeries[active] || [];
+  const points = recordedRatings(rawPoints);
+  const scope = `${range}:${active}`;
+  const picked = (selection.scope === scope ? points.find(point => point.key === selection.key) : undefined) || points.at(-1);
+  const label = measureLabel(active);
+  const value = picked?.value ?? null;
+  const delta = points.length > 1 && picked ? picked.value - points[0].value : null;
+  const average = knownAdherenceAverage(checkins);
+  const shortDate = (timestamp: number) => new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const detail = detailIndex === null ? null : state.checkins[detailIndex];
+  return <View style={{ gap: 12 }}>
+    <View style={[styles.rangeRow, fontScale > 1.3 && { flexDirection: 'column', alignItems: 'flex-start' }]}><FinePrint>{t('calm.recorded_changes')}</FinePrint><ReviewRangeSelect compact value={range} onChange={setRange} /></View>
+    {checkins.length ? <View style={styles.trend}>
+      <View style={[styles.valueRow, fontScale > 1.3 && { flexDirection: 'column', alignItems: 'flex-start' }]}>
+        <View style={{ flex: fontScale > 1.3 ? 0 : 1, gap: 6 }}><DropdownSelect inline accessibilityLabel={t('clean.progress_measure')} value={active} options={choices.map(choice => ({ value: choice, label: measureLabel(choice) }))} onChange={setMeasure} /><Text style={styles.value}>{value ?? '—'}<Text style={styles.unit}> / 10</Text></Text></View>
+        {picked ? <Text style={styles.dateBadge}>{shortDate(picked.time)}</Text> : null}
+      </View>
+      {points.length ? <>
+        <RatingBars points={points} selected={picked?.key} onSelect={key => setSelection({ scope, key })} />
+        {delta !== null ? <View style={styles.changeNote}><AppIcon name="chart" size={17} color={delta !== 0 && (isWellbeing ? delta > 0 : delta < 0) ? colors.success : colors.textMuted} /><Text style={[styles.caption, { flexShrink: 1, color: delta !== 0 && (isWellbeing ? delta > 0 : delta < 0) ? colors.success : colors.textMuted }]}>{t('dashboard.progress.change_since', { change: t(delta === 0 ? 'parity.rating_same' : delta > 0 ? Math.abs(delta) === 1 ? 'parity.point_higher' : 'parity.points_higher' : Math.abs(delta) === 1 ? 'parity.point_lower' : 'parity.points_lower', { count: Math.abs(delta) }), date: shortDate(points[0].time) })}</Text></View> : null}
+      </> : <FinePrint>{t('parity.no_ratings')}</FinePrint>}
+    </View> : <Section><Text style={refined.headingText}>{t('design.no_checkins_title')}</Text><Text style={refined.body}>{t('parity.no_period_records')}</Text><Button title={t('simple.check_in')} onPress={() => setStep(5)} /></Section>}
+    <View style={[styles.metrics, fontScale > 1.3 && { flexDirection: 'column' }]}>
+      <View style={styles.metric}><Text style={styles.caption}>{t('calm.saved_checkins')}</Text><Text style={styles.stat}>{checkins.length}</Text></View>
+      <View style={styles.metric}><Text style={styles.caption}>{t('calm.symptoms_tracked')}</Text><Text style={styles.stat}>{state.symptoms.selected.length}</Text></View>
     </View>
-  );
+    {checkins.length ? <ListRow icon="calendar" title={t('clean.checkin_history')} onPress={() => setHistoryOpen(true)} last /> : null}
+    {checkins.length ? <Button variant="ghost" title={t('easy.explain_progress')} onPress={() => setExplainOpen(true)} /> : null}
+    <EditorSheet visible={explainOpen} title={t('easy.explain_progress')} onClose={() => setExplainOpen(false)}><TrackingExplanation range={range} measure={active} onOpenRecord={record => { setExplainOpen(false); setTimeout(() => setDetailIndex(state.checkins.indexOf(record)), 350); }} /></EditorSheet>
+    <EditorSheet visible={historyOpen} title={t('ai.history_title')} onClose={() => setHistoryOpen(false)}><FinePrint>{t('parity.medication_taken')}: {adherenceLabel(average, t('checkin.not_answered'))}</FinePrint><FinePrint>{t('parity.known_average')}</FinePrint><View>{[...checkins].reverse().map((c, index, all) => { const taken = checkinAdherence(c, t); const symptoms = checkinSymptomSummary(c, t); return <Pressable key={c.clientId || c.id || c.dateISO} accessibilityRole="button" accessibilityLabel={`${t('parity.open_checkin', { date: fmtDate(c.dateISO) })}, ${taken}${symptoms ? `, ${symptoms}` : ''}`} onPress={() => { setHistoryOpen(false); setDetailIndex(state.checkins.indexOf(c)); }} style={({ pressed }) => [{ minHeight: 48, paddingVertical: 10, gap: 4, borderBottomWidth: index === all.length - 1 ? 0 : StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft }, pressed && { opacity: 0.65 }]}><Text style={refined.rowTitle}>{fmtDate(c.dateISO)}</Text><Text style={refined.meta}>{symptoms ? `${taken} · ${symptoms}` : taken}</Text></Pressable>; })}</View></EditorSheet>
+    <CheckinDetailModal visible={detail !== null} checkin={detail} index={detailIndex ?? 0} onClose={() => setDetailIndex(null)} />
+  </View>;
 };
 
 const styles = StyleSheet.create({
-  signal: { backgroundColor: colors.primary50, borderColor: colors.primary100 },
-  kicker: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 1 },
-  head: { fontSize: 17, fontWeight: '700', color: colors.text },
-  bullet: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
-
-  weeklyRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  weeklyBody: { flex: 1, gap: 3 },
-  weeklyDelta: { fontSize: 15, fontWeight: '800' },
-  weeklyUp: { color: colors.success },
-  weeklyDown: { color: colors.danger },
-  weeklyMuted: { fontSize: 14, fontWeight: '700', color: colors.textMuted },
-  weeklyDriver: { fontSize: 12, color: colors.textMuted },
-  deltaGrid: { flexDirection: 'row', gap: spacing.sm },
-  deltaCell: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', gap: 2 },
-  deltaLabel: { fontSize: 11, color: colors.textMuted, textTransform: 'capitalize' },
-  deltaVal: { fontSize: 20, fontWeight: '800' },
-
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, gap: 12 },
-  metaLabel: { fontSize: 14, color: colors.textSoft },
-  metaVal: { fontSize: 15, fontWeight: '700', color: colors.text },
-  changeVal: { fontSize: 14, fontWeight: '700', color: colors.text, flexShrink: 1, textAlign: 'right' },
-
-  chartLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginTop: 10, marginBottom: 2 },
-  timelineItem: { gap: 2, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
-  tlTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
-  tlBody: { fontSize: 13, color: colors.textSoft },
-
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15,31,27,0.45)' },
-  modalWrap: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', padding: spacing.lg },
-  modal: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: 12, maxHeight: '82%' },
-  snapText: { fontSize: 12, color: colors.textSoft, fontFamily: undefined, lineHeight: 18 },
+  rangeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  trend: { backgroundColor: colors.glass, borderRadius: 26, padding: 20, gap: 20, borderWidth: 1, borderColor: colors.glassBorder },
+  valueRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  value: { color: colors.text, fontSize: 45, lineHeight: 54, fontWeight: '500', letterSpacing: -1.6 },
+  unit: { color: colors.textMuted, fontSize: 17 },
+  caption: { color: colors.textMuted, fontSize: 15, lineHeight: 22 },
+  plot: { flexDirection: 'row', gap: 8 },
+  axis: { justifyContent: 'space-between', paddingVertical: 16 },
+  dates: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  dateBadge: { fontSize: 15, lineHeight: 22, color: colors.textMuted, backgroundColor: colors.surfaceAlt, borderRadius: 9, paddingVertical: 4, paddingHorizontal: 8 },
+  changeNote: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  metrics: { flexDirection: 'row', paddingVertical: 4, gap: 12 },
+  metric: { flex: 1, gap: 6, backgroundColor: colors.glass, padding: 16, borderRadius: 24, borderWidth: 1, borderColor: colors.glassBorder },
+  stat: { color: colors.primaryDark, fontSize: 28, lineHeight: 36, fontWeight: '600' },
 });

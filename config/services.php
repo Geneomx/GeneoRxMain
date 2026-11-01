@@ -108,9 +108,14 @@ return [
         })(),
     ],
 
+    'label_reader' => ['node' => env('LABEL_READER_NODE', 'node')],
+
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash-lite'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.5-flash-lite'),
+        'fallback_models' => env('GEMINI_FALLBACK_MODELS', 'gemini-3.1-flash-lite,gemini-2.5-flash-lite'),
+        // Free-tier requests must never contain patient records or free text.
+        'data_mode' => env('GEMINI_DATA_MODE', 'catalog_only'),
     ],
 
 ];

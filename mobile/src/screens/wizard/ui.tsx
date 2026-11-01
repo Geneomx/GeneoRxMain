@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '@/components/Button';
+import { RatingSlider } from '@/components/RatingSlider';
 import { useTranslation } from '@/hooks/useTranslation';
-import { colors, gradients, radius, shadow, spacing, touchMin } from '@/theme';
+import { shadow, colors, gradients, radius, spacing, touchMin } from '@/theme';
 import { citationToLink, successLabel } from '@/wizard/engine';
 import type { AlertLevel, InsightResult, Tier } from '@/wizard/engine';
 import type { Rating, TriState } from '@/wizard/types';
@@ -19,12 +21,13 @@ export const Accordion: React.FC<{
   subtitle?: string;
   badge?: string | number;
   defaultOpen?: boolean;
+  plain?: boolean;
   children: React.ReactNode;
-}> = ({ title, subtitle, badge, defaultOpen = false, children }) => {
+}> = ({ title, subtitle, badge, defaultOpen = false, plain = false, children }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <View style={styles.section}>
-      <Pressable style={styles.accHead} onPress={() => setOpen((o) => !o)}>
+    <View style={plain ? styles.plainAccordion : styles.section}>
+      <Pressable style={styles.accHead} accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ expanded: open }} onPress={() => setOpen((o) => !o)}>
         <View style={{ flex: 1 }}>
           <View style={styles.accTitleRow}>
             <Text style={styles.taglineTitle}>{title}</Text>
@@ -163,57 +166,29 @@ export const AlertBox: React.FC<{ title: string; level: AlertLevel; note: string
 /* ---------- Citation chip (opens PubMed/PMC) ---------- */
 export const CiteChip: React.FC<{ token: string }> = ({ token }) => {
   const url = citationToLink(token);
+  const label = token === 'https://ods.od.nih.gov/factsheets/Magnesium-HealthProfessional/' ? 'NIH · Magnesium' : token;
   return (
     <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={label}
       onPress={url ? () => Linking.openURL(url).catch(() => undefined) : undefined}
-      style={styles.cite}
+      style={[styles.cite, { minHeight: 44, justifyContent: 'center', maxWidth: '100%' }]}
     >
-      <Text style={[styles.citeText, url && styles.citeLink]}>{token}</Text>
+      <Text style={[styles.citeText, url && styles.citeLink]}>{label}</Text>
     </Pressable>
   );
 };
 
-/* ---------- 0–10 score pills — mirrors the website score picker ---------- */
-const SCALE_MAX = 10;
+/* ---------- Compact 0–10 rating control ---------- */
 
 export const ScaleRow: React.FC<{
   label: string;
-  value: number;
+  value: Rating;
   onChange: (v: number) => void;
   minLabel?: string;
   maxLabel?: string;
 }> = ({ label, value, onChange, minLabel = 'Worst', maxLabel = 'Best' }) => {
-  return (
-    <View style={styles.scaleWrap}>
-      <View style={styles.scaleHead}>
-        <Text style={styles.scaleLabel}>{label}</Text>
-        <Text style={styles.scaleValue}>
-          {value}
-          <Text style={styles.scaleValueMax}> / {SCALE_MAX}</Text>
-        </Text>
-      </View>
-      <View style={styles.scorePillRow}>
-        {Array.from({ length: SCALE_MAX + 1 }, (_, n) => {
-          const on = n === value;
-          return (
-            <Pressable
-              key={n}
-              onPress={() => onChange(n)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              style={[styles.scorePill, on && styles.scorePillOn]}
-            >
-              <Text style={[styles.scorePillText, on && styles.scorePillTextOn]}>{n}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <View style={styles.sliderEnds}>
-        <Text style={styles.sliderEndText}>{minLabel}</Text>
-        <Text style={styles.sliderEndText}>{maxLabel}</Text>
-      </View>
-    </View>
-  );
+  return <RatingSlider label={label} value={value} onChange={onChange} minLabel={minLabel} maxLabel={maxLabel} />;
 };
 
 /* ---------- 2×2 option grid (feedback types, etc.) ---------- */
@@ -254,8 +229,8 @@ export function Segmented<T extends string>({
   value: T;
   onChange: (v: T) => void;
 }) {
-  const { width } = useWindowDimensions();
-  const wrap = options.length >= 4 && width < 400;
+  const { width, fontScale } = useWindowDimensions();
+  const wrap = fontScale > 1.3 || (options.length >= 4 && width < 400);
 
   return (
     <View style={[styles.segWrap, wrap && styles.segWrapStack]}>
@@ -264,14 +239,14 @@ export function Segmented<T extends string>({
         return (
           <Pressable
             key={o.value}
+            accessibilityRole="button"
+            accessibilityLabel={o.label}
+            accessibilityState={{ selected: active }}
             onPress={() => onChange(o.value)}
             style={[styles.segItem, wrap && styles.segItemStack, active && styles.segItemActive]}
           >
             <Text
               style={[styles.segText, active && styles.segTextActive]}
-              numberOfLines={2}
-              adjustsFontSizeToFit
-              minimumFontScale={0.8}
             >
               {o.label}
             </Text>
@@ -399,7 +374,7 @@ export const InsightModal: React.FC<{ visible: boolean; onClose: () => void; ins
               {insight.patterns.length ? `${t('summary.pattern')}: ${insight.patterns[0].title}\n` : ''}
               {insight.interactions.length ? `${t('summary.interactions_field')}: ${insight.interactions.length}\n` : ''}
               {insight.contraindications.length ? `${t('summary.contraindications_field')}: ${insight.contraindications.length}\n` : ''}
-              {t('summary.success_prediction')}: {insight.prediction.score}% ({successLabel(insight.prediction.level, t)})
+              {t('review.no_cause')}
             </Text>
           </ScrollView>
           <Button title={t('modal.insight.close')} variant="secondary" onPress={onClose} />
@@ -414,58 +389,21 @@ export const InsightModal: React.FC<{ visible: boolean; onClose: () => void; ins
  *
  * Deliberately NOT a widened ScaleRow. ScaleRow's `value: number` means every
  * row always holds a number, which is how `severityNow` ended up defaulting to
- * 5 and silently asserting values nobody chose. Here the leading
- * "Not answered" pill is the default, and 0 remains separately selectable as a
- * real answer.
+ * 5 and silently asserting values nobody chose. The slider stays unanswered until touched,
+ * and a chosen rating can be cleared without recording a zero.
  */
 export const OptionalScaleRow: React.FC<{
   label: string;
   value: Rating;
   onChange: (v: Rating) => void;
   notAnsweredLabel: string;
-}> = ({ label, value, onChange, notAnsweredLabel }) => {
-  const answered = typeof value === 'number';
+  minLabel?: string;
+  maxLabel?: string;
+}> = ({ label, value, onChange, notAnsweredLabel, minLabel, maxLabel }) => {
   return (
-    <View style={styles.scaleWrap}>
-      <View style={styles.scaleHead}>
-        <Text style={styles.scaleLabel}>{label}</Text>
-        <Text style={styles.scaleValue}>
-          {answered ? (
-            <>
-              {value}
-              <Text style={styles.scaleValueMax}> / {SCALE_MAX}</Text>
-            </>
-          ) : (
-            <Text style={styles.scaleValueMax}>—</Text>
-          )}
-        </Text>
-      </View>
-      <View style={styles.scorePillRow}>
-        <Pressable
-          onPress={() => onChange(null)}
-          accessibilityRole="button"
-          accessibilityState={{ selected: !answered }}
-          style={[styles.scorePill, styles.scorePillWide, !answered && styles.scorePillOn]}
-        >
-          <Text style={[styles.scorePillText, !answered && styles.scorePillTextOn]} numberOfLines={1}>
-            {notAnsweredLabel}
-          </Text>
-        </Pressable>
-        {Array.from({ length: SCALE_MAX + 1 }, (_, n) => {
-          const on = n === value;
-          return (
-            <Pressable
-              key={n}
-              onPress={() => onChange(n)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              style={[styles.scorePill, on && styles.scorePillOn]}
-            >
-              <Text style={[styles.scorePillText, on && styles.scorePillTextOn]}>{n}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+    <View>
+      <RatingSlider label={label} value={value} onChange={onChange} emptyLabel={notAnsweredLabel} minLabel={minLabel} maxLabel={maxLabel} />
+      {value !== null ? <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${notAnsweredLabel}`} onPress={() => onChange(null)} style={{ minHeight: 48, justifyContent: 'center', alignSelf: 'flex-end' }}><Text style={{ color: colors.primary, fontSize: 15 }}>{notAnsweredLabel}</Text></Pressable> : null}
     </View>
   );
 };
@@ -508,15 +446,15 @@ export const TriStateRow: React.FC<{
 };
 
 const styles = StyleSheet.create({
-  // Website .card: navy gradient panel, radius 18, white .12 hairline
+  plainAccordion: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft },
+  // Shared mobile surface: one border and one consistent reading inset.
   section: {
     backgroundColor: colors.card,
-    borderRadius: radius.card,
+    borderRadius: 26,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadow.card,
+    borderColor: colors.glassBorder,
+    padding: 16,
+    gap: 12,
   },
   taglineFlat: { gap: 3 },
   taglineBox: {
@@ -527,52 +465,52 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(40, 225, 255, 0.22)',
     backgroundColor: colors.primary50,
   },
-  taglineTitle: { fontSize: 18, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
-  taglineBody: { fontSize: 15, color: colors.textSoft, lineHeight: 22 },
+  taglineTitle: { fontSize: 17, fontWeight: '500', color: colors.text, letterSpacing: -0.2 },
+  taglineBody: { fontSize: 17, color: colors.textMuted, lineHeight: 25 },
 
   help: { backgroundColor: colors.primary50, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary100 },
   helpHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: spacing.md, paddingVertical: 14, minHeight: touchMin - 8 },
-  helpIcon: { fontSize: 14, fontWeight: '800', color: colors.primary },
-  helpTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.primaryDark },
-  helpChevron: { fontSize: 14, color: colors.primary, fontWeight: '700' },
+  helpIcon: { fontSize: 17, fontWeight: '500', color: colors.primary },
+  helpTitle: { flex: 1, fontSize: 17, fontWeight: '500', color: colors.primaryDark },
+  helpChevron: { fontSize: 17, color: colors.primary, fontWeight: '500' },
   helpBody: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: 6 },
-  helpWhat: { fontSize: 15, color: colors.primaryDark, lineHeight: 22 },
-  helpWhy: { fontSize: 14, color: colors.primaryDark, opacity: 0.85, lineHeight: 21 },
-  helpBullet: { fontSize: 12.5, color: colors.primaryDark, opacity: 0.9, lineHeight: 18 },
+  helpWhat: { fontSize: 17, color: colors.primaryDark, lineHeight: 22 },
+  helpWhy: { fontSize: 17, color: colors.primaryDark, opacity: 0.85, lineHeight: 25 },
+  helpBullet: { fontSize: 12.5, color: colors.primaryDark, opacity: 0.9, lineHeight: 22 },
 
-  accHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  accHead: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10 },
   accTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   accBadge: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 7, backgroundColor: colors.primary50, alignItems: 'center', justifyContent: 'center' },
-  accBadgeText: { fontSize: 12, fontWeight: '800', color: colors.primary },
-  accChevron: { fontSize: 16, color: colors.textMuted, fontWeight: '700' },
+  accBadgeText: { fontSize: 15, fontWeight: '500', color: colors.primary },
+  accChevron: { fontSize: 17, color: colors.textMuted, fontWeight: '500' },
   divider: { height: 1, backgroundColor: colors.borderSoft },
-  finePrint: { fontSize: 14, color: colors.textDim, lineHeight: 20 },
+  finePrint: { fontSize: 15, color: colors.textMuted, lineHeight: 22 },
 
   note: { backgroundColor: colors.primary50, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.primary100 },
-  noteText: { fontSize: 13, color: colors.primaryDark, lineHeight: 19 },
+  noteText: { fontSize: 16, color: colors.primaryDark, lineHeight: 23 },
 
   kvItem: { paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderSoft, gap: 3 },
-  kvKey: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
-  kvValue: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  kvKey: { fontSize: 15, fontWeight: '500', color: colors.textMuted },
+  kvValue: { fontSize: 17, color: colors.text, lineHeight: 22 },
 
   pill: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
-  pillText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
+  pillText: { fontSize: 14, fontWeight: '500', letterSpacing: 0.3 },
 
   alert: { borderRadius: radius.md, borderWidth: 1, padding: spacing.md, gap: 6 },
   alertHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  alertTitle: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
-  alertNote: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
-  alertAction: { fontSize: 13, color: colors.text, fontWeight: '600', lineHeight: 19 },
+  alertTitle: { fontSize: 17, fontWeight: '500', flexShrink: 1 },
+  alertNote: { fontSize: 16, color: colors.textSoft, lineHeight: 23 },
+  alertAction: { fontSize: 16, color: colors.text, fontWeight: '500', lineHeight: 23 },
 
   cite: { backgroundColor: colors.primary50, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: colors.primary100 },
-  citeText: { fontSize: 12, fontWeight: '700', color: colors.textSoft },
+  citeText: { fontSize: 15, fontWeight: '500', color: colors.textSoft },
   citeLink: { color: colors.primary, textDecorationLine: 'underline' },
 
   scaleWrap: { gap: 10 },
   scaleHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  scaleLabel: { fontSize: 16, fontWeight: '600', color: colors.text },
-  scaleValue: { fontSize: 22, fontWeight: '900', color: colors.primary },
-  scaleValueMax: { fontSize: 13, fontWeight: '700', color: colors.textDim },
+  scaleLabel: { fontSize: 17, fontWeight: '500', color: colors.text },
+  scaleValue: { fontSize: 22, fontWeight: '500', color: colors.primary },
+  scaleValueMax: { fontSize: 16, fontWeight: '500', color: colors.textDim },
   // Website .scorePill: dark navy pill, cyan when selected
   scorePillRow: { flexDirection: 'row', gap: 4 },
   scorePill: {
@@ -581,7 +519,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(15, 23, 54, 0.45)',
+    backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -597,14 +535,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.inputBg,
   },
   scorePillOn: {
-    backgroundColor: 'rgba(40, 225, 255, 0.22)',
-    borderColor: 'rgba(40, 225, 255, 0.55)',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
     transform: [{ scale: 1.06 }],
   },
-  scorePillText: { fontSize: 13, fontWeight: '800', color: colors.textSoft },
+  scorePillText: { fontSize: 16, fontWeight: '500', color: colors.textSoft },
   scorePillTextOn: { color: '#FFFFFF' },
   sliderEnds: { flexDirection: 'row', justifyContent: 'space-between' },
-  sliderEndText: { fontSize: 13, fontWeight: '600', color: colors.textDim },
+  sliderEndText: { fontSize: 16, fontWeight: '500', color: colors.textDim },
 
   optionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   optionCell: {
@@ -625,36 +563,36 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary100,
     borderColor: colors.primary,
   },
-  optionText: { fontSize: 16, fontWeight: '600', color: colors.textMuted, textAlign: 'center' },
-  optionTextActive: { color: colors.text, fontWeight: '800' },
+  optionText: { fontSize: 17, fontWeight: '500', color: colors.textMuted, textAlign: 'center' },
+  optionTextActive: { color: colors.text, fontWeight: '500' },
 
-  segWrap: { flexDirection: 'row', backgroundColor: colors.ghostBg, borderRadius: radius.button, padding: 3, gap: 3, borderWidth: 1, borderColor: colors.borderSoft },
-  segWrapStack: { flexWrap: 'wrap' },
+  segWrap: { flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: 12, padding: 4, gap: 4 },
+  segWrapStack: { flexDirection: 'column' },
   segItem: { flex: 1, paddingVertical: 12, paddingHorizontal: 6, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', minHeight: 48, minWidth: 0 },
-  segItemStack: { flexBasis: '47%', flexGrow: 1, maxWidth: '100%' },
+  segItemStack: { flex: 0, width: '100%' },
   segItemActive: {
-    backgroundColor: colors.primary100,
-    borderWidth: 1,
-    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.primary,
   },
-  segText: { fontSize: 15, fontWeight: '600', color: colors.textMuted, textAlign: 'center' },
-  segTextActive: { color: colors.text, fontWeight: '900' },
+  segText: { fontSize: 17, fontWeight: '500', color: colors.textMuted, textAlign: 'center' },
+  segTextActive: { color: colors.text, fontWeight: '500' },
 
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
-  toggleLabel: { fontSize: 16, color: colors.text, fontWeight: '600', flexShrink: 1, paddingRight: 12 },
+  toggleLabel: { fontSize: 17, color: colors.text, fontWeight: '500', flexShrink: 1, paddingRight: 12 },
   toggleTrack: { width: 54, height: 32, borderRadius: 16, backgroundColor: colors.border, padding: 3, justifyContent: 'center' },
   toggleTrackOn: { backgroundColor: colors.primary },
   toggleThumb: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFFFFF' },
   toggleThumbOn: { alignSelf: 'flex-end' },
 
   /* Reveal animation — mirrors website .revealModal/.revealStep/.revealBar */
-  revealBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(4, 6, 12, 0.72)' },
-  revealWrap: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', padding: spacing.lg },
+  revealBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(4, 6, 12, 0.72)' },
+  revealWrap: { ...StyleSheet.absoluteFill, justifyContent: 'center', padding: spacing.lg },
   revealModal: {
     backgroundColor: colors.surface, borderRadius: radius.lg,
     padding: spacing.lg, gap: 14, maxHeight: '86%',
   },
-  revealTitle: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  revealTitle: { fontSize: 17, fontWeight: '500', color: colors.text, letterSpacing: -0.2 },
   revealStep: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12,
     padding: 12, borderRadius: radius.md,
@@ -670,18 +608,18 @@ const styles = StyleSheet.create({
   },
   revealIconOn: { borderColor: colors.primary100, backgroundColor: colors.primary50 },
   revealIconDone: { borderColor: 'rgba(52, 211, 153, 0.28)', backgroundColor: 'rgba(52, 211, 153, 0.14)' },
-  revealIconText: { fontSize: 12, fontWeight: '800', color: colors.textMuted },
+  revealIconText: { fontSize: 15, fontWeight: '500', color: colors.textMuted },
   revealIconTextActive: { color: colors.text },
-  revealLabel: { fontSize: 14, fontWeight: '700', color: colors.text },
-  revealHint: { fontSize: 12, color: colors.textMuted, lineHeight: 17, marginTop: 2 },
+  revealLabel: { fontSize: 17, fontWeight: '500', color: colors.text },
+  revealHint: { fontSize: 15, color: colors.textMuted, lineHeight: 21, marginTop: 2 },
   revealTrack: { height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   revealBar: { height: '100%', borderRadius: 3 },
-  revealFoot: { fontSize: 13, color: colors.textMuted, textAlign: 'center' },
+  revealFoot: { fontSize: 16, color: colors.textMuted, textAlign: 'center' },
 
   /* Insight modal */
   insightModal: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: 8, maxHeight: '80%' },
-  insightKicker: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 1 },
-  insightSummary: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 },
-  insightLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 8 },
-  insightBody: { fontSize: 14, color: colors.textSoft, lineHeight: 20 },
+  insightKicker: { fontSize: 14, fontWeight: '500', color: colors.primary, letterSpacing: 1 },
+  insightSummary: { fontSize: 17, fontWeight: '500', color: colors.text, marginBottom: 6 },
+  insightLabel: { fontSize: 15, fontWeight: '500', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 8 },
+  insightBody: { fontSize: 17, color: colors.textSoft, lineHeight: 24 },
 });

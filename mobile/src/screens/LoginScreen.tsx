@@ -17,6 +17,7 @@ import { AmbientBackground } from '@/components/AmbientBackground';
 import { SocialAuthButtons } from '@/components/SocialAuthButtons';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
+import { FormScrollView } from '@/components/FormScrollView';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useAuth } from '@/auth/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -55,7 +56,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
+        <FormScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -67,14 +68,6 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.backText}>← {t('nav.back')}</Text>
               </Pressable>
             </View>
-            <View style={styles.brandRow}>
-              <Image
-                source={require('../../assets/logo.png')}
-                style={styles.brandLogo}
-                resizeMode="contain"
-              />
-              <Text style={styles.brandName}>GeneoRx</Text>
-            </View>
             <View style={[styles.topBarSide, styles.topBarSideRight]}>
               <LanguageSelector compact />
             </View>
@@ -82,12 +75,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* INTRO */}
           <View style={styles.intro}>
-            <Text style={styles.eyebrow}>  {t('mobile.auth.welcome_back')}</Text>
             <Text style={styles.title}>
-              {t('portal.signin_account')}
+              {t('parity.signin_title')}
             </Text>
             <Text style={styles.subtitle}>
-              {t('mobile.auth.login_sub')}
+              {t('parity.signin_sub')}
             </Text>
           </View>
 
@@ -138,7 +130,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.legal}>
             {t('mobile.legal')}
           </Text>
-        </ScrollView>
+        </FormScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -147,8 +139,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingHorizontal: 20,
+    paddingTop: 24,
     paddingBottom: spacing.xxl,
   },
 
@@ -167,7 +159,7 @@ const styles = StyleSheet.create({
   },
   back: { padding: 4, alignSelf: 'flex-start' },
   backText: {
-    fontSize: 14,
+    fontSize: 17,
     fontWeight: '500',
     color: colors.textMuted,
   },
@@ -180,7 +172,7 @@ const styles = StyleSheet.create({
   brandLogo: { height: 32, width: 124 },
   brandName: {
     fontSize: 14.5,
-    fontWeight: '800',
+    fontWeight: '500',
     color: colors.text,
     letterSpacing: -0.2,
   },
@@ -188,19 +180,19 @@ const styles = StyleSheet.create({
   /* INTRO */
   intro: { marginBottom: spacing.lg },
   eyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '500',
     color: colors.primaryLight,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     marginBottom: 12,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '600',
     color: colors.text,
     letterSpacing: -0.8,
-    lineHeight: 38,
+    lineHeight: 35,
     marginBottom: 12,
   },
   titleItalic: {
@@ -209,23 +201,21 @@ const styles = StyleSheet.create({
     color: colors.primaryLight,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 17,
     color: colors.textSoft,
     lineHeight: 22,
   },
 
   /* FORM — elevated card, mirrors the website .auth-card */
   form: {
-    ...portalCard,
     gap: spacing.md,
     marginBottom: spacing.lg,
-    padding: spacing.lg,
   },
   forgotLink: { alignSelf: 'center', paddingVertical: 4 },
-  forgotLinkText: { fontSize: 14, color: colors.primary, fontWeight: '600' },
+  forgotLinkText: { fontSize: 17, color: colors.primary, fontWeight: '500' },
 
   guestLink: { alignSelf: 'center', paddingVertical: 8, marginBottom: spacing.sm },
-  guestLinkText: { fontSize: 14, color: colors.primaryLight, fontWeight: '600' },
+  guestLinkText: { fontSize: 17, color: colors.primaryLight, fontWeight: '500' },
 
   /* FOOTER LINK */
   bottomLink: {
@@ -239,13 +229,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   bottomLinkLead: {
-    fontSize: 14,
+    fontSize: 17,
     color: colors.textMuted,
   },
   bottomLinkAction: {
-    fontSize: 14,
+    fontSize: 17,
     color: colors.primaryLight,
-    fontWeight: '700',
+    fontWeight: '500',
   },
 
   legal: {
@@ -273,7 +263,7 @@ const styles = StyleSheet.create({
   },
 
   socialError: {
-    fontSize: 13,
+    fontSize: 16,
     color: colors.danger,
     textAlign: 'center',
   },
@@ -286,7 +276,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   socialLoadingText: {
-    fontSize: 14,
+    fontSize: 17,
     color: colors.textMuted,
   },
 
@@ -310,13 +300,13 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   googleIcon: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '500',
     color: '#4285F4',
   },
   googleBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '500',
     color: colors.text,
   },
 

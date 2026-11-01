@@ -6,12 +6,9 @@
     "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#070A12"
-    },
+    "userInterfaceStyle": "light",
+    "primaryColor": "#007AFF",
+    "backgroundColor": "#F5F5F7",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -27,7 +24,7 @@
       "package": "com.geneorx.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#F5F5F7"
       },
       "googleServicesFile": "./google-services.json",
       "permissions": [
@@ -46,7 +43,7 @@
       [
         "expo-notifications",
         {
-          "color": "#070A12"
+          "color": "#F5F5F7"
         }
       ]
     ],

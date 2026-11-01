@@ -114,8 +114,9 @@ describe('computeMedicationCompletion', () => {
       adherencePct: undefined as never,
       completion: { labs: null, prescriber: null, lifestyle: { movement: 'yes', hydration: 'yes' } },
     });
-    // adherence falls back to 0 which IS answered, so assert the floor instead
-    expect(mc.answered).toBeGreaterThanOrEqual(MCS_MIN_COMPONENTS);
+    // Missing adherence is unanswered, not a reported zero.
+    expect(mc.components.find(component => component.key === 'adherence')?.score).toBeNull();
+    expect(mc.score).toBeNull();
   });
 
   it('renormalises weights instead of imputing — dropping a component with the rest equal leaves the score unchanged', () => {

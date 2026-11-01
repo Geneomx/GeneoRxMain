@@ -2,9 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-
 /**
  * "Ask GeneoRx" conversational assistant. Multi-turn, grounded ONLY in the
  * user's own state and the cited catalog — never open-domain. Distinct from
@@ -32,38 +29,14 @@ class GeminiAssistantService
             return null;
         }
 
-        try {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=".urlencode($key);
+        $result = app(GeminiClient::class)->generate([
+            'systemInstruction' => ['parts' => [['text' => $this->systemInstruction($context, $language)]]],
+            'contents' => $this->toContents($messages),
+            'generationConfig' => ['temperature' => 0.3, 'maxOutputTokens' => 500],
+        ], 20);
+        $text = data_get($result, 'candidates.0.content.parts.0.text');
 
-            $response = Http::timeout(25)->post($url, [
-                'systemInstruction' => [
-                    'parts' => [['text' => $this->systemInstruction($context, $language)]],
-                ],
-                'contents' => $this->toContents($messages),
-                'generationConfig' => [
-                    'temperature' => 0.3,
-                    'maxOutputTokens' => 500,
-                ],
-            ]);
-
-            if (! $response->successful()) {
-                Log::warning('GeneoRx assistant failed', ['status' => $response->status(), 'body' => $response->body()]);
-
-                return null;
-            }
-
-            $text = data_get($response->json(), 'candidates.0.content.parts.0.text');
-
-            if (! is_string($text) || trim($text) === '') {
-                return null;
-            }
-
-            return $this->withDisclaimer(trim($text), $language);
-        } catch (\Throwable $e) {
-            Log::warning('GeneoRx assistant error', ['message' => $e->getMessage()]);
-
-            return null;
-        }
+        return is_string($text) && trim($text) !== '' ? $this->withDisclaimer(trim($text), $language) : null;
     }
 
     /**

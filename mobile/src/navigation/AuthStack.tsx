@@ -24,13 +24,13 @@ export const AuthStack: React.FC = () => (
       headerTintColor: colors.primary,
       headerStyle: { backgroundColor: colors.background },
       headerShadowVisible: false,
-      headerTitleStyle: { fontSize: 16, fontWeight: '700' as const, color: colors.text },
+      headerTitleStyle: { fontSize: 17, fontWeight: '500' as const, color: colors.text },
     }}
   >
     <Stack.Screen name="Welcome" component={WelcomeScreen} />
-    <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true, title: 'Sign in' }} />
-    <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: true, title: 'Create account' }} />
-    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: true, title: 'Forgot password' }} />
-    <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ headerShown: true, title: 'Reset password' }} />
+    <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false, title: 'Sign in' }} />
+    <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false, title: 'Create account' }} />
+    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false, title: 'Forgot password' }} />
+    <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ headerShown: false, title: 'Reset password' }} />
   </Stack.Navigator>
 );

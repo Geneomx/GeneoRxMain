@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Medication;
 use App\Models\Symptom;
 use App\Models\User;
+use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -23,7 +24,7 @@ class AssistantTest extends TestCase
 
     private function fakeGemini(string $text): void
     {
-        config(['services.gemini.key' => 'test-key', 'services.gemini.model' => 'gemini-test']);
+        config(['services.gemini.data_mode' => 'personalized', 'services.gemini.key' => 'test-key', 'services.gemini.model' => 'gemini-test']);
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
                 'candidates' => [['content' => ['parts' => [['text' => $text]]]]],
@@ -60,6 +61,7 @@ class AssistantTest extends TestCase
         // The symptoms table carries catalog columns (name/slug, NOT NULL) as
         // well as the user-tracking symptom_name; set both to satisfy the schema.
         Symptom::create(['user_id' => $user->id, 'symptom_name' => 'Fatigue', 'name' => 'Fatigue', 'slug' => 'fatigue']);
+        UserProfile::create(['user_id' => $user->id, 'portal_state' => ['account' => ['consent' => true]]]);
         Sanctum::actingAs($user);
 
         $this->fakeGemini('Reply.');

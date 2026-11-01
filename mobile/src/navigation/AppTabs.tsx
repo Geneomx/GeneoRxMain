@@ -1,8 +1,9 @@
 import React from 'react';
 import { View } from 'react-native';
-import Svg, { Path, Circle, Polygon } from 'react-native-svg';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Svg, { Path, Circle } from 'react-native-svg';
+import { AppIcon } from '@/components/AppIcon';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { AskBubble } from '@/components/AskBubble';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { HomeScreen } from '@/screens/HomeScreen';
 import { WizardScreen } from '@/screens/wizard/WizardScreen';
@@ -10,9 +11,8 @@ import { ProfileStack } from '@/navigation/ProfileStack';
 import { AppTabBar } from '@/navigation/AppTabBar';
 
 /**
- * Three tabs, not four. Ask moved to a floating bubble (AskBubble): it frees the
- * fourth slot — with four tabs the bar degrades to icon-only below 360px width —
- * and it closes a parity divergence, since the website has no Ask tab either.
+ * Three primary destinations. Ask is available on Home and within Summary,
+ * leaving medication and check-in controls unobstructed.
  */
 export type AppTabsParamList = {
   Home: undefined;
@@ -29,16 +29,6 @@ const HomeIcon = ({ color }: { color: string }) => (
     <Path
       d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2v-9z"
       stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-const CompassIcon = ({ color }: { color: string }) => (
-  <Svg width={ICON} height={ICON} viewBox="0 0 24 24" fill="none">
-    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.9} />
-    <Polygon
-      points="15.5,8.5 11,11 8.5,15.5 13,13"
-      stroke={color} strokeWidth={1.6} fill="none" strokeLinejoin="round"
     />
   </Svg>
 );
@@ -73,7 +63,7 @@ const AppTabsNavigator: React.FC = () => (
       name="Guided"
       component={WizardScreen}
       options={{
-        tabBarIcon: ({ color }) => <CompassIcon color={color} />,
+        tabBarIcon: ({ color }) => <AppIcon name="plan" size={ICON} color={color} />,
       }}
     />
     <Tabs.Screen
@@ -88,12 +78,9 @@ const AppTabsNavigator: React.FC = () => (
 
 export const AppTabs: React.FC = () => (
   <View style={{ flex: 1 }}>
-    <OfflineBanner />
-    <View style={{ flex: 1 }}>
+    <OfflineBanner respectStatusBar />
+    <SafeAreaProvider style={{ flex: 1 }}>
       <AppTabsNavigator />
-      {/* Sits above the tab bar on every tab, so Ask is reachable from anywhere
-          rather than only from its own screen. */}
-      <AskBubble />
-    </View>
+    </SafeAreaProvider>
   </View>
 );

@@ -1,41 +1,64 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { useVisualPreferences } from '@/store/VisualPreferencesContext';
+import React, { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Animated, AppState, Easing, Image, Keyboard, StyleSheet, View, type ImageStyle, type StyleProp } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from '@/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
-/**
- * Ambient background — mirrors the website body glow:
- *   radial cyan (top-left) + violet (top-right) + pink (bottom-left)
- *   over a vertical #070A12 → #0B1022 base.
- *
- * It paints its OWN opaque base, so it can sit as an absolutely-positioned
- * first child of any screen (behind the content) without needing the screen's
- * own background to be transparent. Purely decorative — never intercepts touches.
- */
-export const AmbientBackground: React.FC = () => (
-  <View style={StyleSheet.absoluteFill} pointerEvents="none">
-    <Svg width="100%" height="100%">
-      <Defs>
-        <LinearGradient id="amb-base" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#070A12" />
-          <Stop offset="1" stopColor="#0B1022" />
-        </LinearGradient>
-        <RadialGradient id="amb-cyan" cx="0.2" cy="0.02" r="0.65">
-          <Stop offset="0" stopColor="#28E1FF" stopOpacity="0.12" />
-          <Stop offset="1" stopColor="#28E1FF" stopOpacity="0" />
-        </RadialGradient>
-        <RadialGradient id="amb-violet" cx="0.86" cy="0.14" r="0.6">
-          <Stop offset="0" stopColor="#A78BFA" stopOpacity="0.12" />
-          <Stop offset="1" stopColor="#A78BFA" stopOpacity="0" />
-        </RadialGradient>
-        <RadialGradient id="amb-pink" cx="0.28" cy="1" r="0.65">
-          <Stop offset="0" stopColor="#FF4FD8" stopOpacity="0.10" />
-          <Stop offset="1" stopColor="#FF4FD8" stopOpacity="0" />
-        </RadialGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill="url(#amb-base)" />
-      <Rect x="0" y="0" width="100%" height="100%" fill="url(#amb-cyan)" />
-      <Rect x="0" y="0" width="100%" height="100%" fill="url(#amb-violet)" />
-      <Rect x="0" y="0" width="100%" height="100%" fill="url(#amb-pink)" />
-    </Svg>
-  </View>
-);
+/** Shared branding stays still while typing, off screen, or with reduced motion. */
+export const BrandWatermark: React.FC<{ style?: StyleProp<ImageStyle> }> = ({ style }) => {
+  const { brandMotion } = useVisualPreferences();
+  const motion = useRef(new Animated.Value(0)).current;
+  const focused = useIsFocused();
+  const [reducedMotion, setReducedMotion] = useState(true);
+  const [active, setActive] = useState(AppState.currentState === 'active');
+  const [typing, setTyping] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then(value => {
+      if (mounted) setReducedMotion(value);
+    }).catch(() => { /* Keep the static background if the preference is unavailable. */ });
+    const reduce = AccessibilityInfo.addEventListener('reduceMotionChanged', setReducedMotion);
+    const app = AppState.addEventListener('change', state => setActive(state === 'active'));
+    const show = Keyboard.addListener('keyboardDidShow', () => setTyping(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setTyping(false));
+    return () => { mounted = false; reduce.remove(); app.remove(); show.remove(); hide.remove(); };
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion || !brandMotion) { motion.setValue(0); return; }
+    if (!active || !focused || typing) return;
+    const animation = Animated.loop(Animated.sequence([
+      Animated.timing(motion, { toValue: 1, duration: 12000, easing: Easing.inOut(Easing.sin), useNativeDriver: true, isInteraction: false }),
+      Animated.timing(motion, { toValue: 0, duration: 12000, easing: Easing.inOut(Easing.sin), useNativeDriver: true, isInteraction: false }),
+    ]));
+    animation.start();
+    return () => animation.stop();
+  }, [active, focused, motion, reducedMotion, typing, brandMotion]);
+
+  return <Animated.Image source={require('../../assets/brand-mark.png')} resizeMode="contain" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[style, {
+      transform: [
+        { translateX: motion.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) },
+        { translateY: motion.interpolate({ inputRange: [0, 1], outputRange: [3, -5] }) },
+        { scale: motion.interpolate({ inputRange: [0, 1], outputRange: [1, 1.035] }) },
+      ],
+    }]} />;
+};
+
+/** Clip page decoration below the status bar, including every animated frame. */
+export const AmbientBackground: React.FC<{ backgroundColor?: string; gradientEndColor?: string; markOpacity?: number; markStyle?: StyleProp<ImageStyle> }> = ({ backgroundColor, gradientEndColor, markOpacity, markStyle }) => {
+  const insets = useSafeAreaInsets();
+  return <View style={[styles.background, { top: insets.top }, backgroundColor ? { backgroundColor } : null]} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    {gradientEndColor ? <LinearGradient colors={[backgroundColor || colors.background, gradientEndColor]} start={{ x: 0.15, y: 0 }} end={{ x: 0.85, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
+    <Image source={require('../../assets/glass-medicine-background-v1.png')} resizeMode="cover" style={[StyleSheet.absoluteFill, { opacity: .32, top: -90, bottom: -20 }]} accessible={false} />
+    <LinearGradient colors={['rgba(245,247,252,0)', 'rgba(245,247,252,0.65)']} style={StyleSheet.absoluteFill} />
+    {markOpacity !== 0 ? <BrandWatermark style={[styles.mark, markStyle, markOpacity === undefined ? undefined : { opacity: markOpacity }]} /> : null}
+  </View>;
+};
+
+const styles = StyleSheet.create({
+  background: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: colors.background, overflow: 'hidden' },
+  mark: { position: 'absolute', top: 20, right: 4, width: 110, height: 110, tintColor: '#263A59', opacity: 0.05 },
+});

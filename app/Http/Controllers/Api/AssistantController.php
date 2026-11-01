@@ -26,6 +26,26 @@ use Illuminate\Support\Collection;
  */
 class AssistantController extends Controller
 {
+    public const PUBLIC_PROMPTS = [
+        'tracking' => 'How can a medication and symptom journal help between visits?',
+        'suggestions' => 'How should someone review optional symptom suggestions without treating them as a diagnosis?',
+        'side_effects' => 'Explain possible medicine side effects in general and when to contact a pharmacist.',
+        'summary' => 'What makes a medication tracking summary useful to review?',
+    ];
+
+    public function options(): JsonResponse
+    {
+        return response()->json([
+            'mode' => config('services.gemini.data_mode') === 'personalized' ? 'personalized' : 'catalog_only',
+            'prompts' => collect([
+                'tracking' => 'Tracking between visits',
+                'suggestions' => 'Understanding symptom suggestions',
+                'side_effects' => 'Understanding possible side effects',
+                'summary' => 'Making a useful summary',
+            ])->map(fn ($label, $id) => ['id' => $id, 'label' => $label])->values(),
+        ]);
+    }
+
     public function __invoke(Request $request, GeminiAssistantService $assistant): JsonResponse
     {
         $validated = $request->validate([
@@ -38,6 +58,7 @@ class AssistantController extends Controller
             'context.symptoms' => ['nullable', 'array'],
             'context.symptoms.*' => ['string', 'max:200'],
             'language' => ['nullable', 'string', 'max:10'],
+            'prompt_id' => ['nullable', 'string', 'in:tracking,suggestions,side_effects,summary'],
         ]);
 
         // Keep only the trailing turns to bound the prompt, and the final turn
@@ -47,7 +68,25 @@ class AssistantController extends Controller
             return response()->json(['message' => 'The last message must be from the user.'], 422);
         }
 
+        if (! config('services.gemini.key') || config('services.gemini.key') === '0') {
+            return response()->json(['reply' => null, 'source' => 'unavailable']);
+        }
+
+        if (config('services.gemini.data_mode') !== 'personalized') {
+            $question = self::PUBLIC_PROMPTS[$validated['prompt_id'] ?? ''] ?? null;
+            if (! $question) {
+                return response()->json(['reply' => 'Personal chat is not enabled on this connection. Choose a general question; your medication records and symptom notes stay in GeneoRx.', 'source' => 'restricted']);
+            }
+            // Ignore every client turn and context field; only the fixed public question reaches Gemini.
+            $reply = $assistant->reply([['role' => 'user', 'content' => $question]], [], $validated['language'] ?? 'en');
+
+            return response()->json(['reply' => $reply, 'source' => $reply ? 'ai' : 'unavailable']);
+        }
+
         $user = $request->user() ?? $request->user('sanctum');
+        if ($user && ! data_get($user->profile?->portal_state, 'account.consent', false)) {
+            return response()->json(['reply' => 'Enable suggestions consent in Account before using personal cloud chat.', 'source' => 'restricted']);
+        }
 
         $context = $user
             ? $this->contextForUser($user->id)

@@ -36,12 +36,26 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
 
   plugins: [
     ...(Array.isArray(config.plugins) ? config.plugins : []),
+    [
+      'expo-splash-screen',
+      {
+        image: './assets/splash.png',
+        imageWidth: 200,
+        resizeMode: 'contain',
+        backgroundColor: '#F5F5F7',
+      },
+    ],
+    ['expo-image-picker', { photosPermission: 'Choose a medication label to help fill in its details.', cameraPermission: 'Take a medication-label photo to help fill in its details.', microphonePermission: false }],
+    'expo-asset',
+    'expo-font',
+    'expo-sharing',
+    'expo-status-bar',
     'expo-web-browser',
     [
       'expo-build-properties',
       {
         android: { minSdkVersion: 24 },
-        ios: { deploymentTarget: '15.1' },
+        ios: { deploymentTarget: '16.4' },
       },
     ],
   ],

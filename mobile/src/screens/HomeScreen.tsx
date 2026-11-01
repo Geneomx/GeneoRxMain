@@ -1,89 +1,27 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { AmbientBackground } from '@/components/AmbientBackground';
-import { ScoreRow } from '@/components/ScoreRow';
-import { ReportDownloadRow } from '@/components/ReportDownloadRow';
-import { Button } from '@/components/Button';
-import { useAuth } from '@/auth/AuthContext';
-import { useWizard } from '@/store/WizardContext';
-import { useMedCatalog } from '@/store/MedCatalogContext';
-import {
-  computeDrugInteractions,
-  computeInsightEngine,
-  computeNutrientScores,
-  computeWeeklyCoachMessage,
-  fmtDate,
-  computeBodySystemsView,
-  computeMedicationCompletion,
-  computeWeeklyHealthScore,
-  impactLabel,
-  latestCheckin,
-} from '@/wizard/engine';
-import { MED_DB } from '@/content/wizardData';
-import { fetchAiSummary } from '@/api/aiSummary';
-import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { useTranslation } from '@/hooks/useTranslation';
 import type { AppTabsParamList } from '@/navigation/AppTabs';
-import { colors, portalCard, radius, spacing } from '@/theme';
+import { AmbientBackground } from '@/components/AmbientBackground';
+import { MedicationFocusCard } from '@/components/MedicationFocusCard';
+import { RecentUpdateStrip } from '@/components/RecentUpdateStrip';
+import { AskBubble } from '@/components/AskBubble';
+import { SaveState } from '@/components/SaveState';
+import { LatestUpdateCard } from '@/components/LatestUpdateCard';
+import { AppIcon, type AppIconName } from '@/components/AppIcon';
+import { ListRow, refined } from '@/components/RefinedUI';
+import { useWizard } from '@/store/WizardContext';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { computeDrugInteractions } from '@/wizard/engine';
+import { latestUpdate } from '@/wizard/latestUpdate';
+import { trackingJourney } from '@/wizard/trackingJourney';
+import { Section } from '@/screens/wizard/ui';
+import { dashboardPalette as palette } from '@/theme/dashboard';
 
 type Props = BottomTabScreenProps<AppTabsParamList, 'Home'>;
-
-const RING_SIZE = 116;
-const RING_STROKE = 10;
-
-/** Adherence ring — SVG arc, same recipe as the website's score circle. */
-const AdherenceRing: React.FC<{ pct: number }> = ({ pct }) => {
-  const r = (RING_SIZE - RING_STROKE) / 2;
-  const c = 2 * Math.PI * r;
-  const clamped = Math.max(0, Math.min(100, pct));
-  return (
-    <View style={{ width: RING_SIZE, height: RING_SIZE }}>
-      <Svg width={RING_SIZE} height={RING_SIZE}>
-        <Circle
-          cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={r}
-          stroke="rgba(255, 255, 255, 0.08)" strokeWidth={RING_STROKE} fill="none"
-        />
-        <Circle
-          cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={r}
-          stroke={colors.primary} strokeWidth={RING_STROKE} fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${c}`}
-          strokeDashoffset={c * (1 - clamped / 100)}
-          transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-        />
-      </Svg>
-      <View style={styles.ringCenter} pointerEvents="none">
-        <Text style={styles.ringPct}>{Math.round(clamped)}%</Text>
-      </View>
-    </View>
-  );
-};
-
-const FlameIcon = ({ color }: { color: string }) => (
-  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M12 3c1 3-2 4.5-2 7a2 2 0 0 0 4 .5C15.5 12 17 13.5 17 16a5 5 0 0 1-10 0c0-4 3.5-6.5 5-13z"
-      stroke={color} strokeWidth={1.8} strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-const STALE_CHECKIN_DAYS = 7;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function startOfDay(d: Date): number {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-}
-
-function daysSince(dateISO: string, now: Date = new Date()): number {
-  const then = new Date(dateISO);
-  if (Number.isNaN(then.getTime())) return 0;
-  return Math.max(0, Math.round((startOfDay(now) - startOfDay(then)) / DAY_MS));
-}
-
 /** Consecutive weeks (ending this week or last) with at least one check-in. */
 export function weeklyCheckinStreak(dates: string[], now: Date = new Date()): number {
   if (!dates.length) return 0;
@@ -111,396 +49,64 @@ export function weeklyCheckinStreak(dates: string[], now: Date = new Date()): nu
 }
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { user } = useAuth();
-  const { state, setStep, syncing, refresh, setFocusTarget } = useWizard();
-  const { catalog } = useMedCatalog();
-  const { t, language } = useTranslation();
-  const { page, scrollBottom } = useResponsiveLayout();
-
-  const firstName = (user?.name || '').trim().split(/\s+/)[0] || t('mobile.profile.your_account');
-  const last = latestCheckin(state);
-  const coach = useMemo(
-    () => computeWeeklyCoachMessage(state, t, catalog),
-    [state, t, catalog],
-  );
-
-  // AI Weekly Digest: reuse the hardened /mobile/ai-summary endpoint to rewrite
-  // the rule-engine insight into prose. Only surfaced when the model actually
-  // responds (source==='ai'); with no GEMINI_API_KEY the endpoint returns
-  // fallback text and this card stays hidden — so the no-key state is unchanged.
-  const [aiDigest, setAiDigest] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!last) {
-      setAiDigest(null);
-      return;
-    }
-    const db = catalog?.length ? catalog : MED_DB;
-    const insight = computeInsightEngine(state, t, catalog);
-    const medNames = state.meds.map((m) => db.find((x) => x.id === m.medId)?.name ?? m.medId);
-    fetchAiSummary({
-      medications: medNames,
-      symptoms: state.symptoms.selected ?? [],
-      summary: insight.summary,
-      meaning: insight.meaning,
-      doctorPrompt: insight.doctorPrompt,
-      language,
-    })
-      .then((res) => {
-        if (!cancelled) setAiDigest(res.source === 'ai' && res.summary ? res.summary : null);
-      })
-      .catch(() => {
-        if (!cancelled) setAiDigest(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [last?.dateISO, language]);
-  const streak = useMemo(
-    () => weeklyCheckinStreak(state.checkins.map((c) => c.dateISO)),
-    [state.checkins],
-  );
-  const topInteraction = useMemo(
-    () => computeDrugInteractions(state, t)[0] ?? null,
-    [state, t],
-  );
-  const weekly = useMemo(() => computeWeeklyHealthScore(state), [state]);
-  const completion = useMemo(() => computeMedicationCompletion(state), [state]);
-  const systems = useMemo(() => computeBodySystemsView(state), [state]);
-
-  const topNutrient = useMemo(() => {
-    const scores = computeNutrientScores(state, catalog);
-    return scores.length ? scores[0][0] : null;
-  }, [state, catalog]);
-
-  const isEmpty = state.meds.length === 0 && state.checkins.length === 0;
-  const staleDays = last ? daysSince(last.dateISO) : 0;
-  const isStale = !!last && staleDays >= STALE_CHECKIN_DAYS;
-
-  const goToStep = (step: number) => {
-    setStep(step);
-    navigation.navigate('Guided');
-  };
-
-  const goToEvidence = () => {
-    if (topNutrient) setFocusTarget({ kind: 'nutrient', value: topNutrient });
-    goToStep(4);
-  };
-
-  const goToInteraction = () => {
-    if (topInteraction) setFocusTarget({ kind: 'interaction', value: topInteraction.title });
-    goToStep(4);
-  };
-
-  const lastSymptom = last?.symptoms?.items?.[0];
-
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <AmbientBackground />
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: scrollBottom }]}
-        refreshControl={<RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={colors.primary} />}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={[page, styles.stack]}>
-          {/* Greeting + streak */}
-          <View style={styles.headRow}>
-            <Text style={styles.greeting}>{t('home.greeting', { name: firstName })}</Text>
-            {streak >= 2 ? (
-              <View style={styles.streak}>
-                <FlameIcon color={colors.amber} />
-                <Text style={styles.streakText}>{t('home.streak', { count: streak })}</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {isEmpty ? (
-            /* Empty state — first run, nothing tracked yet */
-            <View style={[portalCard, styles.card, styles.emptyCard]}>
-              <Text style={styles.emptyTitle}>{t('home.empty_title')}</Text>
-              <Text style={styles.emptyBody}>{t('home.empty_body')}</Text>
-              <Button title={t('home.empty_cta')} onPress={() => navigation.navigate('Guided')} />
-            </View>
-          ) : (
-            <>
-              {/* Safety: real drug-interaction alert, only when one exists */}
-              {topInteraction ? (
-                <Pressable style={styles.banner} onPress={goToInteraction}>
-                  <Text style={styles.bannerIcon}>⚠</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.bannerTag}>{t('home.interaction_tag')}</Text>
-                    <Text style={styles.bannerBody}>
-                      {topInteraction.title}: {topInteraction.action}
-                    </Text>
-                  </View>
-                </Pressable>
-              ) : null}
-
-              {/* Adherence ring */}
-              <View style={styles.ringWrap}>
-                <AdherenceRing pct={last?.adherencePct ?? 0} />
-                <Text style={styles.ringLabel}>
-                  {last ? t('home.adherence_sub') : t('home.no_checkin_yet')}
-                </Text>
-              </View>
-
-              {/* Top nutrient signal — the app's core value prop, surfaced on Home */}
-              {topNutrient ? (
-                <Pressable style={styles.nutrientChipWrap} onPress={goToEvidence}>
-                  <View style={styles.nutrientChip}>
-                    <Text style={styles.nutrientChipText}>
-                      {t('home.top_signal_label')} <Text style={styles.nutrientChipName}>{topNutrient}</Text>
-                    </Text>
-                  </View>
-                </Pressable>
-              ) : null}
-
-              {/* AI Weekly Digest — violet = AI, distinct from the cyan engine cards.
-                  Hidden unless the model actually responded. */}
-              {aiDigest ? (
-                <View style={styles.digestCard}>
-                  <Text style={styles.digestTag}>✦ {t('home.digest_label')}</Text>
-                  <Text style={styles.digestBody}>{aiDigest}</Text>
-                </View>
-              ) : null}
-
-              {/* Today's insight */}
-              <View style={styles.insightCard}>
-                <Text style={styles.insightTag}>{t('home.insight_label')}</Text>
-                <Text style={styles.insightBody}>{coach.headline}</Text>
-                {coach.nextBestAction ? (
-                  <Text style={styles.insightNext}>{coach.nextBestAction}</Text>
-                ) : null}
-                <Pressable style={styles.insightCta} onPress={goToEvidence}>
-                  <Text style={styles.insightCtaText}>{t('home.insight_cta')} →</Text>
-                </Pressable>
-              </View>
-
-              {/* Last check-in row — turns into a nudge once it's gone stale */}
-              {last ? (
-                <Pressable
-                  style={[styles.checkinRow, isStale && styles.checkinRowStale]}
-                  onPress={() => (isStale ? goToStep(5) : goToStep(6))}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.checkinLabel}>
-                      {t('home.last_checkin')} ·{' '}
-                      <Text style={isStale ? styles.checkinStaleValue : undefined}>
-                        {isStale ? t('home.days_ago', { count: staleDays }) : fmtDate(last.dateISO)}
-                      </Text>
-                    </Text>
-                    {!isStale && lastSymptom ? (
-                      <Text style={styles.checkinDetail}>
-                        {lastSymptom.symptom}: {impactLabel(lastSymptom.change, t)}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {isStale ? (
-                    <View style={styles.checkinNudgeBtn}>
-                      <Text style={styles.checkinNudgeBtnText}>{t('home.checkin_now')}</Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.chevron}>›</Text>
-                  )}
-                </Pressable>
-              ) : (
-                <Button title={t('home.first_checkin_cta')} variant="secondary" onPress={() => goToStep(5)} />
-              )}
-
-              {/* Deep links into the Insights hub. Without these the hub is only
-                  findable by walking the wizard to step 7.
-
-                  These were three side-by-side tiles showing bare numbers. They
-                  were not on the same scale — weekly and completion are 0-100,
-                  systems.average is 0-10 — so "78 64 6.2" in identical boxes read
-                  as a collapse in body systems. Every row now states its unit. */}
-              <View style={styles.scores}>
-                <ScoreRow
-                  title={t('home.score.week')}
-                  description={t('home.score.week_desc')}
-                  value={weekly.score}
-                  unit={t('home.score.out_of_100')}
-                  tint={colors.primary}
-                  emptyReason={t('home.score.week_empty')}
-                  delta={typeof weekly.delta === 'number' && weekly.delta > 0 ? `▲ ${weekly.delta}` : null}
-                  onPress={() => goToStep(7)}
-                />
-                <ScoreRow
-                  title={t('home.score.completion')}
-                  description={t('home.score.completion_desc')}
-                  value={completion.score}
-                  unit={t('home.score.out_of_100')}
-                  tint={colors.violet}
-                  answered={t('home.score.answered', { n: completion.answered, total: completion.total })}
-                  emptyReason={t('home.score.completion_empty')}
-                  onPress={() => goToStep(7)}
-                />
-                <ScoreRow
-                  title={t('home.score.systems')}
-                  description={t('home.score.systems_desc')}
-                  value={systems.average}
-                  unit={t('home.score.out_of_10')}
-                  tint={colors.amber}
-                  answered={t('home.score.answered', { n: systems.answered, total: systems.total })}
-                  emptyReason={t('home.score.systems_empty')}
-                  onPress={() => goToStep(7)}
-                />
-                {/* MedicationCompletion carries selfReported: true precisely to
-                    force this line. The old tiles ignored it. */}
-                <Text style={styles.selfReported}>{t('home.score.self_reported')}</Text>
-              </View>
-
-              <ReportDownloadRow />
-            </>
-          )}
+  const { state, setStep, syncing, refresh, saveStatus, hydrated, update: updateRecord } = useWizard();
+  const { t } = useTranslation();
+  const { page, scrollBottom, contentWidth, horizontal } = useResponsiveLayout();
+  const go = (step: number) => { setStep(step); navigation.navigate('Guided'); };
+  const update = latestUpdate(state.checkins, t);
+  const journey = trackingJourney(state);
+  const interaction = computeDrugInteractions(state, t)[0];
+  const { width, fontScale } = useWindowDimensions();
+  const stackedLinks = fontScale > 1.3 || width < 340;
+  const today = (() => { try { return new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); } catch { return ''; } })();
+  const links: Array<{ icon: AppIconName; step: number }> = [
+    { icon: 'chart', step: 6 }, { icon: 'file', step: 8 },
+  ];
+  return <SafeAreaView style={styles.safe} edges={['top','left','right']}><AmbientBackground backgroundColor={palette.canvas} gradientEndColor={palette.canvasEnd} /><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 20, paddingBottom: scrollBottom }} refreshControl={<RefreshControl refreshing={syncing} onRefresh={refresh} />}><View style={[page, { gap: 20 }]}>
+    <View style={[styles.pageHeading, stackedLinks && styles.pageHeadingStacked]}><Text accessibilityRole="header" style={styles.title}>{t('clean.today')}</Text>{today ? <Text style={styles.date}>{today}</Text> : null}</View>
+    <SaveState />
+    {saveStatus === 'unavailable' ? <Section><Text style={refined.headingText}>{t('tracking.load_title')}</Text><Text style={refined.body}>{t('tracking.load_body')}</Text></Section> : !hydrated ? <Section><Text style={refined.body}>{t('journey.loading')}</Text></Section> : <>
+      {journey.stage === 'new' ? <Text style={refined.body}>{t('journey.purpose')}</Text> : null}
+      {!journey.firstUpdate ? <RecentUpdateStrip onRecord={() => go(5)} /> : null}
+      <MedicationFocusCard onGo={go} />
+      {journey.firstUpdate ? <Text style={refined.meta}>{t(journey.body)}</Text> : null}
+      {journey.stage === 'new' ? <Pressable accessibilityRole="button" onPress={() => { updateRecord(draft => { draft.symptomOnlyMode = true; }); go(2); }} style={styles.assistantLink}><Text style={styles.assistantText}>{t('meds.no_meds_btn')}</Text></Pressable> : null}
+      {update.checkin ? <LatestUpdateCard update={update} loading={saveStatus === 'loading'} onCheckin={() => go(5)} /> : null}
+      {interaction ? <ListRow icon="plan" title={interaction.title} detail={interaction.action} onPress={() => go(4)} /> : null}
+      {journey.firstUpdate ? <Text style={refined.meta}>{t('journey.record_help')}</Text> : <View style={styles.navigationArea}>
+        <View style={styles.navigationGrid}>
+          {links.map(link => <Pressable key={link.step} accessibilityRole="button" accessibilityLabel={t('step.' + link.step)} onPress={() => go(link.step)} style={({ pressed }) => [styles.navigationItem, { width: stackedLinks ? '100%' : (contentWidth - horizontal * 2 - 8) / 2 }, stackedLinks && styles.navigationItemStacked, pressed && styles.pressed]}>
+            <View style={[styles.navigationIcon, { backgroundColor: iconWashes[link.icon] }]} accessible={false}><AppIcon name={link.icon} size={20} color={iconColors[link.icon]} /></View><Text style={[styles.navigationText, stackedLinks && styles.navigationTextStacked]}>{t('step.' + link.step)}</Text>
+          </Pressable>)}
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+        <AskBubble onReviewSymptoms={() => go(2)} trigger={open => <Pressable accessibilityRole="button" accessibilityLabel={t('ai.general_title')} onPress={open} style={({ pressed }) => [styles.assistantLink, pressed && styles.pressed]}><AppIcon name="spark" size={20} color={palette.accent} /><Text style={styles.assistantText}>{t('ai.general_title')}</Text><AppIcon name="arrow" size={18} color={palette.accent} /></Pressable>} />
+      </View>}
+    </>}
+  </View></ScrollView></SafeAreaView>;
 };
 
+const iconColors: Partial<Record<AppIconName, string>> = {
+  pill: '#3C6AA1', heart: '#A06471', sun: '#9A7538',
+  chart: '#3C6AA1', plan: '#67728D', file: '#67728D',
+};
+const iconWashes: Partial<Record<AppIconName, string>> = {
+  pill: '#EAF0FD', heart: '#F9EDF1', sun: '#FBF3E4',
+  chart: '#EAF0FD', plan: '#EFEDF8', file: '#EDF2F8',
+};
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: { paddingTop: spacing.md },
-  stack: { gap: spacing.sm },
-
-  headRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  greeting: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
-  streak: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(251, 191, 36, 0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.30)',
-  },
-  streakText: { fontSize: 12, fontWeight: '700', color: colors.amber },
-
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 9,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.dangerBg,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 113, 133, 0.35)',
-  },
-  bannerIcon: { fontSize: 15, color: colors.danger, marginTop: 1 },
-  bannerTag: { fontSize: 12.5, fontWeight: '700', color: colors.danger, marginBottom: 3 },
-  bannerBody: { fontSize: 13.5, color: colors.text, lineHeight: 19 },
-
-  ringWrap: { alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
-  ringCenter: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  ringPct: { fontSize: 26, fontWeight: '900', color: colors.text },
-  ringLabel: { fontSize: 13, color: colors.textMuted },
-
-  nutrientChipWrap: { alignItems: 'center', marginBottom: spacing.sm },
-  nutrientChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(167, 139, 250, 0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(167, 139, 250, 0.30)',
-  },
-  nutrientChipText: { fontSize: 13, color: colors.text },
-  nutrientChipName: { color: colors.violet, fontWeight: '700' },
-
-  card: { padding: spacing.lg, gap: spacing.sm },
-
-  digestCard: {
-    borderWidth: 1,
-    borderColor: colors.violet,
-    borderRadius: radius.card,
-    backgroundColor: 'rgba(167,139,250,0.10)',
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    gap: 6,
-  },
-  digestTag: { fontSize: 12, fontWeight: '800', color: colors.violet, letterSpacing: 0.3 },
-  digestBody: { fontSize: 14, lineHeight: 20, color: colors.text },
-  insightCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(40, 225, 255, 0.22)',
-    backgroundColor: colors.primary50,
-    padding: spacing.md,
-    gap: 6,
-    marginBottom: spacing.sm,
-  },
-  insightTag: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: colors.primary,
-  },
-  insightBody: { fontSize: 15, color: colors.text, lineHeight: 22 },
-  insightNext: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
-  insightCta: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-  },
-  insightCtaText: { fontSize: 13, fontWeight: '800', color: colors.onPrimary },
-
-  checkinRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderRadius: radius.button,
-    backgroundColor: 'rgba(15, 23, 54, 0.50)',
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-  },
-  checkinLabel: { fontSize: 13, fontWeight: '700', color: colors.textSoft },
-  checkinDetail: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
-  scores: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(7, 10, 18, 0.35)',
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  selfReported: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.textDim,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
-  },
-  chevron: { fontSize: 20, color: colors.textDim, fontWeight: '700' },
-
-  checkinRowStale: { backgroundColor: colors.warningBg, borderColor: 'rgba(251, 191, 36, 0.28)' },
-  checkinStaleValue: { color: colors.warning, fontWeight: '800' },
-  checkinNudgeBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
-    backgroundColor: colors.warning,
-  },
-  checkinNudgeBtnText: { fontSize: 12, fontWeight: '700', color: colors.onPrimary },
-
-  emptyCard: { alignItems: 'stretch', gap: spacing.md },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
-  emptyBody: { fontSize: 15, color: colors.textSoft, lineHeight: 22 },
+  safe: { flex: 1, backgroundColor: palette.canvas },
+  pageHeading: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', columnGap: 12, rowGap: 4 },
+  pageHeadingStacked: { flexDirection: 'column', alignItems: 'flex-start' },
+  title: { fontSize: 29, lineHeight: 35, fontWeight: '600', color: palette.ink, letterSpacing: -1 },
+  date: { fontSize: 15, lineHeight: 23, color: palette.muted },
+  navigationArea: { gap: 8 },
+  navigationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  navigationItem: { minHeight: 64, paddingVertical: 10, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 18, backgroundColor: palette.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: palette.border },
+  navigationItemStacked: { flexDirection: 'row', justifyContent: 'flex-start', gap: 12, paddingHorizontal: 6 },
+  navigationIcon: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  navigationText: { flexShrink: 1, fontSize: 15, lineHeight: 22, fontWeight: '500', color: palette.body, textAlign: 'center' },
+  navigationTextStacked: { fontSize: 16, lineHeight: 23, textAlign: 'left' },
+  assistantLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 14 },
+  assistantText: { flexShrink: 1, fontSize: 16, lineHeight: 23, fontWeight: '500', color: palette.accent },
+  pressed: { backgroundColor: palette.pressed },
 });

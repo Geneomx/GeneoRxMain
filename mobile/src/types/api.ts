@@ -33,6 +33,9 @@ export interface Medication {
   durationMonths: number;
   /** How often the medication is taken, e.g. "Once daily". Optional for older records. */
   frequency?: string;
+  strength?: string;
+  startDate?: string;
+  modelInputsConfirmed?: boolean;
 }
 
 export interface Symptom {
@@ -43,7 +46,7 @@ export interface Symptom {
 export interface CheckIn {
   id?: number;
   dateISO: string;
-  adherencePct: number;
+  adherencePct: number | null;
   notes: string;
   // arbitrary extra payload supported by backend
   [key: string]: unknown;

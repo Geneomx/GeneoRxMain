@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BrandIdentity } from '@/components/BrandHeader';
 import { ABOUT_CARDS } from '@/content/homeContent';
 import { translate } from '@/content/siteTranslations';
 import { useLanguage } from '@/store/LanguageContext';
@@ -18,7 +19,7 @@ import { colors, gradients, spacing } from '@/theme';
 
 const STORAGE_KEY = '@geneorx_onboarding_seen';
 
-const SLIDE_ACCENTS = ['#28E1FF', '#A78BFA', '#FF4FD8', '#34D399'] as const;
+const SLIDE_ACCENTS = [colors.primary, colors.primary, colors.primary, colors.primary] as const;
 const SLIDE_ICONS = ['💊', '⚙️', '✨', '🎯'] as const;
 
 function getSlideCopy(index: number, lang: string) {
@@ -145,12 +146,7 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
           <View style={styles.handle} />
 
           <View style={styles.headerRow}>
-            <View style={styles.brandPill}>
-              <View style={styles.brandDot}>
-                <Text style={styles.brandDotText}>Rx</Text>
-              </View>
-              <Text style={styles.brandPillText}>GeneoRx</Text>
-            </View>
+            <BrandIdentity />
             <Pressable onPress={dismiss} style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.5 }]}>
               <Text style={styles.skipText}>{translate('mobile.onboarding.skip', lang)}</Text>
             </Pressable>
@@ -260,7 +256,7 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
 
 const styles = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(4, 6, 12, 0.72)',
   },
 
@@ -295,37 +291,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  brandPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  brandDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.buttonPrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandDotText: { fontSize: 9, fontWeight: '800', color: colors.buttonText },
-  brandPillText: { fontSize: 15, fontWeight: '800', color: colors.text },
-
-  skipBtn: { paddingHorizontal: 10, paddingVertical: 6 },
-  skipText: { fontSize: 13.5, fontWeight: '600', color: colors.textMuted },
+  skipBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 6 },
+  skipText: { fontSize: 13.5, fontWeight: '500', color: colors.textMuted },
 
   introTitle: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '500',
     color: colors.primary,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     marginBottom: 4,
   },
   introSub: {
-    fontSize: 14,
+    fontSize: 17,
     color: colors.textMuted,
-    lineHeight: 20,
+    lineHeight: 24,
     marginBottom: 12,
   },
 
@@ -353,10 +333,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.10)',
   },
   backBtnDisabled: { opacity: 0.35 },
-  backBtnText: { fontSize: 14, fontWeight: '700', color: colors.textSoft },
+  backBtnText: { fontSize: 17, fontWeight: '500', color: colors.textSoft },
   counter: {
     flex: 1, textAlign: 'center',
-    fontSize: 12, fontWeight: '700', color: colors.textMuted,
+    fontSize: 15, fontWeight: '500', color: colors.textMuted,
     fontVariant: ['tabular-nums'],
   },
   nextBtn: {
@@ -364,25 +344,25 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
   },
-  nextBtnText: { fontSize: 14, fontWeight: '700', color: colors.onPrimary },
+  nextBtnText: { fontSize: 17, fontWeight: '500', color: colors.onPrimary },
 
-  sectionKicker: { fontSize: 11, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase' },
+  sectionKicker: { fontSize: 14, fontWeight: '500', letterSpacing: 1.1, textTransform: 'uppercase' },
   sectionTitle: {
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '500',
     color: colors.text,
     letterSpacing: -0.3,
     lineHeight: 22,
   },
-  sectionBody: { fontSize: 14, color: colors.textSoft, lineHeight: 20 },
+  sectionBody: { fontSize: 17, color: colors.textSoft, lineHeight: 24 },
   sectionExtra: {
-    fontSize: 13,
+    fontSize: 16,
     color: colors.textMuted,
-    lineHeight: 19,
+    lineHeight: 23,
     fontStyle: 'italic',
   },
   bulletList: { gap: 6 },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  bulletMark: { fontSize: 18, fontWeight: '900', lineHeight: 20, width: 10 },
-  bulletText: { flex: 1, fontSize: 13.5, color: colors.textSoft, lineHeight: 19 },
+  bulletMark: { fontSize: 18, fontWeight: '500', lineHeight: 24, width: 10 },
+  bulletText: { flex: 1, fontSize: 13.5, color: colors.textSoft, lineHeight: 23 },
 });

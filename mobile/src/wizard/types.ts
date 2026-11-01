@@ -1,13 +1,17 @@
 // Wizard state shape — mirrors the website portal's localStorage state
 // (key: geniorx_consumer_portal_v1_split).
 
-export type Dose = 'low' | 'med' | 'high';
+export type Dose = 'low' | 'med' | 'high' | 'unknown';
 export type Severity = 'mild' | 'moderate' | 'severe';
 
 export interface WizardMed {
   medId: string;
   dose: Dose;
   durationMonths: number;
+  strength?: string;
+  frequency?: string;
+  startDate?: string;
+  modelInputsConfirmed?: boolean;
 }
 
 /**
@@ -31,13 +35,15 @@ export const LIFESTYLE_KEYS = ['movement', 'hydration', 'sleep_routine'] as cons
 export type LifestyleKey = (typeof LIFESTYLE_KEYS)[number];
 
 export interface Wellbeing {
-  energy: number;
-  mood: number;
-  sleep: number;
-  focus: number;
+  /** Optional context captured alongside the baseline ratings. */
+  notes?: string;
+  energy: Rating;
+  mood: Rating;
+  sleep: Rating;
+  focus: Rating;
   // Added in v3. Optional AND nullable: absent on every check-in written before
   // the release, null when the user was asked this week and skipped. The four
-  // above stay required so existing call sites keep compiling.
+  // above also accept null so a skipped check-in never invents a rating.
   digestive?: Rating;
   circulation?: Rating;
   immunity?: Rating;
@@ -59,14 +65,27 @@ export type SymptomChange = 'Worse' | 'No change' | 'Slightly better' | 'Much be
 
 export interface CheckinSymptomItem {
   symptom: string;
-  change: SymptomChange;
+  change: SymptomChange | 'Not answered';
   changeScore: number;
   severityNow?: number;
 }
 
+export interface SymptomDetail { onsetDate?: string; severity?: Severity; notes?: string }
+export interface MedicationDoseEntry {
+  medId: string;
+  medicationName: string;
+  status: 'all' | 'some' | 'unsure' | 'not-scheduled';
+  scheduled?: number;
+  missed?: number;
+  strength?: string;
+  frequency?: string;
+}
 export interface WizardCheckin {
+  clientId?: string;
+  id?: number;
   dateISO: string;
-  adherencePct: number;
+  adherencePct: number | null;
+  medicationDoses?: MedicationDoseEntry[];
   supplementsTaken: string[];
   /**
    * Snapshot of plan.recommendedSupplements AT SAVE TIME. Without it,
@@ -109,12 +128,15 @@ export interface WizardState {
   account: { email: string; consent: boolean };
   profile: { age: string; gender: string; phone: string; pregnant: boolean; kidneyDisease: boolean; anticoagulants: boolean };
   meds: WizardMed[];
-  symptoms: { selected: string[]; custom: string[]; severity: Severity };
+  symptoms: { selected: string[]; custom: string[]; severity: Severity; details?: Record<string, SymptomDetail> };
   symptomOnlyMode: boolean;
   wellbeingBaseline: Wellbeing;
   plan: WizardPlan;
   checkins: WizardCheckin[];
   feedback: WizardFeedback[];
+  summaryOverview?: Partial<Record<'7' | '30' | 'all', string>>;
+  summaryOverviewBasis?: Partial<Record<'7' | '30' | 'all', string>>;
+  reminderPreferences?: { enabled: boolean };
 }
 
 export const defaultWizardState = (): WizardState => ({
@@ -122,12 +144,12 @@ export const defaultWizardState = (): WizardState => ({
   account: { email: '', consent: false },
   profile: { age: '', gender: '', phone: '', pregnant: false, kidneyDisease: false, anticoagulants: false },
   meds: [],
-  symptoms: { selected: [], custom: [], severity: 'mild' },
+  symptoms: { selected: [], custom: [], severity: 'mild', details: {} },
   symptomOnlyMode: false,
   // Explicit nulls, not 5: the key must exist so the server's
   // array_replace_recursive can later write over it, and so a cleared
   // rating actually persists rather than resurrecting a stale number.
-  wellbeingBaseline: { energy: 5, mood: 5, sleep: 5, focus: 5, digestive: null, circulation: null, immunity: null },
+  wellbeingBaseline: { energy: null, mood: null, sleep: null, focus: null, digestive: null, circulation: null, immunity: null },
   plan: { started: false, startDate: null, recommendedSupplements: [], routine: { morning: [], midday: [], night: [], notes: [] } },
   checkins: [],
   feedback: [],

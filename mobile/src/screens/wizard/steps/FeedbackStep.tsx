@@ -61,7 +61,7 @@ export const FeedbackStep: React.FC = () => {
       <Section>
         <Tagline title={t('feedback.modal_title')} body={t('feedback.modal_sub')} />
 
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{t('feedback.type')}</Text>
+        <Text style={{ fontSize: 17, fontWeight: '500', color: colors.text }}>{t('feedback.type')}</Text>
         <OptionGrid value={type} onChange={setType} options={types} />
 
         <ToggleRow label={t('feedback.contact')} value={canContact} onChange={setCanContact} />

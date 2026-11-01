@@ -19,13 +19,16 @@ class SiteTranslations
             $portal = ['en' => []];
         }
 
+        $clean = require resource_path('data/clean_translations.php');
+        $review = require resource_path('data/review_translations.php');
+
         $langs = array_unique(array_merge(array_keys($site), array_keys($portal)));
         $merged = [];
 
         foreach ($langs as $lang) {
             $siteLang = $site[$lang] ?? [];
             $portalLang = $portal[$lang] ?? [];
-            $merged[$lang] = array_merge($siteLang, $portalLang);
+            $merged[$lang] = array_merge($siteLang, $portalLang, $clean[$lang] ?? $clean['en'], $review);
         }
 
         return $merged ?: ['en' => []];

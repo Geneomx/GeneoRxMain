@@ -1,295 +1,83 @@
-import React from 'react';
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AmbientBackground } from '@/components/AmbientBackground';
-import { Button } from '@/components/Button';
-import { LanguageSelector } from '@/components/LanguageSelector';
-import { ABOUT_CARDS } from '@/content/homeContent';
-import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { colors, layout, portalCard, radius, spacing } from '@/theme';
-import { useAuth } from '@/auth/AuthContext';
-import { translate } from '@/content/siteTranslations';
-import { useLanguage } from '@/store/LanguageContext';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '@/navigation/AuthStack';
+import { AmbientBackground } from '@/components/AmbientBackground';
+import { BrandIdentity } from '@/components/BrandHeader';
+import { AppIcon, type AppIconName } from '@/components/AppIcon';
+import { Button } from '@/components/Button';
+import { LanguageSelector } from '@/components/LanguageSelector';
+import { useAuth } from '@/auth/AuthContext';
+import { useLanguage } from '@/store/LanguageContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { translate } from '@/content/siteTranslations';
+import { colors } from '@/theme';
+import { useToast } from '@/components/Toast';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
+const benefits: Array<{ icon: AppIconName; key: string }> = [
+  { icon: 'pill', key: 'slide.1.b0' },
+  { icon: 'heart', key: 'slide.1.b2' },
+  { icon: 'chart', key: 'slide.2.b2' },
+];
 
-const SLIDE_ACCENTS = ['#4BAEC8', '#A78BFA', '#FF4FD8', '#34D399'] as const;
-
-const ACCENT_BG: Record<string, string> = {
-  '#4BAEC8': colors.primary50,
-  '#A78BFA': 'rgba(167, 139, 250, 0.12)',
-  '#FF4FD8': 'rgba(255, 79, 216, 0.10)',
-  '#34D399': colors.successBg,
-};
-
-function getSlideCopy(index: number, lang: string) {
-  const bullets =
-    index === 1
-      ? [0, 1, 2].map((bi) => translate(`slide.1.b${bi}`, lang))
-      : index === 2
-        ? [0, 1, 2, 3].map((bi) => translate(`slide.2.b${bi}`, lang))
-        : [];
-
-  return {
-    tag: translate(`slide.${index}.tag`, lang),
-    title: translate(`slide.${index}.title`, lang),
-    body:
-      index === 1
-        ? translate('slide.1.p0', lang)
-        : index === 0 || index === 3
-          ? translate(`slide.${index}.p0`, lang)
-          : '',
-    bullets,
-    extra: index === 1 ? translate('slide.1.p1', lang) : '',
-  };
-}
-
-const DnaMark = () => (
-  <Svg width={28} height={28} viewBox="0 0 48 60" fill="none">
-    <Path d="M8 0C34 18 34 42 8 60" stroke={colors.primaryLight} strokeWidth={5} strokeLinecap="round" />
-    <Path d="M40 0C14 18 14 42 40 60" stroke={colors.text} strokeWidth={5} strokeLinecap="round" opacity={0.78} />
-    <Path d="M14 12H34" stroke={colors.primaryLight} strokeWidth={4} strokeLinecap="round" />
-    <Path d="M10 30H38" stroke={colors.text} strokeWidth={4} strokeLinecap="round" opacity={0.78} />
-    <Path d="M14 48H34" stroke={colors.primaryLight} strokeWidth={4} strokeLinecap="round" />
-  </Svg>
-);
-
+/** A brief introduction; the tracking screens explain the details. */
 export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const { continueAsGuest } = useAuth();
   const { language } = useLanguage();
-  const lang = language.code;
-  const { page, scrollBottom } = useResponsiveLayout();
-
-  return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <AmbientBackground />
-        <View style={[styles.topHeader, page]}>
-          <View style={styles.brandRow}>
-            <Image source={require('../../assets/logo.png')} style={styles.brandLogo} resizeMode="contain" />
-          </View>
-          <LanguageSelector compact />
-        </View>
-
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottom }]}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={[styles.page, page]}>
-            <View style={styles.mainBox}>
-              <View style={styles.dnaBadge}>
-                <DnaMark />
-              </View>
-              {ABOUT_CARDS.map((card, i) => {
-                const accent = SLIDE_ACCENTS[i] ?? SLIDE_ACCENTS[0];
-                const copy = getSlideCopy(i, lang);
-                const accentBg = ACCENT_BG[accent] ?? colors.primary50;
-                return (
-                  <View key={card.num}>
-                    {i > 0 ? <View style={styles.sectionRule} /> : null}
-                    <View style={[styles.section, card.summary && styles.sectionSummary]}>
-                      <Text style={styles.featureTitle}>{copy.title}</Text>
-
-                      {copy.body ? <Text style={styles.featureBody}>{copy.body}</Text> : null}
-
-                      {copy.bullets.length > 0 && (
-                        <View style={styles.bulletList}>
-                          {copy.bullets.map((b, bi) => (
-                            <View key={bi} style={styles.bulletRow}>
-                              <View style={[styles.bulletCheck, { backgroundColor: accentBg }]}>
-                                <Text style={[styles.bulletCheckMark, { color: accent }]}>✓</Text>
-                              </View>
-                              <Text style={styles.bulletText}>{b}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-
-                      {copy.extra ? (
-                        <View style={styles.extraPanel}>
-                          <Text style={styles.featureExtra}>{copy.extra}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        </ScrollView>
-
-        <SafeAreaView edges={['bottom']} style={styles.actionsWrap}>
-          <View style={[styles.actions, page]}>
-            <Button
-              title={translate('cta.register', lang)}
-              onPress={() => navigation.navigate('Register')}
-            />
-            <Button
-              title={translate('nav.signin', lang)}
-              variant="secondary"
-              onPress={() => navigation.navigate('Login')}
-            />
-            <Pressable
-              onPress={() => continueAsGuest()}
-              style={({ pressed }) => [styles.guestLink, pressed && { opacity: 0.7 }]}
-              hitSlop={8}
-            >
-              <Text style={styles.guestLinkText}>{translate('welcome.guest', lang)}</Text>
-            </Pressable>
-            <Text style={styles.legal}>{translate('welcome.legal', lang)}</Text>
-          </View>
-        </SafeAreaView>
-      </SafeAreaView>
-    </View>
-  );
+  const { page } = useResponsiveLayout();
+  const toast = useToast();
+  const [starting, setStarting] = useState(false);
+  const { fontScale } = useWindowDimensions();
+  const largeText = fontScale > 1.3;
+  const t = (key: string) => translate(key, language.code);
+  const start = async () => {
+    if (starting) return;
+    setStarting(true);
+    try { await continueAsGuest(); }
+    catch { toast.show(t('mobile.alert.try_again'), 'error'); }
+    finally { setStarting(false); }
+  };
+  const header = <View style={[page, styles.header, largeText && styles.headerStacked]}><BrandIdentity /><LanguageSelector compact /></View>;
+  const actions = <>
+    <Button title={t('journey.get_started')} loading={starting} onPress={() => { void start(); }} />
+    <Text style={styles.legal}>{t('journey.guest_note')}</Text>
+    <View style={styles.secondary}><Button title={t('nav.signin')} variant="ghost" onPress={() => navigation.navigate('Login')} /><Button title={t('cta.register')} variant="ghost" onPress={() => navigation.navigate('Register')} /></View>
+    <Text style={styles.legal}>{t('welcome.legal')}</Text>
+  </>;
+  return <SafeAreaView style={styles.safe} edges={largeText ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']}>
+    <AmbientBackground />
+    {!largeText ? header : null}
+    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={largeText ? styles.largeScroll : styles.scroll}>
+      {largeText ? header : null}
+      <View style={[page, styles.content]}>
+        <View style={styles.intro}><Text accessibilityRole="header" style={styles.title}>{t('slide.0.title')}</Text><Text style={styles.body}>{t('slide.0.p0')}</Text></View>
+        {largeText ? <View style={styles.actions}>{actions}</View> : null}
+        <View style={styles.benefits}>{benefits.map(({ icon, key }, index) => <View key={key} style={[styles.benefit, index === benefits.length - 1 && { borderBottomWidth: 0 }]}><View style={styles.icon}><AppIcon name={icon} size={19} /></View><Text style={styles.benefitText}>{t(key)}</Text></View>)}</View>
+      </View>
+    </ScrollView>
+    {!largeText ? <SafeAreaView edges={['bottom']} style={styles.footer}><View style={[page, styles.actions]}>{actions}</View></SafeAreaView> : null}
+  </SafeAreaView>;
 };
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  safe: { flex: 1 },
-
-  topHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSoft,
-    backgroundColor: colors.backgroundAlt,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-    minWidth: 0,
-  },
-  brandText: { flex: 1, minWidth: 0 },
-  brandLogo: { height: 42, width: 168 },
-  brandName: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
-  brandTag: { fontSize: 11, fontWeight: '600', color: colors.textMuted, marginTop: 1 },
-
-  scroll: { flex: 1 },
-  scrollContent: { alignItems: 'center', paddingTop: spacing.md },
-  page: {
-    width: '100%',
-    maxWidth: layout.contentMaxWidth,
-    alignSelf: 'center',
-  },
-
-  mainBox: {
-    ...portalCard,
-    position: 'relative',
-    padding: spacing.lg,
-    gap: 0,
-    overflow: 'hidden',
-  },
-  dnaBadge: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary50,
-    borderWidth: 1,
-    borderColor: colors.primary100,
-    opacity: 0.9,
-  },
-
-  section: { gap: 8, paddingVertical: 2 },
-  sectionSummary: {
-    backgroundColor: colors.primary50,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.primary100,
-  },
-  sectionRule: {
-    height: 1,
-    backgroundColor: colors.borderSoft,
-    marginVertical: spacing.md,
-  },
-
-  featureTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text,
-    lineHeight: 20,
-  },
-  featureBody: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
-
-  bulletList: { gap: 8, marginTop: 4, paddingLeft: 4 },
-  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  bulletCheck: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 1,
-    flexShrink: 0,
-  },
-  bulletCheckMark: { fontSize: 10, fontWeight: '900' },
-  bulletText: { flex: 1, fontSize: 13, color: colors.textSoft, lineHeight: 19 },
-
-  extraPanel: {
-    backgroundColor: colors.ghostBg,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    marginTop: 4,
-  },
-  featureExtra: {
-    fontSize: 12,
-    color: colors.textMuted,
-    lineHeight: 18,
-    fontStyle: 'italic',
-  },
-
-  actionsWrap: {
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
-    backgroundColor: colors.backgroundAlt,
-  },
-  actions: {
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    gap: 10,
-  },
-  guestLink: {
-    alignItems: 'center',
-    paddingVertical: 8,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  guestLinkText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  legal: {
-    fontSize: 11,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 16,
-    paddingTop: 2,
-  },
+  safe: { flex: 1, backgroundColor: colors.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 12 },
+  headerStacked: { flexDirection: 'column', alignItems: 'flex-start' },
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingVertical: 24 },
+  largeScroll: { paddingBottom: 24, gap: 20 },
+  content: { gap: 28 }, intro: { gap: 14 },
+  title: { fontSize: 26, lineHeight: 35, letterSpacing: -0.6, fontWeight: '600', color: colors.text },
+  body: { fontSize: 17, lineHeight: 24, color: colors.textMuted },
+  benefits: { paddingHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  benefit: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft },
+  icon: { width: 34, height: 34, borderRadius: 11, backgroundColor: colors.primary50, alignItems: 'center', justifyContent: 'center' },
+  benefitText: { flex: 1, fontSize: 17, lineHeight: 25, color: colors.text },
+  footer: { backgroundColor: colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  actions: { gap: 8, paddingTop: 16, paddingBottom: 10 },
+  secondary: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 12 },
+  guest: { minHeight: 44, paddingHorizontal: 8, justifyContent: 'center' },
+  guestText: { fontSize: 16, lineHeight: 24, color: colors.textMuted },
+  legal: { fontSize: 14, lineHeight: 21, color: colors.textMuted, textAlign: 'center' },
 });
