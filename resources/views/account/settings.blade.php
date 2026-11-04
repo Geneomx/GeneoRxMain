@@ -12,7 +12,7 @@
     gap: 16px; flex-wrap: wrap; margin-bottom: 28px;
   }
   .settings-page-title {
-    font-size: 26px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 6px;
+    font-size: 34px; font-weight: 700; letter-spacing: -0.9px; margin-bottom: 6px; line-height: 1.12;
   }
   .settings-page-sub {
     font-size: 14.5px; color: var(--text-muted);
@@ -31,8 +31,9 @@
 
   .settings-card {
     background: var(--bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 28px;
+    box-shadow: var(--shadow);
     overflow: hidden;
     margin-bottom: 24px;
   }
@@ -42,63 +43,63 @@
     display: flex; align-items: center; gap: 12px;
   }
   .settings-card-icon {
-    width: 36px; height: 36px;
+    width: 40px; height: 40px;
     background: var(--teal-50);
-    border-radius: 9px;
+    border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
   }
   .settings-card-icon svg { color: var(--teal); }
-  .settings-card-title { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
-  .settings-card-desc { font-size: 13px; color: var(--text-muted); }
-  .settings-card-body { padding: 22px 24px; }
+  .settings-card-title { font-size: 19px; font-weight: 700; margin-bottom: 2px; letter-spacing: -0.3px; }
+  .settings-card-desc { font-size: 14px; color: var(--text-muted); }
+  .settings-card-body { padding: 24px 28px 28px; }
 
   .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
   .field:last-of-type { margin-bottom: 0; }
-  .field label { font-size: 13.5px; font-weight: 600; color: var(--text-soft); }
+  .field label { font-size: 14px; font-weight: 600; color: var(--pine); }
   .field input[type=password], .field input[type=text] {
-    height: 42px;
-    padding: 0 14px;
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    font-size: 14.5px;
+    height: 50px;
+    padding: 0 18px;
+    border: 1.5px solid #A39270;
+    border-radius: 20px;
+    font-size: 16px;
     font-family: inherit;
     color: var(--text);
     background: var(--bg);
     transition: border-color 0.15s;
     outline: none;
   }
-  .field input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14,124,102,0.1); }
+  .field input:focus { border-color: var(--teal); box-shadow: 0 0 0 4px rgba(207,224,207,0.85); }
   .field .hint { font-size: 12.5px; color: var(--text-dim); }
 
-  .btn { display: inline-flex; align-items: center; height: 40px; padding: 0 20px; font-size: 14px; font-weight: 600; border-radius: 9px; border: 1px solid transparent; cursor: pointer; font-family: inherit; transition: all 0.15s; }
-  .btn-primary { background: var(--teal); color: #fff; }
-  .btn-primary:hover { background: var(--teal-dark); }
-  .btn-danger { background: #FEF2F2; color: #DC2626; border-color: #FECACA; }
-  .btn-danger:hover { background: #DC2626; color: #fff; border-color: #DC2626; }
+  .btn { display: inline-flex; align-items: center; height: 48px; padding: 0 26px; font-size: 15px; font-weight: 700; border-radius: 999px; border: 1px solid transparent; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .btn-primary { background: var(--coral); color: #fff; box-shadow: 0 12px 22px -12px rgba(200,75,51,.7); }
+  .btn-primary:hover { background: var(--coral-dark); }
+  .btn-danger { background: #F8DDD6; color: #A63A27; border-color: #EFC7BD; }
+  .btn-danger:hover { background: #B8402C; color: #fff; border-color: #B8402C; }
 
   .alert-success {
     background: var(--teal-50); border-left: 3px solid var(--teal);
-    border-radius: 0 8px 8px 0; padding: 12px 16px;
-    font-size: 14px; color: var(--text-soft); margin-bottom: 20px;
+    border-radius: 0 16px 16px 0; padding: 14px 18px;
+    font-size: 14.5px; color: var(--text-soft); margin-bottom: 20px;
   }
   .alert-error {
-    background: #FEF2F2; border-left: 3px solid #DC2626;
-    border-radius: 0 8px 8px 0; padding: 12px 16px;
-    font-size: 14px; color: #7F1D1D; margin-bottom: 20px;
+    background: #F8DDD6; border-left: 3px solid #B8402C;
+    border-radius: 0 16px 16px 0; padding: 14px 18px;
+    font-size: 14.5px; color: #7F2A1B; margin-bottom: 20px;
   }
 
   /* Danger zone */
   .danger-zone {
-    background: #FFFBFB;
-    border: 1px solid #FEE2E2;
-    border-radius: 14px;
-    padding: 24px;
+    background: #FBEDE8;
+    border: 1.5px solid #EFC7BD;
+    border-radius: 28px;
+    padding: 28px;
   }
-  .danger-zone h3 { font-size: 15px; font-weight: 700; color: #DC2626; margin-bottom: 8px; }
-  .danger-zone p { font-size: 14px; color: #6B7280; line-height: 1.6; margin-bottom: 20px; }
+  .danger-zone h3 { font-size: 20px; font-weight: 700; color: #A63A27; margin-bottom: 8px; font-family: var(--serif); }
+  .danger-zone p { font-size: 15px; color: #5B3A37; line-height: 1.6; margin-bottom: 20px; }
   .danger-zone details summary {
-    cursor: pointer; font-size: 14px; font-weight: 600; color: #DC2626;
+    cursor: pointer; font-size: 15px; font-weight: 700; color: #A63A27;
     list-style: none; display: flex; align-items: center; gap: 8px;
     user-select: none;
   }
@@ -107,14 +108,14 @@
   .danger-confirm-form { display: flex; flex-direction: column; gap: 12px; }
   .danger-confirm-form label { font-size: 13.5px; font-weight: 600; color: #374151; }
   .danger-confirm-form input {
-    height: 42px; padding: 0 14px;
-    border: 1px solid #FCA5A5;
-    border-radius: 9px; font-size: 14.5px;
+    height: 50px; padding: 0 18px;
+    border: 1.5px solid #D98F7F;
+    border-radius: 20px; font-size: 16px;
     font-family: inherit; color: var(--text);
     background: #fff; outline: none;
     transition: border-color 0.15s;
   }
-  .danger-confirm-form input:focus { border-color: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+  .danger-confirm-form input:focus { border-color: #B8402C; box-shadow: 0 0 0 4px rgba(184,64,44,0.14); }
 </style>
 
 <div class="settings-wrap">

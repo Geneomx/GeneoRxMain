@@ -332,7 +332,7 @@ const STORAGE_KEY = "geniorx_consumer_portal_v1_split";
 const LEGACY_STORAGE_KEY = "geneomx_consumer_portal_v1_split";
 const defaultState = () => ({
   step: 0,
-  account: { email:"", consent:false },
+  account: { email:"", consent:false, aiConsent:false },
   profile: { age:"", gender:"", pregnant:false, kidneyDisease:false, anticoagulants:false },
   meds: [],
   symptoms: { selected:[], custom:[], severity:"mild" },
@@ -426,7 +426,8 @@ function localHasMeaningfulData(s){
     (s.checkins && s.checkins.length) ||
     (s.profile && (s.profile.age || s.profile.gender)) ||
     (s.plan && s.plan.started) ||
-    s.account?.consent
+    s.account?.consent ||
+    s.account?.aiConsent
   );
 }
 
@@ -463,6 +464,9 @@ async function loadFromBackend() {
     if(typeof data.account?.consent === 'boolean') {
       state.account.consent = data.account.consent;
     }
+    if(typeof data.account?.aiConsent === 'boolean') {
+      state.account.aiConsent = data.account.aiConsent;
+    }
     if(data.medications?.length) state.meds = data.medications;
     if(data.symptoms?.length) state.symptoms.selected = data.symptoms.map(s => s.name);
     if(data.checkins?.length) {
@@ -492,6 +496,7 @@ async function loadFromBackend() {
       state.symptomOnlyMode = localSnapshot.symptomOnlyMode ?? state.symptomOnlyMode;
       state.feedback = localSnapshot.feedback || state.feedback;
       if(typeof localSnapshot.account?.consent === 'boolean') state.account.consent = localSnapshot.account.consent;
+      if(typeof localSnapshot.account?.aiConsent === 'boolean') state.account.aiConsent = localSnapshot.account.aiConsent;
       if(data.user?.email) state.account.email = data.user.email;
       else if(localSnapshot.account?.email && !String(localSnapshot.account.email).includes('guest@')) state.account.email = localSnapshot.account.email;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -534,7 +539,7 @@ async function saveToBackend() {
             customMedCatalog: customMedCatalog,
             wellbeingBaseline: state.wellbeingBaseline,
             symptomOnlyMode: state.symptomOnlyMode,
-            account: { consent: state.account.consent },
+            account: { consent: state.account.consent, aiConsent: state.account.aiConsent },
             feedback: state.feedback,
           },
         };
@@ -2243,6 +2248,14 @@ function mountAccountForm(parent, options = {}){
           <option value="yes" ${state.account.consent? "selected": ""}>${escapeHtml(t("common.agree"))}</option>
         </select>
       </div>
+      <div class="col">
+        <label>${escapeHtml(t("account.ai_consent"))}</label>
+        <select id="aiConsent">
+          <option value="no" ${state.account.aiConsent? "": "selected"}>${escapeHtml(t("common.not_yet"))}</option>
+          <option value="yes" ${state.account.aiConsent? "selected": ""}>${escapeHtml(t("common.agree"))}</option>
+        </select>
+        <div class="fineprint">${escapeHtml(t("account.ai_consent_help"))}</div>
+      </div>
     </div>
 
     <div style="height:12px"></div>
@@ -2302,6 +2315,7 @@ function mountAccountForm(parent, options = {}){
       state.account.email = AUTH_EMAIL;
     }
     state.account.consent = s1.querySelector("#consent").value === "yes";
+    state.account.aiConsent = s1.querySelector("#aiConsent").value === "yes";
     const ageVal = parseInt(s1.querySelector("#age").value || "", 10);
     state.profile.age = Number.isFinite(ageVal) ? String(ageVal) : "";
     state.profile.gender = s1.querySelector("#gender").value || "";
@@ -2321,7 +2335,7 @@ function mountAccountForm(parent, options = {}){
     }
   }
 
-  ["#consent","#age","#gender","#preg"].forEach(sel=>{
+  ["#consent","#aiConsent","#age","#gender","#preg"].forEach(sel=>{
     const el = s1.querySelector(sel);
     const ev = sel === "#age" ? "input" : "change";
     el.addEventListener(ev, persistAccountChange);
@@ -3267,16 +3281,16 @@ function renderProgress(){
   const trends = buildTrendSeries(state.checkins);
   let trendsBlock = "";
   if (trends.window && trends.points.length) {
-    const symColors = ["#22d3ee","#f472b6","#fbbf24","#a78bfa","#34d399","#fb923c"];
+    const symColors = ["#16352B","#C84B33","#5E8A6E","#B8860B","#7B5EA7","#3F7F8C"];
     const clean = (k)=> t(k).replace(/\s*\([^)]*\)\s*$/,"");
     const wellbeing = trendChartSvg([
-      {label:clean("wellbeing.energy"),color:"#fbbf24",points:trends.points.filter(p=>p.energy !== null).map(p=>[p.t,p.energy])},
-      {label:clean("wellbeing.mood"),color:"#f472b6",points:trends.points.filter(p=>p.mood !== null).map(p=>[p.t,p.mood])},
-      {label:clean("wellbeing.sleep"),color:"#22d3ee",points:trends.points.filter(p=>p.sleep !== null).map(p=>[p.t,p.sleep])},
-      {label:clean("wellbeing.focus"),color:"#a78bfa",points:trends.points.filter(p=>p.focus !== null).map(p=>[p.t,p.focus])},
+      {label:clean("wellbeing.energy"),color:"#B8860B",points:trends.points.filter(p=>p.energy !== null).map(p=>[p.t,p.energy])},
+      {label:clean("wellbeing.mood"),color:"#C84B33",points:trends.points.filter(p=>p.mood !== null).map(p=>[p.t,p.mood])},
+      {label:clean("wellbeing.sleep"),color:"#3F7F8C",points:trends.points.filter(p=>p.sleep !== null).map(p=>[p.t,p.sleep])},
+      {label:clean("wellbeing.focus"),color:"#7B5EA7",points:trends.points.filter(p=>p.focus !== null).map(p=>[p.t,p.focus])},
     ], trends.window, 10, "0-10");
     const adherence = trendChartSvg([
-      {label:t("checkin.adherence"),color:"#34d399",points:trends.points.filter(p=>p.adherence !== null).map(p=>[p.t,p.adherence])},
+      {label:t("checkin.adherence"),color:"#16352B",points:trends.points.filter(p=>p.adherence !== null).map(p=>[p.t,p.adherence])},
     ], trends.window, 100, "0-100%");
     const symNames = Object.keys(trends.symptoms).slice(0,6);
     const symptoms = symNames.length ? trendChartSvg(
@@ -3474,11 +3488,12 @@ function mountAssistantPanel(parent){
   inputRow.hidden = true;
   fetch('/api/assistant/options').then(res=>res.ok ? res.json() : Promise.reject()).then(data=>{
     options = data;
-    inputRow.hidden = data.mode !== 'personalized';
+    const personalOn = data.mode === 'personalized' && !!state.account.aiConsent;
+    inputRow.hidden = !personalOn;
     const note=document.createElement('p'); note.className='fineprint';
-    note.textContent=data.mode==='catalog_only' ? 'General AI guidance. Personal records and chat history are not sent to the free provider.' : 'Personal cloud chat uses your confirmed entries.';
+    note.textContent=data.mode==='catalog_only' ? 'General AI guidance. Personal records and chat history are not sent to the free provider.' : personalOn ? 'Personal cloud chat uses your confirmed entries.' : t('assistant.consent_needed');
     sec.querySelector('.tagline').appendChild(note);
-    const prompts=data.mode==='catalog_only' ? data.prompts : [t('assistant.prompt_why_score'),t('assistant.prompt_interactions'),t('assistant.prompt_what_changed')].map(label=>({label}));
+    const prompts=data.mode==='catalog_only' ? data.prompts : !personalOn ? [] : [t('assistant.prompt_how_doing'),t('assistant.prompt_why_score'),t('assistant.prompt_interactions'),t('assistant.prompt_what_changed')].map(label=>({label}));
     prompts.forEach(prompt=>{
       const chip=document.createElement('button'); chip.type='button';chip.className='assistant-chip';chip.textContent=prompt.label;
       chip.addEventListener('click',()=>send(prompt.label,prompt.id));suggestsWrap.appendChild(chip);

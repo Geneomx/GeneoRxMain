@@ -104,6 +104,7 @@ class HomeController extends Controller
             'account' => [
                 'email' => $user->email,
                 'consent' => (bool) data_get($portal, 'account.consent', false),
+                'aiConsent' => (bool) data_get($portal, 'account.aiConsent', false),
                 'subscribed' => $user->isSubscribed(),
             ],
             'plan' => data_get($portal, 'plan'),
@@ -155,6 +156,7 @@ class HomeController extends Controller
         $validated = $request->validate([
             'account.email' => 'nullable|email',
             'account.consent' => 'nullable|boolean',
+            'account.aiConsent' => 'nullable|boolean',
             'profile.age' => 'nullable|integer|between:1,120',
             'profile.gender' => 'nullable|string',
             'profile.phone' => 'nullable|string',
@@ -318,14 +320,16 @@ class HomeController extends Controller
                 }
                 $portalChanged = true;
             }
-            if (array_key_exists('account', $validated) && is_array($validated['account'] ?? null) && array_key_exists('consent', $validated['account'] ?? [])) {
-                $mergedPortal['account'] = array_merge(
-                    (array) ($mergedPortal['account'] ?? []),
-                    [
-                        'consent' => (bool) $validated['account']['consent'],
-                    ]
-                );
-                $portalChanged = true;
+            foreach (['consent', 'aiConsent'] as $consentKey) {
+                if (array_key_exists('account', $validated) && is_array($validated['account'] ?? null) && array_key_exists($consentKey, $validated['account'] ?? [])) {
+                    $mergedPortal['account'] = array_merge(
+                        (array) ($mergedPortal['account'] ?? []),
+                        [
+                            $consentKey => (bool) $validated['account'][$consentKey],
+                        ]
+                    );
+                    $portalChanged = true;
+                }
             }
             if ($portalChanged) {
                 $profile->update(['portal_state' => $mergedPortal]);
