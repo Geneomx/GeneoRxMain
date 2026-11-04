@@ -9,7 +9,8 @@
 // shows a dash with the reason it is empty — never a zero.
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { colors, spacing, touchMin } from '@/theme';
 
 export const ScoreRow: React.FC<{
@@ -37,7 +38,8 @@ export const ScoreRow: React.FC<{
     <Pressable
       onPress={onPress}
       style={styles.row}
-      accessibilityRole="button"
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={
         hasValue ? `${title}, ${value} ${unit}${answered ? `, ${answered}` : ''}` : `${title}, ${emptyReason ?? ''}`
       }
@@ -74,20 +76,20 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderSoft,
   },
   meta: { flex: 1, minWidth: 0 },
-  title: { fontSize: 16, fontWeight: '700', color: colors.text },
-  description: { fontSize: 14, lineHeight: 19, color: colors.textMuted, marginTop: 2 },
-  footnote: { fontSize: 11, color: colors.textDim, marginTop: 4, letterSpacing: 0.3 },
+  title: { fontSize: 17, fontWeight: '500', color: colors.text },
+  description: { fontSize: 17, lineHeight: 23, color: colors.textMuted, marginTop: 2 },
+  footnote: { fontSize: 14, color: colors.textDim, marginTop: 4, letterSpacing: 0.3 },
 
   valueCol: { alignItems: 'flex-end' },
   value: {
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: '500',
     lineHeight: 28,
     letterSpacing: -0.6,
     color: colors.text,
     fontVariant: ['tabular-nums'],
   },
-  unit: { fontSize: 11, color: colors.textMuted },
-  delta: { fontSize: 13, fontWeight: '700', color: colors.success, marginTop: 2 },
-  dash: { fontSize: 26, fontWeight: '600', lineHeight: 28, color: colors.textDim },
+  unit: { fontSize: 14, color: colors.textMuted },
+  delta: { fontSize: 16, fontWeight: '500', color: colors.success, marginTop: 2 },
+  dash: { fontSize: 26, fontWeight: '500', lineHeight: 28, color: colors.textDim },
 });

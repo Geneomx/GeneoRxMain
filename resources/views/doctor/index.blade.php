@@ -1,7 +1,7 @@
 @extends('layouts.portal')
 
 {{-- Ask a doctor — the web twin of mobile/src/screens/DoctorScreen.tsx.
-     Server-rendered on the portal's dark theme. Static copy carries data-i18n
+     Server-rendered in the shared patient workspace. Static copy carries data-i18n
      so the site's language selector translates it like every other page;
      the doctor.* keys are the ones the mobile app already uses. --}}
 
@@ -84,8 +84,8 @@
   <div class="top portal-top">
     <div class="brand portal-brand">
       @include('partials.geneorx-brand', [
-        'variant' => 'full',
-        'logoSize' => 'portal',
+        'variant' => 'mark',
+        'size' => 34,
         'subtitle' => 'Portal',
         'subtitleI18n' => 'portal.badge',
         'href' => route('home'),

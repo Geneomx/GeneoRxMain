@@ -24,9 +24,10 @@ export interface AiSummaryResult {
   source: 'ai' | 'fallback';
 }
 
-export function fetchAiSummary(facts: AiSummaryFacts): Promise<AiSummaryResult> {
+export function fetchAiSummary(facts: AiSummaryFacts, signal?: AbortSignal): Promise<AiSummaryResult> {
   return apiRequest<AiSummaryResult>('/mobile/ai-summary', {
     method: 'POST',
+    signal,
     body: {
       medications: facts.medications,
       symptoms: facts.symptoms,

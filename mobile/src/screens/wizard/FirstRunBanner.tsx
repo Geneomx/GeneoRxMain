@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { useTranslation } from '@/hooks/useTranslation';
 import { colors, radius, spacing } from '@/theme';
 
@@ -45,9 +46,9 @@ export const FirstRunBanner: React.FC<Props> = ({ position, titleKey, subKey }) 
 const styles = StyleSheet.create({
   wrap: {
     borderWidth: 1,
-    borderColor: 'rgba(40, 225, 255, 0.28)',
+    borderColor: colors.primary100,
     borderRadius: radius.card,
-    backgroundColor: 'rgba(40, 225, 255, 0.06)',
+    backgroundColor: colors.primary50,
     padding: spacing.md,
     gap: 6,
   },
@@ -62,8 +63,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dotOn: { backgroundColor: colors.primary, borderColor: 'transparent' },
-  dotNum: { fontSize: 10, fontWeight: '800', color: colors.onPrimary },
-  of: { marginLeft: 4, fontSize: 11, color: colors.textMuted },
-  title: { fontSize: 18, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
-  sub: { fontSize: 13, color: colors.textSoft, lineHeight: 18 },
+  dotNum: { fontSize: 10, fontWeight: '500', color: colors.onPrimary },
+  of: { marginLeft: 4, fontSize: 14, color: colors.textMuted },
+  title: { fontSize: 18, fontWeight: '500', color: colors.text, letterSpacing: -0.3 },
+  sub: { fontSize: 16, color: colors.textSoft, lineHeight: 22 },
 });

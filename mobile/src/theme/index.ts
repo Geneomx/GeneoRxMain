@@ -1,73 +1,28 @@
-// GeneoRx mobile theme — dark clinical design matching the website.
+import { progressPalette as palette, coral, sage, sand } from './progress';
+
+// Warm Editorial across every screen, form, sheet, and navigation surface:
+// cream paper, pine green for structure, a single coral for the one action on a screen.
 export const colors = {
-  // Brand — cyan, identical to the website (--cyan / --teal-dark / --teal-light).
-  primary:       '#28E1FF',
-  primaryDark:   '#1E9BB8',
-  primaryLight:  '#5EEBFF',
-  primary50:     'rgba(40, 225, 255, 0.10)',
-  primary100:    'rgba(40, 225, 255, 0.18)',
-  /** Solid deep-accent fills that carry light text (dots, small accents) */
-  buttonPrimary: '#1E9BB8',
-  /** Near-black text/icon color that sits on the bright cyan gradient CTA */
-  onPrimary:     '#061018',
-
-  // Surfaces
-  background:    '#070A12',
-  backgroundAlt: '#0B1022',
-  surface:       'rgba(15, 23, 54, 0.80)',
-  surfaceAlt:    '#101B40',
-  card:          'rgba(15, 23, 54, 0.72)',
-  hero:          '#101B40',
-
-  // Borders
-  border:        'rgba(255, 255, 255, 0.12)',
-  /** Website border for inputs, buttons, chips and modals */
-  borderStrong:  'rgba(255, 255, 255, 0.14)',
-  borderSoft:    'rgba(255, 255, 255, 0.08)',
-
-  // Text
-  text:          '#EAF0FF',
-  textSoft:      '#A9B4D6',
-  textMuted:     '#7E8AB8',
-  textDim:       '#5A6490',
-  textInverse:   '#070A12',
-
-  // Accent palette (slides, tags)
-  violet:        '#A78BFA',
-  pink:          '#FF4FD8',
-  amber:         '#FBBF24',
-
-  // Semantic
-  success:  '#34D399',
-  warning:  '#FBBF24',
-  danger:   '#FB7185',
-
-  // Status backgrounds (website alpha tints)
-  successBg: 'rgba(52, 211, 153, 0.10)',
-  warningBg: 'rgba(251, 191, 36, 0.08)',
-  dangerBg:  'rgba(251, 113, 133, 0.12)',
-
-  // Website portal tokens
-  buttonText:   '#EAF0FF',
-  inputBg:      'rgba(7, 10, 18, 0.45)',
-  ghostBg:      'rgba(7, 10, 18, 0.35)',
-  buttonBg:     'rgba(15, 23, 54, 0.55)',
-  cardTop:      'rgba(15, 23, 54, 0.72)',
-  cardBottom:   'rgba(16, 27, 64, 0.58)',
-  badgeBg:      'rgba(15, 23, 54, 0.60)',
+  primary: palette.accent, primaryDark: '#0F2A21', primaryLight: '#24503F',
+  primary50: palette.soft, primary100: sage, buttonPrimary: coral.action, onPrimary: '#FFFFFF',
+  background: palette.background, backgroundAlt: '#F2EADB', surface: palette.surface, surfaceAlt: '#F3EBDC', card: palette.surface, hero: palette.soft,
+  glass: palette.surface, glassBorder: palette.border,
+  border: palette.border, borderStrong: '#B9A98A', controlBorder: '#9C8C6B', borderSoft: '#EFE5D0',
+  text: palette.text, textSoft: '#3B4A42', textMuted: palette.muted, textDim: '#7A8478', textInverse: '#FFFBF3',
+  violet: '#6F5BA8', pink: '#B8527A', amber: '#9A6A12',
+  success: '#2F7A53', warning: '#9A6A12', danger: '#B8402C',
+  successBg: '#DCEBDD', warningBg: '#F6E7C8', dangerBg: coral.tint,
+  buttonText: palette.text, inputBg: palette.surface, ghostBg: palette.soft, buttonBg: palette.soft,
+  cardTop: palette.surface, cardBottom: palette.surface, badgeBg: palette.soft,
+  overlay: 'rgba(22, 53, 43, 0.5)',
+  // Warm Editorial extras
+  pine: '#16352B', pine2: '#24503F', sage, sand, coral: coral.action, coralSoft: coral.soft,
+  onPine: '#F7F1E6', onPineMuted: '#C5D4C9', onPineEyebrow: '#E9B7A8',
 };
-
-/**
- * Brand gradients, matched to the website.
- *  - primaryCta  → web `.primary`  (cyan → violet), dark text sits on top
- *  - stepActive  → web `.step.on`  (cyan → blue), used for active tabs/steps
- */
 export const gradients = {
-  primaryCta: ['rgba(40, 225, 255, 0.92)', 'rgba(167, 139, 250, 0.86)'] as const,
-  stepActive: ['rgba(40, 225, 255, 0.92)', 'rgba(21, 101, 192, 0.65)'] as const,
-  /** Diagonal direction used by the website (135deg) */
-  start: { x: 0, y: 0 },
-  end:   { x: 1, y: 1 },
+  primaryCta: [coral.action, coral.action] as const,
+  stepActive: [palette.accent, palette.accent] as const,
+  start: { x: 0, y: 0 }, end: { x: 1, y: 1 },
 };
 
 export const spacing = {
@@ -80,27 +35,33 @@ export const spacing = {
 };
 
 export const radius = {
-  sm:     7,
-  md:     10,
-  lg:     14,
-  card:   18,
-  button: 12,
+  sm:     10,
+  md:     16,
+  lg:     22,
+  card:   28,
+  button: 28,
   pill:   999,
 };
 
 /** Minimum comfortable tap height (older adults / accessibility). */
-export const touchMin = 52;
+export const touchMin = 48;
+
+/** Fraunces for headings and big numbers, DM Sans (via AppText) for everything else. */
+export const fonts = {
+  serif: 'GeneoRxFraunces700',
+  serifSemi: 'GeneoRxFraunces600',
+};
 
 export const typography = {
-  h1:        { fontSize: 28, fontWeight: '700' as const, color: colors.text,    letterSpacing: -0.5 },
-  h2:        { fontSize: 22, fontWeight: '700' as const, color: colors.text,    letterSpacing: -0.3 },
-  h3:        { fontSize: 18, fontWeight: '600' as const, color: colors.text },
-  body:      { fontSize: 16, fontWeight: '400' as const, color: colors.text,    lineHeight: 24 },
-  bodyMuted: { fontSize: 15, fontWeight: '400' as const, color: colors.textMuted, lineHeight: 22 },
-  small:     { fontSize: 13, fontWeight: '500' as const, color: colors.textMuted },
-  button:    { fontSize: 16, fontWeight: '700' as const, letterSpacing: 0.1 },
-  caption:   { fontSize: 13, fontWeight: '400' as const, color: colors.textMuted, lineHeight: 19 },
-  label:     { fontSize: 15, fontWeight: '700' as const, color: colors.text },
+  h1:        { fontFamily: fonts.serif, fontSize: 28, fontWeight: 'normal' as const, color: colors.pine,    letterSpacing: -0.6, lineHeight: 34 },
+  h2:        { fontFamily: fonts.serif, fontSize: 21, fontWeight: 'normal' as const, color: colors.pine,    letterSpacing: -0.3, lineHeight: 27 },
+  h3:        { fontFamily: fonts.serif, fontSize: 18, fontWeight: 'normal' as const, color: colors.pine, letterSpacing: -0.2, lineHeight: 24 },
+  body:      { fontSize: 17, fontWeight: '400' as const, color: colors.text,    lineHeight: 26 },
+  bodyMuted: { fontSize: 17, fontWeight: '400' as const, color: colors.textMuted, lineHeight: 26 },
+  small:     { fontSize: 15, fontWeight: '500' as const, color: colors.textMuted },
+  button:    { fontSize: 17, fontWeight: '700' as const },
+  caption:   { fontSize: 15, fontWeight: '400' as const, color: colors.textMuted, lineHeight: 23 },
+  label:     { fontSize: 15, fontWeight: '600' as const, color: colors.pine },
 };
 
 /** Max content width on large phones / tablets — keeps reading comfortable. */
@@ -110,26 +71,35 @@ export const layout = {
 
 export const shadow = {
   card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowColor: '#16352B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 1,
   },
   raised: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    elevation: 8,
+    shadowColor: '#16352B',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.16,
+    shadowRadius: 22,
+    elevation: 5,
+  },
+  cta: {
+    shadowColor: coral.action,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.32,
+    shadowRadius: 16,
+    elevation: 4,
   },
 };
 
 /** Shared portal card — matches website `.card` */
 export const portalCard = {
   borderRadius: radius.card,
-  borderWidth: 1,
+  borderWidth: 1.5,
   borderColor: colors.border,
   backgroundColor: colors.card,
   ...shadow.card,
 };
+
+export { sand };

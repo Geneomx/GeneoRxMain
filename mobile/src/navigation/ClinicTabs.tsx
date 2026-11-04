@@ -1,5 +1,11 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BrandIdentity } from '@/components/BrandHeader';
+import { useAuth } from '@/auth/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
+import { colors } from '@/theme';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { OfflineBanner } from '@/components/OfflineBanner';
@@ -60,11 +66,25 @@ const ClinicTabsNavigator: React.FC = () => (
   </Tabs.Navigator>
 );
 
-export const ClinicTabs: React.FC = () => (
-  <View style={{ flex: 1 }}>
+export const ClinicTabs: React.FC = () => {
+  const { signOut } = useAuth();
+  const { t } = useTranslation();
+  return <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }} edges={['top', 'left', 'right']}>
+    <View style={styles.header}>
+      <BrandIdentity />
+      <Pressable onPress={signOut} accessibilityRole="button" accessibilityLabel={t('mobile.profile.sign_out')} style={styles.signOut}>
+        <Text style={styles.signOutText}>{t('mobile.profile.sign_out')}</Text>
+      </Pressable>
+    </View>
     <OfflineBanner />
     <View style={{ flex: 1 }}>
       <ClinicTabsNavigator />
     </View>
-  </View>
-);
+  </SafeAreaView>;
+};
+
+const styles = StyleSheet.create({
+  header: { minHeight: 52, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
+  signOut: { minHeight: 44, paddingHorizontal: 8, justifyContent: 'center' },
+  signOutText: { fontSize: 17, fontWeight: '500', color: colors.primaryDark },
+});

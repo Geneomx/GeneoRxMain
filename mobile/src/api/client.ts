@@ -20,6 +20,9 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
+  authToken?: string;
+  timeoutMs?: number;
+  signal?: AbortSignal;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   body?: unknown;
   authenticated?: boolean;
@@ -27,7 +30,7 @@ interface RequestOptions {
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, authenticated = true, headers = {} } = options;
+  const { method = 'GET', body, authenticated = true, headers = {}, signal, authToken } = options;
 
   const finalHeaders: Record<string, string> = {
     Accept: 'application/json',
@@ -36,35 +39,58 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   };
 
   if (authenticated) {
-    const token = await getToken();
-    if (token) finalHeaders.Authorization = `Bearer ${token}`;
+    const token = authToken ?? await getToken();
+    if (token && token !== '__GUEST__') finalHeaders.Authorization = `Bearer ${token}`;
   }
 
   const url = `${getApiBaseUrl().replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
 
-  const response = await fetch(url, {
-    method,
-    headers: finalHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal?.aborted) abort();
+  signal?.addEventListener('abort', abort);
+  const timeout = setTimeout(abort, options.timeoutMs ?? 30_000);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      method,
+      headers: finalHeaders,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
 
-  const text = await response.text();
-  let parsed: unknown = null;
-  if (text.length > 0) {
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      parsed = text;
+    const text = await response.text();
+    let parsed: unknown = null;
+    let invalidJson = false;
+    if (text.length > 0) {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = text;
+        invalidJson = true;
+      }
     }
-  }
 
-  if (!response.ok) {
-    const message =
-      (parsed && typeof parsed === 'object' && 'message' in parsed && typeof (parsed as { message: unknown }).message === 'string'
-        ? (parsed as { message: string }).message
-        : undefined) ?? `Request failed (${response.status})`;
-    throw new ApiError(response.status, parsed, message);
-  }
+    if (response.ok && invalidJson) {
+      throw new ApiError(502, null, 'The server returned an unexpected response. Please try again.');
+    }
 
-  return parsed as T;
+    if (!response.ok) {
+      const message =
+        (parsed && typeof parsed === 'object' && 'message' in parsed && typeof (parsed as { message: unknown }).message === 'string'
+          ? (parsed as { message: string }).message
+          : undefined) ?? `Request failed (${response.status})`;
+      throw new ApiError(response.status, parsed, message);
+    }
+
+    return parsed as T;
+  } catch (error) {
+    if (error instanceof ApiError || signal?.aborted) throw error;
+    if (controller.signal.aborted) {
+      throw new Error('The request took too long. Check your connection and try again.');
+    }
+    throw new Error('Could not connect. Check your connection and try again.');
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
+  }
 }

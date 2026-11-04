@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sendFeedback, toFeedbackType } from '@/api/feedback';
 import { Button } from '@/components/Button';
@@ -64,15 +65,16 @@ export const FeedbackModal: React.FC<Props> = ({ visible, onClose }) => {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleSkip}>
-      <Pressable style={styles.backdrop} onPress={handleSkip}>
-        <Pressable
-          style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}
-          onPress={(e) => e.stopPropagation()}
-        >
+      {/* 'padding' on both platforms: Android no longer resizes the window for
+          the keyboard under edge-to-edge, and RN recomputes the offset on layout
+          changes, so it stays correct where the window still resizes. */}
+      <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
+        <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={handleSkip} />
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}>
           <View style={styles.handle} />
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={styles.title}>{t('feedback.modal_title')}</Text>
-            <Text style={styles.sub}>{t('feedback.modal_sub')}</Text>
+            <Text style={styles.sub}>{t('feedback.sub')}</Text>
 
             <Text style={styles.label}>{t('feedback.type')}</Text>
             <OptionGrid value={type} onChange={setType} options={types} />
@@ -90,11 +92,11 @@ export const FeedbackModal: React.FC<Props> = ({ visible, onClose }) => {
 
             <View style={styles.actions}>
               <Button title={t('feedback.send_short')} onPress={handleSend} />
-              <Button title={t('nav.continue')} variant="secondary" onPress={handleSkip} />
+              <Button title={t('common.close')} variant="secondary" onPress={handleSkip} />
             </View>
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -102,7 +104,7 @@ export const FeedbackModal: React.FC<Props> = ({ visible, onClose }) => {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -116,6 +118,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSoft,
     borderBottomWidth: 0,
   },
+  // Lets the sheet shrink to the space above the keyboard; the body then scrolls to the buttons.
+  scroll: { flexGrow: 0, flexShrink: 1 },
   handle: {
     alignSelf: 'center',
     width: 40,
@@ -124,8 +128,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginBottom: spacing.md,
   },
-  title: { fontSize: 18, fontWeight: '800', color: colors.text },
-  sub: { fontSize: 14, color: colors.textMuted, lineHeight: 20, marginTop: 4, marginBottom: spacing.md },
-  label: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
+  title: { fontSize: 18, fontWeight: '500', color: colors.text },
+  sub: { fontSize: 17, color: colors.textMuted, lineHeight: 24, marginTop: 4, marginBottom: spacing.md },
+  label: { fontSize: 16, fontWeight: '500', color: colors.text, marginBottom: spacing.sm },
   actions: { gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.xs },
 });

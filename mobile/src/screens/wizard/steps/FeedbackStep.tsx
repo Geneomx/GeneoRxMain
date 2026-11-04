@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { sendFeedback, toFeedbackType } from '@/api/feedback';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
@@ -61,7 +62,7 @@ export const FeedbackStep: React.FC = () => {
       <Section>
         <Tagline title={t('feedback.modal_title')} body={t('feedback.modal_sub')} />
 
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{t('feedback.type')}</Text>
+        <Text style={{ fontSize: 17, fontWeight: '500', color: colors.text }}>{t('feedback.type')}</Text>
         <OptionGrid value={type} onChange={setType} options={types} />
 
         <ToggleRow label={t('feedback.contact')} value={canContact} onChange={setCanContact} />

@@ -20,7 +20,7 @@ export function emptyGuestProfile(): ProfileResponse {
     // A guest is never a clinician: the clinic is for registered doctors only.
     doctor: null,
     profile: null,
-    account: { email: 'guest@geneorx.local', consent: false },
+    account: { email: 'guest@geneorx.local', consent: false, aiConsent: false },
     plan: null,
     portal_state: {},
     medications: [],

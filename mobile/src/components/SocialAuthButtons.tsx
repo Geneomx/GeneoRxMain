@@ -1,8 +1,10 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import Constants from 'expo-constants';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleLogo } from '@/components/GoogleLogo';
-import { useSocialAuth } from '@/hooks/useSocialAuth';
+import { useSocialAuth, useAppleSocialAuth } from '@/hooks/useSocialAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { colors, spacing } from '@/theme';
 
@@ -12,6 +14,17 @@ import { colors, spacing } from '@/theme';
  * offers social auth on sign-in and sign-up alike).
  */
 export const SocialAuthButtons: React.FC<{ mode?: 'signin' | 'signup' }> = ({ mode = 'signin' }) => {
+  const extra = Constants.expoConfig?.extra;
+  const clientId = Platform.OS === 'ios' ? extra?.googleIosClientId : Platform.OS === 'android' ? extra?.googleAndroidClientId : extra?.googleWebClientId;
+  // Google.useAuthRequest throws during render without a native client ID.
+  if (typeof clientId === 'string' && clientId.trim()) return <ConfiguredSocialButtons mode={mode} />;
+  return Platform.OS === 'ios' ? <AppleOnlyButton mode={mode} /> : null;
+};
+const AppleOnlyButton: React.FC<{ mode: 'signin' | 'signup' }> = ({ mode }) => {
+  const { signInWithApple, loading, error } = useAppleSocialAuth();
+  return <View style={{ gap: 10 }}>{error ? <Text style={styles.socialError}>{error}</Text> : null}{loading ? <ActivityIndicator color={colors.primary} /> : <AppleAuthentication.AppleAuthenticationButton buttonType={mode === 'signup' ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP : AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN} buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK} cornerRadius={10} style={styles.appleNativeBtn} onPress={() => { void signInWithApple(); }} />}</View>;
+};
+const ConfiguredSocialButtons: React.FC<{ mode: 'signin' | 'signup' }> = ({ mode }) => {
   const { t } = useTranslation();
   const { signInWithGoogle, signInWithApple, appleAvailable, loading, error } = useSocialAuth();
 
@@ -80,7 +93,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   socialError: {
-    fontSize: 13,
+    fontSize: 16,
     color: colors.danger,
     textAlign: 'center',
   },
@@ -92,7 +105,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   socialLoadingText: {
-    fontSize: 14,
+    fontSize: 17,
     color: colors.textMuted,
   },
   socialBtns: {
@@ -114,8 +127,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   googleBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '500',
     color: colors.text,
   },
   // AppleAuthenticationButton requires an explicit height

@@ -1,10 +1,9 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients, radius, touchMin, typography } from '@/theme';
+import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { colors, shadow } from '@/theme';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
-
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'inverse';
 interface Props {
   title: string;
   onPress?: () => void;
@@ -15,137 +14,36 @@ interface Props {
   compact?: boolean;
 }
 
-export const Button: React.FC<Props> = ({
-  title,
-  onPress,
-  variant = 'primary',
-  loading = false,
-  disabled = false,
-  style,
-  compact = false,
-}) => {
-  const palette = paletteFor(variant);
+/** The visible shape is 44dp; the outer press target stays at least 48dp. */
+export const Button: React.FC<Props> = ({ title, onPress, variant = 'primary', loading = false, disabled = false, style, compact = false }) => {
   const isDisabled = disabled || loading;
-  const pressedStyle = (pressed: boolean) => {
-    if (!pressed || isDisabled) return null;
-    if (variant === 'ghost') {
-      return { backgroundColor: colors.primary50 };
-    }
-    return { opacity: 0.9 };
-  };
-
-  const label = loading ? (
-    <ActivityIndicator color={palette.fg} />
-  ) : (
-    <Text style={[styles.label, typography.button, { color: palette.fg }, palette.labelExtra]}>
-      {title}
-    </Text>
-  );
-
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={isDisabled}
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityState={{ disabled: isDisabled }}
-      style={({ pressed }) => [
-        styles.base,
-        compact && styles.compact,
-        {
-          backgroundColor: palette.bg,
-          borderColor: palette.border,
-          borderWidth: palette.borderWidth,
-        },
-        palette.shadow ?? null,
-        isDisabled && styles.disabled,
-        pressedStyle(pressed),
-        style,
-      ]}
-    >
-      {palette.gradient && (
-        <LinearGradient
-          colors={palette.gradient}
-          start={gradients.start}
-          end={gradients.end}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
-      {label}
-    </Pressable>
-  );
+  const filled = variant === 'primary' || variant === 'inverse' || variant === 'danger';
+  const stretch = !compact && variant !== 'ghost';
+  const backgroundColor = variant === 'primary' ? colors.buttonPrimary : variant === 'inverse' ? colors.surface : variant === 'danger' ? colors.dangerBg : variant === 'secondary' ? colors.primary50 : 'transparent';
+  const color = variant === 'primary' ? colors.onPrimary : variant === 'danger' ? colors.danger : colors.pine;
+  return <Pressable
+    accessible
+    accessibilityRole="button"
+    accessibilityLabel={title}
+    accessibilityState={{ disabled: isDisabled, busy: loading }}
+    disabled={isDisabled}
+    onPress={onPress}
+    style={({ pressed }) => [styles.target, stretch && { alignSelf: 'stretch', width: '100%' }, isDisabled && styles.disabled, pressed && !isDisabled && { opacity: 0.7 }, style]}
+  >
+    <View importantForAccessibility="no-hide-descendants" style={[styles.shape, compact && styles.compact, filled && styles.filled, variant === 'primary' && shadow.cta, variant === 'ghost' && styles.ghostShape, variant === 'secondary' && styles.softShape, stretch && { width: '100%' }, { backgroundColor }]}>
+      <Text style={[styles.label, { color }, loading && { opacity: 0 }]}>{title}</Text>
+      {loading ? <ActivityIndicator color={color} style={StyleSheet.absoluteFill} /> : null}
+    </View>
+  </Pressable>;
 };
-
-type Palette = {
-  bg: string;
-  fg: string;
-  border: string;
-  borderWidth: number;
-  shadow: ViewStyle | undefined;
-  labelExtra: { fontWeight: '600' | '700' | '800' };
-  gradient?: readonly [string, string, ...string[]];
-};
-
-function paletteFor(variant: Variant): Palette {
-  switch (variant) {
-    case 'secondary':
-      return {
-        bg: colors.buttonBg,
-        fg: colors.text,
-        border: colors.borderStrong,
-        borderWidth: 1,
-        shadow: undefined,
-        labelExtra: { fontWeight: '600' as const },
-      };
-    case 'ghost':
-      // Website `.ghost`: dark translucent fill, white hairline, normal text
-      return {
-        bg: colors.ghostBg,
-        fg: colors.text,
-        border: colors.borderStrong,
-        borderWidth: 1,
-        shadow: undefined,
-        labelExtra: { fontWeight: '600' as const },
-      };
-    case 'danger':
-      return {
-        bg: colors.dangerBg,
-        fg: colors.danger,
-        border: 'rgba(251, 113, 133, 0.35)',
-        borderWidth: 1,
-        shadow: undefined,
-        labelExtra: { fontWeight: '700' as const },
-      };
-    case 'primary':
-    default:
-      return {
-        // Cyan → violet gradient overlaid on top; keep the base transparent
-        bg: 'transparent',
-        fg: colors.onPrimary,
-        border: 'rgba(255, 255, 255, 0.18)',
-        borderWidth: 1,
-        shadow: undefined,
-        labelExtra: { fontWeight: '800' as const },
-        gradient: gradients.primaryCta,
-      };
-  }
-}
 
 const styles = StyleSheet.create({
-  base: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: radius.button,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: touchMin,
-    overflow: 'hidden',
-  },
-  compact: {
-    minHeight: 44,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  label: { textAlign: 'center', fontSize: 16, backgroundColor: 'transparent' },
+  target: { alignSelf: 'center', maxWidth: '100%', minHeight: 48, minWidth: 48, paddingVertical: 2, justifyContent: 'center', alignItems: 'center' },
+  shape: { maxWidth: '100%', minHeight: 52, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  filled: { paddingHorizontal: 24, minWidth: 96 },
+  ghostShape: { borderWidth: 1.5, borderColor: colors.controlBorder },
+  softShape: { borderWidth: 1.5, borderColor: colors.sage },
+  compact: { paddingHorizontal: 12 },
+  label: { textAlign: 'center', fontSize: 17, lineHeight: 24, fontWeight: '700', letterSpacing: -0.1 },
   disabled: { opacity: 0.45 },
 });

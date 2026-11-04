@@ -11,6 +11,7 @@ export function login(payload: LoginPayload) {
 
 export function register(payload: RegisterPayload) {
   return apiRequest<LoginResponse>('/auth/register', {
+    timeoutMs: 45_000,
     method: 'POST',
     body: payload,
     authenticated: false,

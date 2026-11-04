@@ -14,13 +14,13 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+import { notifications as Notifications } from './runtime';
 import { registerPushToken, deletePushToken } from '@/api/pushToken';
 
 const STORED_TOKEN_KEY = '@geneorx_push_token';
 
 /** Foreground presentation: show reminders as a banner + list entry. */
-Notifications.setNotificationHandler({
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
@@ -36,7 +36,7 @@ function projectId(): string | undefined {
 }
 
 async function ensureAndroidChannel(): Promise<void> {
-  if (Platform.OS !== 'android') return;
+  if (Platform.OS !== 'android' || !Notifications) return;
   await Notifications.setNotificationChannelAsync('reminders', {
     name: 'Reminders',
     importance: Notifications.AndroidImportance.DEFAULT,
@@ -50,7 +50,7 @@ async function ensureAndroidChannel(): Promise<void> {
  */
 export async function enablePushNotifications(): Promise<boolean> {
   try {
-    if (!Device.isDevice) return false; // simulators can't receive push
+    if (!Notifications || !Device.isDevice) return false;
 
     await ensureAndroidChannel();
 
@@ -87,6 +87,7 @@ export async function enablePushNotifications(): Promise<boolean> {
  * Passing nothing falls back to the old local-only behaviour.
  */
 export async function refreshPushRegistration(accountOptedIn?: boolean): Promise<void> {
+  if (!Notifications || !Device.isDevice) return;
   try {
     const token = await AsyncStorage.getItem(STORED_TOKEN_KEY);
     if (token) {

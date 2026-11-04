@@ -1,5 +1,6 @@
 node_modules/
 .expo/
+.jest-cache/
 dist/
 web-build/
 *.orig.*

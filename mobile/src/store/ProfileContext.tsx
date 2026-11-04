@@ -17,15 +17,18 @@ const ProfileContext = createContext<ProfileContextValue | undefined>(undefined)
 
 export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isGuest, token } = useAuth();
-  const { state, hydrated, syncing, refresh, savePayload } = useWizard();
+  const { state, hydrated, syncing, serverProfile, refresh, savePayload } = useWizard();
 
   const data = useMemo<ProfileResponse | null>(() => {
     if (!token) return null;
     const baseUser = user
       ? { name: user.name, email: user.email, emailVerified: user.emailVerified }
       : emptyGuestProfile().user;
-    return wizardToProfileResponse(state, baseUser);
-  }, [state, user, token]);
+    const local = wizardToProfileResponse(state, baseUser);
+    return { ...serverProfile, ...local, doctor: serverProfile?.doctor ?? null,
+      account: { ...serverProfile?.account, ...local.account },
+      portal_state: { ...serverProfile?.portal_state, ...local.portal_state } };
+  }, [state, user, token, serverProfile]);
 
   const refreshProfile = useCallback(async () => {
     await refresh();

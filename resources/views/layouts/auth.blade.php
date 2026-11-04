@@ -9,7 +9,7 @@
   @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
   @stack('styles')
   <style>
     :root {
@@ -292,17 +292,19 @@
       .auth-top { padding: 14px 16px; }
     }
   </style>
+  <link rel="stylesheet" href="{{ asset('css/clean-ui.css') }}">
 </head>
-<body>
+<body class="gx-clean">
+  <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="auth-top">
-    @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false])
+    @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 34])
     <div class="auth-top-actions">
       @include('partials.language-selector')
       <a href="{{ route('home') }}" class="auth-top-link" data-i18n="auth.back">Back to home</a>
     </div>
   </header>
 
-  <main class="auth-main">
+  <main class="auth-main" id="main-content">
     @yield('content')
   </main>
 </body>

@@ -1,20 +1,12 @@
 import React, { useState } from 'react';
-import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { SocialAuthButtons } from '@/components/SocialAuthButtons';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
+import { FormScrollView } from '@/components/FormScrollView';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useAuth } from '@/auth/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -64,7 +56,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
+        <FormScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -76,14 +68,6 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.backText}>← {t('nav.back')}</Text>
               </Pressable>
             </View>
-            <View style={styles.brandRow}>
-              <Image
-                source={require('../../assets/logo.png')}
-                style={styles.brandLogo}
-                resizeMode="contain"
-              />
-              <Text style={styles.brandName}>GeneoRx</Text>
-            </View>
             <View style={[styles.topBarSide, styles.topBarSideRight]}>
               <LanguageSelector compact />
             </View>
@@ -91,7 +75,6 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* INTRO */}
           <View style={styles.intro}>
-            <Text style={styles.eyebrow}>  {t('mobile.auth.get_started')}</Text>
             <Text style={styles.title}>
               {t('cta.register')}
             </Text>
@@ -99,20 +82,6 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
               {t('mobile.auth.register_sub')}
             </Text>
 
-            <View style={styles.benefits}>
-              <View style={styles.benefitRow}>
-                <View style={styles.benefitDot} />
-                <Text style={styles.benefitText}>{t('mobile.auth.benefit_free')}</Text>
-              </View>
-              <View style={styles.benefitRow}>
-                <View style={styles.benefitDot} />
-                <Text style={styles.benefitText}>{t('mobile.auth.benefit_verify')}</Text>
-              </View>
-              <View style={styles.benefitRow}>
-                <View style={styles.benefitDot} />
-                <Text style={styles.benefitText}>{t('mobile.auth.benefit_checkins')}</Text>
-              </View>
-            </View>
           </View>
 
           {/* FORM */}
@@ -166,7 +135,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.legal}>
             {t('mobile.auth.register_legal')}
           </Text>
-        </ScrollView>
+        </FormScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -175,8 +144,8 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingHorizontal: 20,
+    paddingTop: 24,
     paddingBottom: spacing.xxl,
   },
 
@@ -194,31 +163,31 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   back: { padding: 4, alignSelf: 'flex-start' },
-  backText: { fontSize: 14, fontWeight: '500', color: colors.textMuted },
+  backText: { fontSize: 17, fontWeight: '500', color: colors.textMuted },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 7, justifyContent: 'center' },
   brandLogo: { height: 32, width: 124 },
-  brandName: { fontSize: 14.5, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  brandName: { fontSize: 14.5, fontWeight: '500', color: colors.text, letterSpacing: -0.2 },
 
   /* INTRO */
   intro: { marginBottom: spacing.lg },
   eyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '500',
     color: colors.primaryLight,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     marginBottom: 12,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '600',
     color: colors.text,
     letterSpacing: -0.8,
-    lineHeight: 38,
+    lineHeight: 35,
     marginBottom: 12,
   },
   titleItalic: { fontStyle: 'italic', fontWeight: '400', color: colors.primaryLight },
-  subtitle: { fontSize: 15, color: colors.textSoft, lineHeight: 22, marginBottom: 18 },
+  subtitle: { fontSize: 17, color: colors.textSoft, lineHeight: 22, marginBottom: 18 },
   benefits: { gap: 8 },
   benefitRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   benefitDot: {
@@ -243,14 +212,14 @@ const styles = StyleSheet.create({
     borderTopColor: colors.borderSoft,
     marginBottom: spacing.md,
   },
-  bottomLinkLead: { fontSize: 14, color: colors.textMuted },
-  bottomLinkAction: { fontSize: 14, color: colors.primaryLight, fontWeight: '700' },
+  bottomLinkLead: { fontSize: 17, color: colors.textMuted },
+  bottomLinkAction: { fontSize: 17, color: colors.primaryLight, fontWeight: '500' },
 
   legal: {
     fontSize: 11.5,
     color: colors.textMuted,
     textAlign: 'center',
-    lineHeight: 17,
+    lineHeight: 21,
     paddingHorizontal: spacing.sm,
   },
 });

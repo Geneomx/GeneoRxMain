@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { colors } from '@/theme';
 
@@ -43,7 +44,7 @@ export const ScoreRing: React.FC<Props> = ({
           <Defs>
             <LinearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
               <Stop offset="0%" stopColor={colors.primary} />
-              <Stop offset="100%" stopColor={colors.violet} />
+              <Stop offset="100%" stopColor={colors.primaryLight} />
             </LinearGradient>
           </Defs>
         )}
@@ -51,7 +52,7 @@ export const ScoreRing: React.FC<Props> = ({
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke="rgba(255, 255, 255, 0.08)"
+          stroke={colors.border}
           strokeWidth={stroke}
           fill="none"
         />
@@ -82,6 +83,6 @@ export const ScoreRing: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   center: { position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' },
-  value: { fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
+  value: { fontWeight: '500', color: colors.text, letterSpacing: -0.5 },
   label: { fontSize: 9, color: colors.textMuted, marginTop: 1 },
 });

@@ -19,7 +19,8 @@
 // one full indent to the right — on top of the label.
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, spacing } from '@/theme';
 import type { StepState } from '@/wizard/stepStatus';
@@ -166,15 +167,15 @@ const styles = StyleSheet.create({
   nodeAvailable: { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
   nodeLocked: { backgroundColor: colors.background, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.14)' },
 
-  nodeText: { fontSize: 12, fontWeight: '700', color: colors.textSoft },
+  nodeText: { fontSize: 15, fontWeight: '500', color: colors.textSoft },
   nodeTextLocked: { color: colors.textDim },
-  nodeTextDone: { fontSize: 14, fontWeight: '700', color: colors.success },
-  nodeTextOn: { fontSize: 14, fontWeight: '900', color: colors.onPrimary },
+  nodeTextDone: { fontSize: 17, fontWeight: '500', color: colors.success },
+  nodeTextOn: { fontSize: 17, fontWeight: '500', color: colors.onPrimary },
 
   row: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, minHeight: 30 },
 
-  name: { fontSize: 17, fontWeight: '600', color: colors.text, letterSpacing: -0.1 },
-  nameOn: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
+  name: { fontSize: 17, fontWeight: '500', color: colors.text, letterSpacing: -0.1 },
+  nameOn: { fontSize: 22, fontWeight: '500', color: colors.text, letterSpacing: -0.5 },
   nameLocked: { color: colors.textDim, fontWeight: '500' },
 
 

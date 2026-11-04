@@ -75,7 +75,8 @@ class TokenAuthController extends Controller
         // the admin "Verified" column meaningless. Unverified users are routed to
         // the OTP screen, which can request a fresh code on its own.
 
-        $user->tokens()->where('name', 'mobile')->delete();
+        // Each device owns its session. A second login must not disconnect a
+        // patient's existing phone; logout revokes only its current token.
         $token = $user->createToken('mobile')->plainTextToken;
 
         return response()->json([

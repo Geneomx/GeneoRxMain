@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, shadow, spacing } from '@/theme';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { colors, radius } from '@/theme';
 
 interface Props {
   label: string;
@@ -13,6 +14,9 @@ export const Chip: React.FC<Props> = ({ label, selected, onPress, onRemove }) =>
   return (
     <Pressable
       onPress={onRemove ?? onPress}
+      accessibilityRole={onRemove ? 'button' : 'checkbox'}
+      accessibilityLabel={label}
+      accessibilityState={onRemove ? undefined : { checked: Boolean(selected) }}
       style={({ pressed }) => [
         styles.base,
         selected ? styles.selected : styles.unselected,
@@ -20,7 +24,7 @@ export const Chip: React.FC<Props> = ({ label, selected, onPress, onRemove }) =>
       ]}
     >
       <Text style={[styles.text, selected ? styles.textSelected : styles.textUnselected]}>
-        {label}
+        {selected && !onRemove ? '✓ ' : ''}{label}
       </Text>
       {onRemove ? (
         <View style={[styles.removeIcon, selected && styles.removeIconSelected]}>
@@ -36,23 +40,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    borderRadius: radius.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    minHeight: 44,
+    borderRadius: radius.button,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    minHeight: 48,
     borderWidth: 1,
-    ...shadow.card,
   },
   selected: {
-    backgroundColor: colors.primary100,
-    borderColor: 'rgba(40, 225, 255, 0.45)',
+    backgroundColor: colors.primary50,
+    borderColor: colors.primary,
   },
   unselected: {
-    backgroundColor: 'rgba(15, 23, 54, 0.45)',
-    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    borderColor: colors.controlBorder,
   },
-  text: { fontSize: 15, fontWeight: '600' },
-  textSelected: { color: colors.text, fontWeight: '900' },
+  text: { flexShrink: 1, fontSize: 17, fontWeight: '500' },
+  textSelected: { color: colors.primary, fontWeight: '500' },
   textUnselected: { color: colors.text },
 
   removeIcon: {
@@ -66,10 +69,10 @@ const styles = StyleSheet.create({
   },
   removeIconSelected: { backgroundColor: 'rgba(6, 16, 24, 0.15)' },
   removeIconText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '500',
     color: colors.textMuted,
-    lineHeight: 16,
+    lineHeight: 20,
   },
   removeIconTextSelected: { color: colors.buttonText },
 });

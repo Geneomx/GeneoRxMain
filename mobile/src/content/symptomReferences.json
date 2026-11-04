@@ -1,0 +1,30 @@
+{
+  "metformin": {
+    "Fatigue": {
+      "title": "MedlinePlus: Metformin",
+      "url": "https://medlineplus.gov/druginfo/meds/a696005.html",
+      "checkedAt": "2026-10-20",
+      "reason": "The medication reference lists reduced energy among possible effects. This does not confirm the cause of your fatigue."
+    },
+    "GI discomfort": {
+      "title": "MedlinePlus: Metformin",
+      "url": "https://medlineplus.gov/druginfo/meds/a696005.html",
+      "checkedAt": "2026-10-20",
+      "reason": "The medication reference lists stomach discomfort among possible effects. Track only what you actually experience."
+    }
+  },
+  "lisinopril": {
+    "Dizziness": {
+      "title": "MedlinePlus: Lisinopril",
+      "url": "https://medlineplus.gov/druginfo/meds/a692051.html",
+      "checkedAt": "2026-10-20",
+      "reason": "The medication reference lists dizziness among possible effects. Other causes are possible."
+    },
+    "Fatigue": {
+      "title": "MedlinePlus: Lisinopril",
+      "url": "https://medlineplus.gov/druginfo/meds/a692051.html",
+      "checkedAt": "2026-10-20",
+      "reason": "The medication reference lists tiredness among possible effects. This is a prompt to review, not a diagnosis."
+    }
+  }
+}

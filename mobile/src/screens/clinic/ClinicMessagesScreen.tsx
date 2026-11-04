@@ -1,15 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
@@ -134,7 +125,7 @@ export const ClinicMessagesScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <AmbientBackground />
 
       <View style={[page, styles.head]}>
@@ -357,10 +348,10 @@ export const ClinicMessagesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   head: { paddingTop: spacing.sm, gap: 4, paddingBottom: spacing.sm },
-  h1: { fontSize: 24, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
-  sub: { fontSize: 15, lineHeight: 21, color: colors.textMuted },
+  h1: { fontSize: 24, fontWeight: '500', color: colors.text, letterSpacing: -0.5 },
+  sub: { fontSize: 17, lineHeight: 25, color: colors.textMuted },
   back: { marginTop: 4 },
-  backText: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  backText: { fontSize: 17, fontWeight: '500', color: colors.primary },
 
   bodyWrap: { gap: spacing.sm, paddingTop: spacing.sm },
 
@@ -373,10 +364,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   rowTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  who: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.text },
-  preview: { fontSize: 15, lineHeight: 21, color: colors.textSoft },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
-  sumLine: { fontSize: 15, lineHeight: 22, color: colors.text },
+  who: { flex: 1, fontSize: 17, fontWeight: '500', color: colors.text },
+  preview: { fontSize: 17, lineHeight: 25, color: colors.textSoft },
+  cardTitle: { fontSize: 17, fontWeight: '500', color: colors.text },
+  sumLine: { fontSize: 17, lineHeight: 22, color: colors.text },
   flags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   flag: {
     paddingHorizontal: 10,
@@ -386,7 +377,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.32)',
   },
-  flagText: { fontSize: 12, fontWeight: '800', color: colors.warning },
+  flagText: { fontSize: 15, fontWeight: '500', color: colors.warning },
   ratings: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   rating: {
     paddingHorizontal: 10,
@@ -395,11 +386,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  ratingText: { fontSize: 13, color: colors.textSoft },
-  fine: { fontSize: 13, lineHeight: 19, color: colors.textDim },
-  closeLink: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+  ratingText: { fontSize: 16, color: colors.textSoft },
+  fine: { fontSize: 16, lineHeight: 23, color: colors.textDim },
+  closeLink: { fontSize: 17, fontWeight: '500', color: colors.textMuted },
 
-  label: { fontSize: 14, fontWeight: '600', color: colors.textSoft, marginTop: 2 },
+  label: { fontSize: 17, fontWeight: '500', color: colors.textSoft, marginTop: 2 },
   input: {
     minHeight: 96,
     textAlignVertical: 'top',
@@ -409,7 +400,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    fontSize: 16,
+    fontSize: 17,
     color: colors.text,
   },
 
@@ -428,13 +419,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   bubbleMine: {
-    borderColor: 'rgba(40, 225, 255, 0.32)',
+    borderColor: colors.primary100,
     backgroundColor: colors.primary50,
     borderBottomLeftRadius: radius.md,
     borderBottomRightRadius: 4,
   },
-  bubbleText: { fontSize: 16, lineHeight: 23, color: colors.text },
-  turnWho: { fontSize: 12, color: colors.textDim, marginTop: 3 },
+  bubbleText: { fontSize: 17, lineHeight: 23, color: colors.text },
+  turnWho: { fontSize: 15, color: colors.textDim, marginTop: 3 },
 
   notice: {
     borderWidth: 1,
@@ -443,14 +434,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
   },
-  noticeText: { fontSize: 14, lineHeight: 20, color: colors.text },
+  noticeText: { fontSize: 17, lineHeight: 24, color: colors.text },
 
   pill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill },
   pillWait: { backgroundColor: colors.warningBg },
   pillOk: { backgroundColor: colors.successBg },
   pillDone: { backgroundColor: colors.ghostBg },
   pillNew: { backgroundColor: colors.dangerBg },
-  pillText: { fontSize: 12, fontWeight: '800' },
+  pillText: { fontSize: 15, fontWeight: '500' },
   pillTextWait: { color: colors.warning },
   pillTextOk: { color: colors.success },
   pillTextDone: { color: colors.textMuted },

@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { colors, radius } from '@/theme';
 
 /**
@@ -47,9 +48,9 @@ export const MeterRow: React.FC<Props> = ({ label, value, max = 10, display, ton
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 },
-  label: { flex: 0, width: 92, fontSize: 13, color: colors.textSoft },
+  label: { flex: 0, width: 92, fontSize: 16, color: colors.textSoft },
   track: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: radius.sm },
-  value: { width: 36, textAlign: 'right', fontSize: 13, fontWeight: '700', color: colors.text },
+  value: { width: 36, textAlign: 'right', fontSize: 16, fontWeight: '500', color: colors.text },
   dim: { color: colors.textDim },
 });

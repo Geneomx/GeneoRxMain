@@ -8,8 +8,10 @@ use App\Http\Controllers\Api\ClinicApiController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\EmailOtpController;
 use App\Http\Controllers\Api\FeedbackController;
+use App\Http\Controllers\Api\MedicationLabelController;
 use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\Api\SocialAuthController as ApiSocialAuthController;
+use App\Http\Controllers\Api\SymptomSuggestionController;
 use App\Http\Controllers\Api\TokenAuthController;
 use App\Http\Controllers\HomeController;
 use App\Models\Medication;
@@ -34,12 +36,17 @@ Route::get('/medications/catalog', function () {
     return response()->json(['catalog' => Medication::toMedDb()]);
 });
 
+Route::post('/mobile/medication-label', MedicationLabelController::class)->middleware('throttle:6,1');
+
 Route::post('/mobile/ai-summary', AiSummaryController::class)->middleware('throttle:10,1');
+Route::post('/mobile/symptom-suggestions', SymptomSuggestionController::class)
+    ->middleware('throttle:20,1');
 
 // Ask GeneoRx conversational assistant (guest-friendly; bearer attaches the
 // user's own grounding context).
 Route::post('/mobile/assistant', AssistantController::class)
     ->middleware('throttle:20,1');
+Route::get('/mobile/assistant/options', [AssistantController::class, 'options']);
 
 // ── Product analytics + feedback (guest-friendly; bearer token attaches user) ─
 Route::post('/analytics/track', [AnalyticsController::class, 'track'])

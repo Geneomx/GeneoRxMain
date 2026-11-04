@@ -73,7 +73,7 @@ function doseLabel(dose){
   return dose ? t(`dose.${dose}`) : "";
 }
 function fmtDelta(n){
-  return `${n >= 0 ? "+" : ""}${n}`;
+  return Number.isFinite(n) ? `${n >= 0 ? "+" : ""}${n}` : "—";
 }
 function wellbeingSummaryText(wellbeing){
   const wb = wellbeing || {};
@@ -119,7 +119,7 @@ const MED_DB = [
 
   { id:"omeprazole", name:"Omeprazole (PPI)", symptomChips:["GI discomfort","Fatigue","Dizziness","Muscle cramps","Brain fog"],
     claims:[
-      { nutrient:"Magnesium", source_quality:"High", citations:["PMID:22392879"],
+      { nutrient:"Magnesium", source_quality:"High", citations:["https://ods.od.nih.gov/factsheets/Magnesium-HealthProfessional/"],
         notes:["Long-term PPI use has a hypomagnesemia safety signal; consider Mg evaluation if symptomatic."]},
       { nutrient:"Vitamin B12", source_quality:"Moderate", citations:["PMCID:PMC4110863"],
         notes:["Association depends on duration and population; labs help clarify."]},
@@ -127,8 +127,8 @@ const MED_DB = [
 
   { id:"pantoprazole", name:"Pantoprazole (PPI)", symptomChips:["GI discomfort","Fatigue","Dizziness","Muscle cramps"],
     claims:[
-      { nutrient:"Magnesium", source_quality:"High", citations:["PMID:22392879"],
-        notes:["Class effect: long-term PPI use reduces gastric acid needed for Mg absorption."]},
+      { nutrient:"Magnesium", source_quality:"High", citations:["https://ods.od.nih.gov/factsheets/Magnesium-HealthProfessional/"],
+        notes:["Prolonged PPI use can cause low magnesium; this does not establish an individual deficiency."]},
       { nutrient:"Vitamin B12", source_quality:"Moderate", citations:["PMCID:PMC4110863"],
         notes:["Reduced gastric acid may impair B12 release from dietary protein over time."]},
     ]},
@@ -332,7 +332,7 @@ const STORAGE_KEY = "geniorx_consumer_portal_v1_split";
 const LEGACY_STORAGE_KEY = "geneomx_consumer_portal_v1_split";
 const defaultState = () => ({
   step: 0,
-  account: { email:"", consent:false },
+  account: { email:"", consent:false, aiConsent:false },
   profile: { age:"", gender:"", pregnant:false, kidneyDisease:false, anticoagulants:false },
   meds: [],
   symptoms: { selected:[], custom:[], severity:"mild" },
@@ -426,7 +426,8 @@ function localHasMeaningfulData(s){
     (s.checkins && s.checkins.length) ||
     (s.profile && (s.profile.age || s.profile.gender)) ||
     (s.plan && s.plan.started) ||
-    s.account?.consent
+    s.account?.consent ||
+    s.account?.aiConsent
   );
 }
 
@@ -463,6 +464,9 @@ async function loadFromBackend() {
     if(typeof data.account?.consent === 'boolean') {
       state.account.consent = data.account.consent;
     }
+    if(typeof data.account?.aiConsent === 'boolean') {
+      state.account.aiConsent = data.account.aiConsent;
+    }
     if(data.medications?.length) state.meds = data.medications;
     if(data.symptoms?.length) state.symptoms.selected = data.symptoms.map(s => s.name);
     if(data.checkins?.length) {
@@ -492,6 +496,7 @@ async function loadFromBackend() {
       state.symptomOnlyMode = localSnapshot.symptomOnlyMode ?? state.symptomOnlyMode;
       state.feedback = localSnapshot.feedback || state.feedback;
       if(typeof localSnapshot.account?.consent === 'boolean') state.account.consent = localSnapshot.account.consent;
+      if(typeof localSnapshot.account?.aiConsent === 'boolean') state.account.aiConsent = localSnapshot.account.aiConsent;
       if(data.user?.email) state.account.email = data.user.email;
       else if(localSnapshot.account?.email && !String(localSnapshot.account.email).includes('guest@')) state.account.email = localSnapshot.account.email;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -534,7 +539,7 @@ async function saveToBackend() {
             customMedCatalog: customMedCatalog,
             wellbeingBaseline: state.wellbeingBaseline,
             symptomOnlyMode: state.symptomOnlyMode,
-            account: { consent: state.account.consent },
+            account: { consent: state.account.consent, aiConsent: state.account.aiConsent },
             feedback: state.feedback,
           },
         };
@@ -587,8 +592,8 @@ const WELLBEING_FIELDS = [
 ];
 
 function renderWellbeingScoreRow(fieldKey, labelKey, inputId, value){
-  const score = clamp(parseInt(value, 10) || 0, 0, 10);
-  const pills = Array.from({ length: 11 }, (_, n) =>
+  const score = typeof value === "number" ? clamp(value,0,10) : "";
+  const pills = `<button type="button" class="score-pill" data-score="" aria-pressed="${score === ""}">${escapeHtml(t("checkin.not_answered"))}</button>` + Array.from({ length: 11 }, (_, n) =>
     `<button type="button" class="score-pill" data-score="${n}" aria-pressed="${n === score ? "true" : "false"}">${n}</button>`
   ).join("");
   return `
@@ -613,7 +618,7 @@ function renderWellbeingScoreGrid(values, idPrefix){
   return `
     <div class="score-picker-grid">
       ${WELLBEING_FIELDS.map(({ key, label }) =>
-        renderWellbeingScoreRow(key, label, getId(key), values?.[key] ?? 5)
+        renderWellbeingScoreRow(key, label, getId(key), values?.[key] ?? null)
       ).join("")}
     </div>
   `;
@@ -724,7 +729,7 @@ function wireWellbeingScorePickers(root){
     const valueEl = picker.querySelector("[data-score-value]");
     picker.querySelectorAll(".score-pill").forEach(btn => {
       btn.addEventListener("click", ()=>{
-        const score = clamp(parseInt(btn.dataset.score || "0", 10), 0, 10);
+        const score = btn.dataset.score === "" ? "" : clamp(Number(btn.dataset.score),0,10);
         picker.querySelectorAll(".score-pill").forEach(b =>
           b.setAttribute("aria-pressed", b === btn ? "true" : "false")
         );
@@ -736,7 +741,7 @@ function wireWellbeingScorePickers(root){
 }
 
 function readWellbeingScores(ids){
-  const read = (id)=> clamp(parseInt(document.getElementById(id)?.value || "0", 10), 0, 10);
+  const read = (id)=> { const raw=document.getElementById(id)?.value; return raw === "" || raw == null ? null : clamp(Number(raw),0,10); };
   return {
     energy: read(ids.energy),
     mood: read(ids.mood),
@@ -755,8 +760,8 @@ const CHECKIN_IMPACT_KEYS = {
 };
 
 function renderImpactPicker(inputId, selected){
-  const value = CHECKIN_IMPACT_OPTIONS.includes(selected) ? selected : "No change";
-  const chips = CHECKIN_IMPACT_OPTIONS.map(x =>
+  const value = CHECKIN_IMPACT_OPTIONS.includes(selected) ? selected : "";
+  const chips = `<button type="button" class="chip impact-chip" data-impact="" aria-pressed="${value === ""}">${escapeHtml(t("checkin.not_answered"))}</button>` + CHECKIN_IMPACT_OPTIONS.map(x =>
     `<button type="button" class="chip impact-chip" data-impact="${escapeHtml(x)}" aria-pressed="${x === value ? "true" : "false"}">${escapeHtml(t(CHECKIN_IMPACT_KEYS[x]))}</button>`
   ).join("");
   return `
@@ -774,7 +779,7 @@ function wireImpactPickers(root){
     const hidden = picker.querySelector('input[type="hidden"]');
     picker.querySelectorAll(".impact-chip").forEach(btn => {
       btn.addEventListener("click", ()=>{
-        const val = btn.dataset.impact || "No change";
+        const val = btn.dataset.impact || "";
         picker.querySelectorAll(".impact-chip").forEach(b =>
           b.setAttribute("aria-pressed", b === btn ? "true" : "false")
         );
@@ -828,6 +833,13 @@ function renderCitationChip(token){
    ===== SCORING + RECOMMENDATIONS (TEXT-ONLY) =====
    ========================================================= */
 function doseFactor(d){ return d==="low" ? 0.85 : (d==="high" ? 1.25 : 1.0); }
+function medicationDurationMonths(med){
+  if(!med.startDate) return med.durationMonths || 0;
+  const parts=String(med.startDate).split('-').map(Number), now=new Date();
+  const start=new Date(parts[0],parts[1]-1,parts[2]);
+  if(parts.length!==3 || start.getFullYear()!==parts[0] || start.getMonth()!==parts[1]-1 || start.getDate()!==parts[2] || start>now) return null;
+  return Math.max(0,(now.getFullYear()-parts[0])*12+now.getMonth()-parts[1]+1-(now.getDate()<parts[2]?1:0));
+}
 function durationFactor(months){ const m = clamp(months||0, 0, 24); return 0.55 + (m/24)*0.75; }
 function severityFactor(sev){ return sev==="severe" ? 1.35 : (sev==="moderate" ? 1.15 : 1.0); }
 function qualityWeight(q){ return q==="High" ? 4 : (q==="Moderate" ? 3 : 2); }
@@ -839,8 +851,8 @@ function computeNutrientScores(){
 
   for(const mi of state.meds){
     const med = MED_DB.find(x => x.id===mi.medId);
-    if(!med) continue;
-    const f = doseFactor(mi.dose) * durationFactor(mi.durationMonths) * sevF;
+    if(!med || mi.dose==='unknown' || mi.modelInputsConfirmed===false) continue;
+    const f = doseFactor(mi.dose) * durationFactor(medicationDurationMonths(mi) || 0) * sevF;
 
     for(const cl of (med.claims||[])){
       const w = qualityWeight(cl.source_quality) * 10 * f;
@@ -848,13 +860,6 @@ function computeNutrientScores(){
     }
   }
 
-  // symptom-only fallback
-  if(Object.keys(scores).length===0 && state.symptoms.selected.length){
-    const burden = state.symptoms.selected.length * 9 * sevF;
-    scores["Magnesium"] = (scores["Magnesium"]||0) + burden;
-    scores["B vitamins"] = (scores["B vitamins"]||0) + burden * 0.85;
-    scores["Vitamin D"] = (scores["Vitamin D"]||0) + burden * 0.60;
-  }
 
   return Object.entries(scores)
     .map(([k,v]) => [k, clamp(Math.round(v), 0, 100)])
@@ -967,6 +972,7 @@ const LIFESTYLE_KEYS = ["movement","hydration","sleep_routine"];
 const LEGACY_SYSTEMS = ["energy","mood","sleep","focus"];
 
 /* Product judgement, NOT evidence-derived and NOT a validated instrument. */
+const adherenceLabel = value => typeof value === "number" && Number.isFinite(value) ? `${value}%` : "Not sure";
 const MCS_WEIGHTS = { adherence:0.35, supplements:0.20, labs:0.20, prescriber:0.15, lifestyle:0.10 };
 const MCS_MIN_COMPONENTS = 2;
 
@@ -1019,12 +1025,12 @@ function computeWeeklyHealthScore(){
   if(!last) return { score:null, delta:null, drivers:[] };
 
   function scoreFor(c){
-    const adherence = clamp(Math.round(c.adherencePct || 0), 0, 100);
+    const adherence = typeof c.adherencePct === "number" ? clamp(Math.round(c.adherencePct), 0, 100) : null;
     const wb = readBodySystems(c);
     const answered = LEGACY_SYSTEMS.map(k => wb[k]).filter(v => typeof v === "number");
     const wellbeing = answered.length ? (answered.reduce((a,b)=>a+b,0) / answered.length) * 10 : 50;
     const improvement = clamp(50 + ((c.symptoms && c.symptoms.improvementScore) || 0) * 5, 0, 100);
-    return Math.round(adherence * 0.4 + wellbeing * 0.4 + improvement * 0.2);
+    return Math.round(((adherence ?? 0) * 0.4 + wellbeing * 0.4 + improvement * 0.2)/(adherence === null ? 0.6 : 1));
   }
 
   const score = scoreFor(last);
@@ -1069,7 +1075,7 @@ function computeMedicationCompletion(checkinOverride){
   const completion = checkin ? checkin.completion : null;
   const components = [];
 
-  components.push(checkin
+  components.push(checkin && typeof checkin.adherencePct === "number"
     ? { key:"adherence", score: clamp(Math.round(checkin.adherencePct || 0),0,100), weight: MCS_WEIGHTS.adherence, reason:"answered" }
     : { key:"adherence", score:null, weight: MCS_WEIGHTS.adherence, reason:"not_applicable" });
 
@@ -1147,7 +1153,7 @@ function getSymptomUniverse(){
     });
     return uniq(chips).slice(0,24);
   })() : GENERIC_SYMPTOMS.slice();
-  return uniq([...(base||[]), ...((state.symptoms && state.symptoms.custom) || [])]).slice(0,40);
+  return uniq([...(base.length ? base : GENERIC_SYMPTOMS), ...(state.symptoms.selected || []), ...((state.symptoms && state.symptoms.custom) || [])]).slice(0,60);
 }
 
 function addCustomSymptom(sym){
@@ -1213,8 +1219,8 @@ function computeMedicationSuccessPrediction(checkinOverride){
   // the adherence figure printed a few lines below it in the same document.
   const last = checkinOverride !== undefined ? checkinOverride : latestCheckin();
   if(last){
-    if(last.adherencePct >= 80) score += 15;
-    else if(last.adherencePct < 60) score -= 15;
+    if(typeof last.adherencePct === "number" && last.adherencePct >= 80) score += 15;
+    else if(typeof last.adherencePct === "number" && last.adherencePct < 60) score -= 15;
   }
   score = clamp(score, 0, 100);
   const level = score >= 75 ? "Strong" : score >= 50 ? "Moderate" : "At risk";
@@ -1277,9 +1283,6 @@ function computeInsightEngine(){
     doctorPrompt = t('engine.insight.doctor_nutrient', { nutrient: topScore[0] });
   }
 
-  if(prediction.score < 50){
-    meaning += t('engine.insight.meaning_low_prediction');
-  }
   if(interactions.length){
     meaning += interactions.length > 1
       ? t('engine.insight.meaning_interactions_many', { count: interactions.length })
@@ -1295,80 +1298,7 @@ function computeInsightEngine(){
 }
 
 function generateDynamicHealthStory(checkinOverride){
-  const medNames = state.meds.map(m => {
-    const med = MED_DB.find(x=>x.id===m.medId);
-    return med ? med.name : m.medId;
-  });
-  const symptoms = state.symptoms?.selected || [];
-  const severity = state.symptoms?.severity || "mild";
-  const patterns = detectHealthPatterns();
-  const last = checkinOverride ?? latestCheckin();
-  const success = computeMedicationSuccessPrediction(last);
-  const interactions = computeDrugInteractions();
-  const contraindications = computeContraindications();
-  const nutrientScores = computeNutrientScores();
-  const topNutrient = nutrientScores.length ? nutrientScores[0] : null;
-  const parts = [];
-
-  if (medNames.length) {
-    const medsText = medNames.slice(0, 2).join(", ") + (medNames.length > 2 ? t("summary.story.meds_other") : "");
-    const maxMonths = Math.max(...state.meds.map(x => Number(x.durationMonths || 0)), 0);
-    if (maxMonths > 0) {
-      parts.push(t("summary.story.meds_duration", { meds: medsText, months: maxMonths }));
-    } else {
-      parts.push(t("summary.story.meds", { meds: medsText }));
-    }
-  } else if (state.symptomOnlyMode) {
-    parts.push(t("summary.story.symptom_only"));
-  } else {
-    parts.push(t("summary.story.no_meds"));
-  }
-
-  if (symptoms.length) {
-    const symText = symptoms.slice(0, 3).join(", ") + (symptoms.length > 3 ? ", and other symptoms" : "");
-    parts.push(t("summary.story.symptoms", { symptoms: symText, severity }));
-  } else {
-    parts.push(t("summary.story.no_symptoms"));
-  }
-
-  if (patterns.length) {
-    const p = patterns[0];
-    parts.push(t("summary.story.pattern", { pattern: p.title.toLowerCase(), note: p.note }));
-  } else if (topNutrient) {
-    parts.push(t("summary.story.top_nutrient", { nutrient: topNutrient[0], score: topNutrient[1] }));
-  } else {
-    parts.push(t("summary.story.no_signal"));
-  }
-
-  if (last) {
-    const better = (last.symptoms?.items || []).filter(x => x.change === "Much better" || x.change === "Slightly better").map(x => x.symptom);
-    const worse = (last.symptoms?.items || []).filter(x => x.change === "Worse").map(x => x.symptom);
-    if (better.length && !worse.length) {
-      parts.push(t("summary.story.improved", { symptoms: better.slice(0, 2).join(" and ") }));
-    } else if (worse.length) {
-      parts.push(t("summary.story.worse", { symptoms: worse.slice(0, 2).join(" and ") }));
-    } else {
-      parts.push(t("summary.story.mixed"));
-    }
-    parts.push(t("summary.story.success_with_checkin", { score: success.score, level: success.level }));
-  } else {
-    parts.push(t("summary.story.success_no_checkin", { score: success.score, level: success.level }));
-  }
-
-  if (interactions.length || contraindications.length) {
-    const bits = [];
-    if (interactions.length) bits.push(t("summary.story.alert_interactions", { count: interactions.length }));
-    if (contraindications.length) bits.push(t("summary.story.alert_cautions", { count: contraindications.length }));
-    parts.push(t("summary.story.alerts", { alerts: bits.join(" and ") }));
-  }
-
-  if (topNutrient) {
-    parts.push(t("summary.story.discuss_nutrient", { nutrient: topNutrient[0] }));
-  } else {
-    parts.push(t("summary.story.discuss_general"));
-  }
-
-  return parts.join(" ");
+  return reviewOverview("all");
 }
 
 function computePopulationInsights(){
@@ -1474,7 +1404,7 @@ let reportPickerSelectedIndex = 0;
 
 function checkinListLabel(c, idx){
   const latest = idx === state.checkins.length - 1;
-  return `${escapeHtml(fmtDate(c.dateISO))} · ${escapeHtml(t("common.adherence"))} <strong>${c.adherencePct}%</strong>${latest ? ` · ${escapeHtml(t("common.latest"))}` : ""}`;
+  return `${escapeHtml(fmtDate(c.dateISO))} · ${escapeHtml(t("common.adherence"))} <strong>${adherenceLabel(reviewMedicationAdherence(c))}</strong>${latest ? ` · ${escapeHtml(t("common.latest"))}` : ""}`;
 }
 
 function openReportPickerModal(preferredIndex){
@@ -1491,7 +1421,7 @@ function openReportPickerModal(preferredIndex){
     div.className = `item report-picker-item${idx === reportPickerSelectedIndex ? " report-picker-item--on" : ""}`;
     div.innerHTML = `
       <div class="k">${escapeHtml(t("checkin.label_n"))} ${idx + 1}${idx === state.checkins.length - 1 ? ` · ${escapeHtml(t("common.latest"))}` : ""}</div>
-      <div class="v">${escapeHtml(fmtDate(c.dateISO))} · ${escapeHtml(t("common.adherence"))} <strong>${c.adherencePct}%</strong></div>
+      <div class="v">${escapeHtml(fmtDate(c.dateISO))} · ${escapeHtml(t("common.adherence"))} <strong>${adherenceLabel(reviewMedicationAdherence(c))}</strong></div>
     `;
     div.addEventListener("click", ()=>{
       reportPickerSelectedIndex = idx;
@@ -1625,8 +1555,8 @@ function buildRoutineFromSupplements(supps){
   if(hasCoq10) routine.midday.push("CoQ10   with lunch (with food)");
   if(hasMg) routine.night.push("Magnesium glycinate   evening/night (often calming)");
 
-  routine.notes.push("If nausea occurs, take supplements with food and reduce dose temporarily.");
-  routine.notes.push("Avoid stacking new supplements all at once phase in over 3–7 days.");
+  routine.notes.push("Record nausea or other possible side effects and discuss supplement dose and timing with your clinician or pharmacist.");
+  routine.notes.push("Review new supplements with your clinician or pharmacist before starting them.");
   routine.notes.push("Educational only; confirm timing/dose with clinician.");
 
   return routine;
@@ -1678,7 +1608,7 @@ function renderLastCheckinCard(last, options = {}){
   card.innerHTML = `
     <div class="tagline">
       <strong>${escapeHtml(t("checkin.last_title"))}</strong><br>
-      ${escapeHtml(fmtDate(last.dateISO))} · ${escapeHtml(t("common.adherence"))} <strong>${last.adherencePct}%</strong>
+      ${escapeHtml(fmtDate(last.dateISO))} · ${escapeHtml(t("common.adherence"))} <strong>${adherenceLabel(reviewMedicationAdherence(last))}</strong>
     </div>
     <div class="fineprint" style="margin-top:8px">${escapeHtml(checkinStorageNote())}</div>
     <div style="height:10px"></div>
@@ -1700,9 +1630,9 @@ function renderLastCheckinCard(last, options = {}){
 
 function computeWeeklyCoachMessage(){
   const last = latestCheckin();
-  const base = state.wellbeingBaseline || {energy:5,mood:5,sleep:5,focus:5};
+  const base = state.wellbeingBaseline || {energy:null,mood:null,sleep:null,focus:null};
   const scores = computeNutrientScores();
-  const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : t('engine.coach.bullet_empty');
+  const topDriver = t('engine.coach.bullet_empty');
 
   if(!last){
     return {
@@ -1716,17 +1646,17 @@ function computeWeeklyCoachMessage(){
     };
   }
 
-  const dE = last.wellbeing.energy - base.energy;
-  const dM = last.wellbeing.mood - base.mood;
-  const dS = last.wellbeing.sleep - base.sleep;
-  const dF = last.wellbeing.focus - base.focus;
+  const dE = typeof last.wellbeing.energy === "number" && typeof base.energy === "number" ? last.wellbeing.energy - base.energy : NaN;
+  const dM = typeof last.wellbeing.mood === "number" && typeof base.mood === "number" ? last.wellbeing.mood - base.mood : NaN;
+  const dS = typeof last.wellbeing.sleep === "number" && typeof base.sleep === "number" ? last.wellbeing.sleep - base.sleep : NaN;
+  const dF = typeof last.wellbeing.focus === "number" && typeof base.focus === "number" ? last.wellbeing.focus - base.focus : NaN;
 
   const items = last.symptoms?.items || [];
-  const best = items.reduce((acc,x)=> (acc===null || (x.changeScore||0)>(acc.changeScore||0)) ? x : acc, null);
-  const worst = items.reduce((acc,x)=> (acc===null || (x.changeScore||0)<(acc.changeScore||0)) ? x : acc, null);
+  const best = items.filter(x=>x.change === "Slightly better" || x.change === "Much better").sort((a,b)=>b.changeScore-a.changeScore)[0];
+  const worst = items.filter(x=>x.change === "Worse").sort((a,b)=>a.changeScore-b.changeScore)[0];
 
   let next = t('engine.coach.action_consistent');
-  if(last.adherencePct < 60) next = t('engine.coach.action_adherence');
+  if(typeof last.adherencePct === "number" && last.adherencePct < 60) next = t('engine.coach.action_adherence');
   else if((worst?.change||"") === "Worse") next = t('engine.coach.action_worse_symptom', { symptom: worst.symptom });
   else if(dE <= 0 && dS <= 0) next = t('engine.coach.action_hydration');
   else if(dE > 0 || dS > 0) next = t('engine.coach.action_nice_trend');
@@ -1753,82 +1683,7 @@ function computeWeeklyCoachMessage(){
    ===== 30-SECOND VISIT SNAPSHOT (LOGIC) =====
    ========================================================= */
 function buildClinicianSnapshotText(checkinIndex){
-  let checkin = null;
-  if (state.checkins.length) {
-    if (typeof checkinIndex !== "number" || checkinIndex < 0 || checkinIndex >= state.checkins.length) {
-      checkinIndex = state.checkins.length - 1;
-    }
-    checkin = state.checkins[checkinIndex];
-  }
-  const flags = safetyFlags();
-  const meds = state.meds.map(m=>{
-    const med = MED_DB.find(x=>x.id===m.medId);
-    const nm = med ? med.name : m.medId;
-    return `- ${nm} • dose: ${m.dose} • duration: ${m.durationMonths||0} months`;
-  });
-
-  const scores = computeNutrientScores();
-  const top = scores.slice(0,6).map(([n,sc]) => `- ${n}: ${tierLabel(tierFromScore(sc))} signal (${sc}%)`);
-  const interactions = computeDrugInteractions().map(x=>`- ${x.title} (${tierLabel(x.level)})`);
-  const contraindications = computeContraindications().map(x=>`- ${x.title} (${tierLabel(x.level)})`);
-  // Score against the SAME check-in the rest of this report is about, not
-  // always today's — otherwise this line contradicts the adherence figure
-  // printed a few lines below it.
-  const success = computeMedicationSuccessPrediction(checkin);
-  const patterns = detectHealthPatterns();
-
-  const supp = (state.plan.recommendedSupplements||[]);
-  const adh = checkin ? `${checkin.adherencePct}%` : "—";
-  const labs = uniq(scores.slice(0,5).flatMap(([n]) => LAB_SUGGESTIONS[n] || [])).slice(0,8);
-  const symptoms = state.symptoms.selected.length ? state.symptoms.selected.join(", ") : t("report.empty.none_selected");
-  const lastDate = checkin ? fmtDate(checkin.dateISO) : "—";
-  const story = generateDynamicHealthStory(checkin);
-
-  const protocolBlock = [
-    t("report.protocol_title"),
-    supp.length ? supp.map(x=>`- ${x}`).join("\n") : `- ${t("report.empty.no_protocol")}`,
-    // Not "latest check-in" — this may be an older, explicitly-selected one;
-    // the report header already states which check-in and date this is.
-    `${t("report.adherence_label")}: ${adh}`,
-  ].join("\n");
-
-  return [
-    t("report.title"),
-    "===================================",
-    "",
-    `${t("report.patient_label")}: ${state.account.email || t("report.anonymous")} • ${t("report.age_label")}: ${state.profile.age || "—"} • ${t("report.gender_label")}: ${state.profile.gender || "—"}`,
-    `${t("report.safety_flags_label")}: ${flags.length ? flags.join(", ") : t("report.empty.none_reported")}`,
-    `${t("report.success_probability_label")}: ${success.score}% (${successLabel(success.level)})`,
-    "",
-    t("report.medications_label"),
-    meds.length ? meds.join("\n") : `- ${t("report.empty.none_reported")}`,
-    "",
-    `${t("report.symptoms_recent_label")}: ${symptoms}`,
-    "",
-    t("report.detected_patterns_label"),
-    patterns.length ? patterns.map(x=>`- ${x.title} (${tierLabel(x.confidence)})`).join("\n") : `- ${t("report.empty.no_patterns")}`,
-    "",
-    t("report.nutrient_signals_label"),
-    top.length ? top.join("\n") : `- ${t("report.empty.no_signals")}`,
-    "",
-    t("report.drug_interactions_label"),
-    interactions.length ? interactions.join("\n") : `- ${t("report.empty.no_interactions")}`,
-    "",
-    t("report.contraindications_label"),
-    contraindications.length ? contraindications.join("\n") : `- ${t("report.empty.no_contraindications")}`,
-    "",
-    protocolBlock,
-    "",
-    t("report.optional_labs_label"),
-    labs.length ? labs.map(x=>`- ${x}`).join("\n") : "- —",
-    "",
-    t("report.health_story_label"),
-    story,
-    "",
-    `${t("report.checkin_date_label")}: ${lastDate}`,
-    "",
-    t("report.footer_note")
-  ].join("\n");
+  return reviewRecordText("all", Number.isInteger(checkinIndex) && state.checkins[checkinIndex] ? [state.checkins[checkinIndex]] : undefined);
 }
 
 /* =========================================================
@@ -1912,25 +1767,9 @@ if (checkinViewDownload) {
 
 
 /* Share button — readable summary for review (not raw JSON) */
-document.getElementById("btnShare").addEventListener("click", async ()=>{
-  const snapshot = buildClinicianSnapshotText();
-
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: "GeneoRx review summary",
-        text: snapshot,
-      });
-      toastT("toast.shared");
-      return;
-    } catch (err) {
-      if (err && err.name === "AbortError") return;
-    }
-  }
-
-  await copyToClipboard(snapshot);
-  promptDownloadDoctorReport();
-  toastT("toast.summary_copied");
+document.getElementById("btnShare").addEventListener("click", ()=>{
+  openSnapshotModal();
+  snapText.textContent=reviewRecordText(window.geneorxReviewRange || "7");
 });
 
 /* =========================================================
@@ -1977,7 +1816,7 @@ function showInsightModal(){
   insightSummary.innerHTML = `<strong>${escapeHtml(insight.summary)}</strong>`;
   insightMeaning.textContent = insight.meaning;
   insightDoctor.textContent = insight.doctorPrompt;
-  insightWhy.innerHTML = `${insight.patterns.length ? `${escapeHtml(t("summary.pattern"))}: <strong>${escapeHtml(insight.patterns[0].title)}</strong><br>` : ''}${insight.interactions.length ? `${escapeHtml(t("summary.interactions_field"))}: <strong>${insight.interactions.length}</strong><br>` : ''}${insight.contraindications.length ? `${escapeHtml(t("summary.contraindications_field"))}: <strong>${insight.contraindications.length}</strong><br>` : ''}${escapeHtml(t("summary.success_prediction"))}: <strong>${insight.prediction.score}%</strong> (${escapeHtml(successLabel(insight.prediction.level))})`;
+  insightWhy.textContent = t("review.limited_checks");
   insightBackdrop.style.display = "block";
   insightModal.style.display = "block";
 }
@@ -2105,19 +1944,57 @@ function setStep(n){
 }
 
 function renderSteps(){
+  const visible = visibleSteps();
+  const position = visible.indexOf(state.step) + 1;
+  const mobileSelect = document.getElementById("mobileStepSelect");
+  if (mobileSelect) {
+    mobileSelect.replaceChildren(new Option(t("clean.sections"), ""));
+    visible.forEach(i => mobileSelect.add(new Option(stepLabel(i), String(i))));
+    document.getElementById("mobileStepProgress").textContent = t("clean.step_progress", {current:position, total:visible.length});
+    document.getElementById("mobileStepBar").style.width = `${position / visible.length * 100}%`;
+  }
   stepsEl.innerHTML = "";
-  visibleSteps().forEach(i => {
-    const s = document.createElement("div");
+  visibleSteps().forEach((i, index) => {
+    const s = document.createElement("button");
+    s.type = "button";
+    if (i === state.step) s.setAttribute("aria-current", "step");
+    s.setAttribute("aria-controls", "main");
     s.className = `step ${i===state.step ? "on":""}`;
     /* step.N.short exists in every language pack and was unused; the full
        labels are what forced the tray onto three rows. */
-    s.textContent = t(`step.${i}.short`);
-    s.addEventListener("click", ()=> setStep(i));
+    const number = document.createElement("span");
+    number.className = "step-index";
+    number.setAttribute("aria-hidden", "true");
+    number.textContent = String(index + 1).padStart(2, "0");
+    const label = document.createElement("span");
+    label.textContent = t(`step.${i}.short`);
+    s.append(number, label);
+    s.addEventListener("click", ()=> {
+      setStep(i);
+      stepsEl.querySelector('[aria-current="step"]')?.focus({preventScroll:true});
+    });
     stepsEl.appendChild(s);
   });
   /* No scrollIntoView: the tray wraps, so every step is already on screen and
      scrolling one into view would only jerk the whole page. */
 }
+
+document.getElementById("mobileStepSelect")?.addEventListener("change", event => {
+  if (event.target.value === "") return;
+  setStep(Number(event.target.value));
+  document.querySelector(".workspace-nav").scrollIntoView({block:"start"});
+  document.getElementById("mobileStepSelect").focus({preventScroll:true});
+});
+document.getElementById("mobileToolsToggle")?.addEventListener("click", event => {
+  const open = event.currentTarget.getAttribute("aria-expanded") !== "true";
+  event.currentTarget.setAttribute("aria-expanded", String(open));
+  document.querySelector(".patient-toolbar").classList.toggle("mobile-tools-open", open);
+});
+document.getElementById("mobileSummaryToggle")?.addEventListener("click", event => {
+  const open = event.currentTarget.getAttribute("aria-expanded") !== "true";
+  event.currentTarget.setAttribute("aria-expanded", String(open));
+  document.getElementById("summaryPanel").classList.toggle("mobile-summary-open", open);
+});
 
 function renderPills(){
   if (pillUser) {
@@ -2221,26 +2098,20 @@ function renderSummaryTop(){
   const cov = evidenceCoverage();
   const flags = safetyFlags();
   const next = nextSuggestedStep();
-  const noneLabel = t("summary.none");
 
   summaryTop.innerHTML = `
-    <div class="tagline">
-      <strong>${escapeHtml(t("summary.quick_status"))}</strong><br>
-      ${escapeHtml(t("summary.age"))}: <strong>${escapeHtml(state.profile.age || "—")}</strong> • ${escapeHtml(t("summary.gender"))}: <strong>${escapeHtml(state.profile.gender || "—")}</strong><br>
-      ${escapeHtml(t("sidebar.meds"))}: <strong>${medsCount}</strong> • ${escapeHtml(t("summary.symptoms"))}: <strong>${symCount}</strong> • ${escapeHtml(t("summary.evidence"))}: <strong>${cov.evidenceCount}/${cov.selectedCount}</strong><br>
-      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("summary.safety_flags_line"))}: <strong>${escapeHtml(flags.length ? flags.join(", ") : noneLabel)}</strong></div>
-      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("summary.next_step"))}: <strong>${escapeHtml(next.label)}</strong></div>
-      <div class="quickActions">
-        <button type="button" class="qaBtn ghost" data-go="0">${escapeHtml(t("step.0"))}</button>
-        <button type="button" class="qaBtn ghost" data-go="1">${escapeHtml(t("step.1"))}</button>
-        <button type="button" class="qaBtn ghost" data-go="2">${escapeHtml(t("step.2"))}</button>
-        <button type="button" class="qaBtn ghost" data-go="4">${escapeHtml(t("step.4"))}</button>
-        <button type="button" class="qaBtn ghost" data-go="5">${escapeHtml(t("step.5"))}</button>
-        <button type="button" class="qaBtn ghost" data-go="6">${escapeHtml(t("step.6"))}</button>
-        <button type="button" class="qaBtn ghost" data-go="7">${escapeHtml(t("step.7"))}</button>
-      </div>
+    <div class="summary-counts">
+      <div><strong>${medsCount}</strong><span>${escapeHtml(t("sidebar.meds"))}</span></div>
+      <div><strong>${symCount}</strong><span>${escapeHtml(t("summary.symptoms"))}</span></div>
     </div>
-    ${renderHomeScores()}
+    <div class="fineprint" style="margin-top:16px">${escapeHtml(t("summary.evidence"))}: <strong>${cov.evidenceCount}/${cov.selectedCount}</strong></div>
+    ${flags.length ? `<div class="fineprint" style="margin-top:8px">${escapeHtml(t("summary.safety_flags_line"))}: <strong>${escapeHtml(flags.join(", "))}</strong></div>` : ""}
+    <div class="summary-next">
+      <div class="k">${escapeHtml(t("summary.next_step"))}</div>
+      <strong>${escapeHtml(next.label)}</strong>
+      ${next.step !== state.step ? `<button type="button" class="qaBtn primary" data-go="${next.step}">${escapeHtml(next.label)}</button>` : ""}
+    </div>
+    ${state.checkins.length ? renderHomeScores() : ""}
   `;
   summaryTop.querySelectorAll(".qaBtn[data-go]").forEach(b=>{
     b.addEventListener("click", ()=> setStep(parseInt(b.getAttribute("data-go"),10)));
@@ -2255,7 +2126,7 @@ function renderSide(){
   });
   const last = latestCheckin();
   const lastLine = last
-    ? `${t("sidebar.latest")}: ${fmtDate(last.dateISO)} • ${t("sidebar.adherence")} ${last.adherencePct}%`
+    ? `${t("sidebar.latest")}: ${fmtDate(last.dateISO)} • ${t("sidebar.adherence")} ${adherenceLabel(reviewMedicationAdherence(last))}`
     : t("sidebar.no_checkins");
   const flags = safetyFlags();
   const noneLabel = t("summary.none");
@@ -2377,6 +2248,14 @@ function mountAccountForm(parent, options = {}){
           <option value="yes" ${state.account.consent? "selected": ""}>${escapeHtml(t("common.agree"))}</option>
         </select>
       </div>
+      <div class="col">
+        <label>${escapeHtml(t("account.ai_consent"))}</label>
+        <select id="aiConsent">
+          <option value="no" ${state.account.aiConsent? "": "selected"}>${escapeHtml(t("common.not_yet"))}</option>
+          <option value="yes" ${state.account.aiConsent? "selected": ""}>${escapeHtml(t("common.agree"))}</option>
+        </select>
+        <div class="fineprint">${escapeHtml(t("account.ai_consent_help"))}</div>
+      </div>
     </div>
 
     <div style="height:12px"></div>
@@ -2425,7 +2304,7 @@ function mountAccountForm(parent, options = {}){
     ` : ``}
 
     <div class="fineprint" style="margin-top:10px">
-      ${escapeHtml(t(readOnlyEmail ? "account.saved_note" : "account.prototype_note"))}
+      ${escapeHtml(t(readOnlyEmail ? "account.saved_note" : "clean.device_note"))}
     </div>
   `;
 
@@ -2436,6 +2315,7 @@ function mountAccountForm(parent, options = {}){
       state.account.email = AUTH_EMAIL;
     }
     state.account.consent = s1.querySelector("#consent").value === "yes";
+    state.account.aiConsent = s1.querySelector("#aiConsent").value === "yes";
     const ageVal = parseInt(s1.querySelector("#age").value || "", 10);
     state.profile.age = Number.isFinite(ageVal) ? String(ageVal) : "";
     state.profile.gender = s1.querySelector("#gender").value || "";
@@ -2455,7 +2335,7 @@ function mountAccountForm(parent, options = {}){
     }
   }
 
-  ["#consent","#age","#gender","#preg"].forEach(sel=>{
+  ["#consent","#aiConsent","#age","#gender","#preg"].forEach(sel=>{
     const el = s1.querySelector(sel);
     const ev = sel === "#age" ? "input" : "change";
     el.addEventListener(ev, persistAccountChange);
@@ -2773,18 +2653,57 @@ function firstRunBannerHtml(position, titleKey, subKey){
     </div>`;
 }
 
+const symptomSuggestionRequests = new Map();
+const symptomSummaryCache = new Map();
+function medicationSymptomSuggestions(){
+  const items = new Map();
+  state.meds.forEach(entry => {
+    const med = MED_DB.find(m => m.id === entry.medId);
+    (med?.symptomChips || []).forEach(symptom => {
+      if (!items.has(symptom)) items.set(symptom, {symptom, medications:[]});
+      const row = items.get(symptom);
+      if (!row.medications.includes(med.name)) row.medications.push(med.name);
+    });
+  });
+  return [...items.values()];
+}
+function symptomReviewFingerprint(){
+  return JSON.stringify([state.meds, state.symptoms.selected, state.symptoms.severity, portalLang()]);
+}
+async function requestSymptomSuggestions(ids){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch("/api/symptom-suggestions", {
+      method:"POST", signal:controller.signal,
+      headers:{"Content-Type":"application/json", "X-CSRF-TOKEN":document.querySelector('meta[name="csrf-token"]')?.content || ""},
+      body:JSON.stringify({medications:ids}),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch { return null; } finally { clearTimeout(timer); }
+}
+
 function renderSymptoms(){
   { const fr = firstRunBannerHtml(1, "firstrun.s1_title", "firstrun.s1_sub");
     if(fr){ const frEl = document.createElement("div"); frEl.innerHTML = fr; if(frEl.firstElementChild) mainEl.appendChild(frEl.firstElementChild); } }
   const universe = getSymptomUniverse();
+  let recommended = medicationSymptomSuggestions().slice(0,6);
   const s1 = document.createElement("div");
   s1.className="section";
   s1.innerHTML = `
     <div class="row">
-      <div class="col" style="min-width:360px">
-        <label>${escapeHtml(t("symptoms.select"))}</label>
-        <div class="fineprint">${escapeHtml(t("symptoms.select_hint"))}</div>
-        <div class="chips" id="chips"></div>
+      <div class="col symptom-select-col">
+        <div class="symptom-suggestions" id="medicationSuggestions" ${recommended.length ? "" : "hidden"}>
+          <strong id="suggestionHeading">${escapeHtml(t("clean.med_suggestions"))}</strong>
+          <p class="fineprint">${escapeHtml(t("clean.suggestion_note"))}</p>
+          <div class="suggestion-list" id="suggestionList"></div>
+        </div>
+        <div id="otherSymptomOptions">
+          <label>${escapeHtml(t("symptoms.select"))}</label>
+          <div class="fineprint">${escapeHtml(t("symptoms.select_hint"))}</div>
+          <div class="chips" id="chips"></div>
+        </div>
         <div class="btns"><button class="ghost" id="clear">${escapeHtml(t("symptoms.clear"))}</button></div>
         <div class="divider"></div>
         <label>${escapeHtml(t("symptoms.add_custom"))}</label>
@@ -2808,24 +2727,60 @@ function renderSymptoms(){
   mainEl.appendChild(s1);
 
   const chipsEl = s1.querySelector("#chips");
+  function toggleSymptom(symptom){
+    const index = state.symptoms.selected.indexOf(symptom);
+    if (index >= 0) state.symptoms.selected.splice(index,1);
+    else state.symptoms.selected.push(symptom);
+    save(); toastT("toast.saved");
+  }
+  function drawRecommended(){
+    const list = s1.querySelector("#suggestionList");
+    list.replaceChildren();
+    recommended.forEach(item => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "suggestion-option";
+      button.setAttribute("aria-pressed", String(state.symptoms.selected.includes(item.symptom)));
+      const name = document.createElement("strong");
+      name.textContent = item.symptom;
+      const reason = document.createElement("span");
+      reason.textContent = item.medications.join(", ");
+      button.append(name,reason);
+      button.addEventListener("click", () => toggleSymptom(item.symptom));
+      list.appendChild(button);
+    });
+  }
   function drawChips(){
     chipsEl.innerHTML = "";
-    universe.forEach(sym=>{
-      const c = document.createElement("div");
+    const remaining = universe.filter(sym => !recommended.some(item => item.symptom === sym));
+    s1.querySelector("#otherSymptomOptions").hidden = remaining.length === 0;
+    s1.querySelector("#clear").disabled = state.symptoms.selected.length === 0;
+    remaining.forEach(sym=>{
+      const c = document.createElement("button");
+      c.type = "button";
       c.className="chip";
       const on = state.symptoms.selected.includes(sym);
       c.setAttribute("aria-pressed", on ? "true":"false");
       c.textContent = sym;
-      c.addEventListener("click", ()=>{
-        const i = state.symptoms.selected.indexOf(sym);
-        if(i>=0) state.symptoms.selected.splice(i,1);
-        else state.symptoms.selected.push(sym);
-        save(); toastT("toast.saved");
-      });
+      c.addEventListener("click", ()=> toggleSymptom(sym));
       chipsEl.appendChild(c);
     });
   }
   drawChips();
+  drawRecommended();
+  const ids = [...new Set(state.meds.map(m => m.medId))].sort();
+  const requestKey = JSON.stringify(ids);
+  if (ids.length && recommended.length) {
+    if (!symptomSuggestionRequests.has(requestKey)) symptomSuggestionRequests.set(requestKey,requestSymptomSuggestions(ids));
+    symptomSuggestionRequests.get(requestKey).then(data => {
+      if (!s1.isConnected || !Array.isArray(data?.suggestions) || !data.suggestions.length) return;
+      // Browser catalog is a second allowlist; AI cannot introduce new symptoms.
+      const local = medicationSymptomSuggestions();
+      recommended = data.suggestions.map(item => local.find(row => row.symptom === item.symptom)).filter(Boolean).slice(0,6);
+      s1.querySelector("#suggestionHeading").textContent = t(data.source === "ai" ? "clean.ai_suggestions" : "clean.med_suggestions");
+      drawRecommended(); drawChips();
+    });
+  }
 
   s1.querySelector("#clear").addEventListener("click", ()=>{
     state.symptoms.selected = [];
@@ -2846,6 +2801,43 @@ function renderSymptoms(){
       s1.querySelector("#addCustomSymptom").click();
     }
   });
+
+  const summary = document.createElement("div");
+  summary.className = "section symptom-review-summary";
+  summary.innerHTML = `<strong>${escapeHtml(t("clean.review_summary"))}</strong><p class="fineprint">${escapeHtml(t("clean.summary_confirmed_note"))}</p><button type="button" class="ghost" id="generateSymptomSummary">${escapeHtml(t("clean.generate_summary"))}</button><div class="symptom-summary-output" role="status" aria-live="polite"></div>`;
+  const summaryOutput = summary.querySelector(".symptom-summary-output");
+  const summaryButton = summary.querySelector("button");
+  const fingerprint = symptomReviewFingerprint();
+  function showSummary(result){
+    summaryOutput.textContent = result.text;
+    summaryButton.disabled = false;
+    summaryButton.textContent = t(result.source === "ai" ? "clean.ai_summary_ready" : "clean.summary_ready");
+  }
+  if (symptomSummaryCache.has(fingerprint)) showSummary(symptomSummaryCache.get(fingerprint));
+  summaryButton.addEventListener("click", async () => {
+    state.symptoms.severity = s1.querySelector("#sevSel").value;
+    const key = symptomReviewFingerprint();
+    const medications = state.meds.map(m => MED_DB.find(row => row.id === m.medId)?.name || m.medId);
+    const confirmed = [...state.symptoms.selected];
+    const fallback = t("clean.review_facts", {medications:medications.join(", ") || t("summary.none"), symptoms:confirmed.join(", ") || t("clean.none_confirmed")});
+    summaryButton.disabled = true;
+    summaryButton.textContent = t("clean.summary_loading");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(),30000);
+    let result = {text:fallback,source:"fallback"};
+    try {
+      const response = await fetch("/api/ai-summary", {
+        method:"POST", signal:controller.signal,
+        headers:{"Content-Type":"application/json", "X-CSRF-TOKEN":document.querySelector('meta[name="csrf-token"]')?.content || ""},
+        body:JSON.stringify({medications, symptoms:confirmed, summary:fallback, language:portalLang()}),
+      });
+      const data = await response.json();
+      if (response.ok && typeof data.summary === "string" && data.summary.trim()) result = {text:data.summary, source:data.source};
+    } catch {} finally { clearTimeout(timer); }
+    symptomSummaryCache.set(key,result);
+    if (summary.isConnected && symptomReviewFingerprint() === key) showSummary(result);
+  });
+  mainEl.appendChild(summary);
 
   const nav = navButtons(true,true,"nav.continue");
   nav.querySelector(".primary").addEventListener("click", ()=>{
@@ -2880,319 +2872,61 @@ function renderWellbeing(){
 }
 
 /* ===== TAB 4: RESULTS ===== */
+
+function reviewRecords(range){
+  const now=new Date();const end=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1).getTime();
+  const start=range === "all" ? -Infinity : new Date(now.getFullYear(),now.getMonth(),now.getDate()-Number(range)+1).getTime();
+  return (state.checkins||[]).filter(c=>{const time=new Date(c.dateISO).getTime();return time>=start && time<end;}).sort((a,b)=>new Date(a.dateISO)-new Date(b.dateISO));
+}
+function reviewMedicationAdherence(checkin){
+  const rows=(checkin?.medicationDoses||[]).filter(d=>d.status!=="not-scheduled");
+  if(!rows.length || rows.some(d=>!d.status || d.status === "unsure")) return null;
+  if(rows.every(d=>d.status === "all")) return 100;
+  if(rows.some(d=>!Number.isInteger(d.scheduled) || d.scheduled<1 || (d.status === "some" && (!Number.isInteger(d.missed) || d.missed<0 || d.missed>d.scheduled)))) return null;
+  const total=rows.reduce((a,d)=>a+d.scheduled,0);return Math.round((total-rows.reduce((a,d)=>a+(d.status === "all" ? 0 : d.missed),0))/total*100);
+}
+function reviewOverview(range){
+  const records=reviewRecords(range);const known=records.map(reviewMedicationAdherence).filter(v=>v!==null);
+  return `${t("sidebar.checkins")}: ${records.length}. ${known.length ? t("parity.average_overview",{value:Math.round(known.reduce((a,b)=>a+b,0)/known.length)}) : t("parity.unknown_overview")}`;
+}
+function reviewPeriodLabel(range,records){
+  const end=new Date();const start=range === "all" ? new Date(records[0]?.dateISO || end) : new Date(end.getFullYear(),end.getMonth(),end.getDate()-Number(range)+1);
+  return `${fmtDate(start.toISOString())} – ${fmtDate(end.toISOString())}`;
+}
+function reviewRecordText(range, selected){
+  const records=selected || reviewRecords(range);
+  const names=state.meds.map(m=>[(MED_DB.find(x=>x.id===m.medId)||{}).name||m.medId,m.strength,m.frequency,m.startDate].filter(Boolean).join(" · "));
+  const lines=[t("parity.record_title"),reviewPeriodLabel(range,records),"",t("review.current_medications"),...names,"",t("review.current_symptoms"),...state.symptoms.selected];
+  for(const c of records){
+    lines.push("",fmtDate(c.dateISO),`${t("parity.medication_taken")}: ${adherenceLabel(reviewMedicationAdherence(c))}`);
+    for(const d of c.medicationDoses||[]) lines.push(`${d.medicationName}: ${t("tracking.dose."+d.status)}${d.status === "some" && Number.isInteger(d.scheduled) ? ` (${d.scheduled-d.missed}/${d.scheduled})` : ""}`);
+    if(!c.medicationDoses?.length && typeof c.adherencePct === "number") lines.push(`${t("review.legacy_adherence")}: ${c.adherencePct}%`);
+    for(const i of c.symptoms?.items||[]) lines.push(`${i.symptom}: ${impactLabel(i.change)}${typeof i.severityNow === "number" ? ` · ${i.severityNow}/10` : ""}`);
+    for(const k of ["energy","mood","sleep","focus"]) lines.push(`${t("wellbeing."+k)}: ${typeof c.wellbeing?.[k] === "number" ? c.wellbeing[k]+"/10" : t("checkin.not_answered")}`);
+    const effects=Array.isArray(c.sideEffects) ? c.sideEffects.join(", ") : c.sideEffects || "";
+    if(effects) lines.push(`${t("parity.side_notes")}: ${effects}`);if(c.notes) lines.push(c.notes);
+  }
+  lines.push("",t("parity.record_note"));return lines.join("\n");
+}
+function renderMedicationAnswers(){
+  return `<div class="col"><h3>${escapeHtml(t("easy.medicines_question"))}</h3>${state.meds.map((m,i)=>`<div class="item"><label for="medStatus_${i}">${escapeHtml((MED_DB.find(x=>x.id===m.medId)||{}).name||m.medId)}</label><select id="medStatus_${i}" onchange="document.getElementById('medCounts_${i}').hidden=this.value!=='some'"><option value="">${escapeHtml(t("common.select"))}</option>${["all","some","unsure","not-scheduled"].map(v=>`<option value="${v}">${escapeHtml(t("tracking.dose."+v))}</option>`).join("")}</select><div id="medCounts_${i}" hidden><label for="medScheduled_${i}">${escapeHtml(t("tracking.scheduled"))}</label><input id="medScheduled_${i}" type="number" min="1"><label for="medMissed_${i}">${escapeHtml(t("tracking.missed"))}</label><input id="medMissed_${i}" type="number" min="0"></div></div>`).join("")}</div>`;
+}
+
 function renderResults(){
-  { const fr = firstRunBannerHtml(3, "firstrun.s3_title", "firstrun.s3_sub");
-    if(fr){ const frEl = document.createElement("div"); frEl.innerHTML = fr; if(frEl.firstElementChild) mainEl.appendChild(frEl.firstElementChild); } }
-  const scores = computeNutrientScores();
-  const rec = recommendSupplements(scores);
-
-  const claims = claimsForSelectedMeds();
-  const evByNut = aggregateEvidenceByNutrient(claims);
-
-  const cov = evidenceCoverage();
-  const flags = safetyFlags();
-
-  const coach = computeWeeklyCoachMessage();
-
-  const s0 = document.createElement("div");
-  s0.className="section";
-  s0.innerHTML = `
-    <div class="coachBox">
-      <div class="coachTitle">
-        <div class="spark">✦</div>
-        <div>
-          <div style="font-weight:950">${escapeHtml(t("results.coach_title"))}</div>
-          <div class="fineprint">${escapeHtml(t("results.coach_sub"))}</div>
-        </div>
-      </div>
-      <div style="height:10px"></div>
-      <div class="v"><strong>${escapeHtml(coach.headline)}</strong></div>
-      <div class="fineprint" style="margin-top:8px">${coach.bullets.map(x=>`• ${escapeHtml(x)}`).join("<br>")}</div>
-      <div class="divider"></div>
-      <div class="v"><strong>${escapeHtml(t("results.next_best_action"))}</strong> ${escapeHtml(coach.nextBestAction)}</div>
-    </div>
-  `;
-  mainEl.appendChild(s0);
-
-  const s1 = document.createElement("div");
-  s1.className="section";
-  s1.innerHTML = `
-    <div class="tagline">
-      <strong>${escapeHtml(t("results.title"))}</strong><br>
-      ${escapeHtml(t("results.sub"))}
-      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("results.evidence_coverage"))} <strong>${cov.evidenceCount}/${cov.selectedCount}</strong></div>
-    </div>
-
-    ${flags.length ? `
-      <div class="banner">
-        <strong>${escapeHtml(t("results.banner_title"))}</strong> ${escapeHtml(t("results.banner_body", { flags: flags.join(", ") }))}
-      </div>
-    ` : ``}
-  `;
-  mainEl.appendChild(s1);
-
-  const interactions = computeDrugInteractions();
-  const contraindications = computeContraindications();
-  const topSignal = scores.length ? { nutrient: scores[0][0], score: scores[0][1], tier: tierFromScore(scores[0][1]) } : null;
-  const recentSymptoms = state.symptoms.selected.length ? state.symptoms.selected.slice(0,6) : [];
-  const symptomText = recentSymptoms.length ? recentSymptoms.join(', ') : t("results.no_symptoms_yet");
-  const whyReason = topSignal
-    ? `Your current pattern may reflect ${topSignal.nutrient} support needs, especially with ${symptomText}.`
-    : (state.symptomOnlyMode
-        ? `You are in symptom-only mode, so GeneoRx is estimating support needs from ${symptomText}.`
-        : `GeneoRx needs more medication or symptom detail before it can explain likely drivers with confidence.`);
-  const doctorTopics = uniq([
-    ...(topSignal ? [`Ask whether ${topSignal.nutrient} testing or monitoring would be appropriate.`] : []),
-    ...interactions.map(x => `${x.title}: ${x.action}`),
-    ...contraindications.map(x => `${x.title}: ${x.action}`)
-  ]).slice(0,4);
-
-  const sCore = document.createElement("div");
-  sCore.className="section";
-  sCore.innerHTML = `
-    <div class="row">
-      <div class="col">
-        <div class="tagline"><strong>${escapeHtml(t("results.why_title"))}</strong><br>${escapeHtml(t("results.why_sub"))}</div>
-        <div style="height:10px"></div>
-        <div class="item">
-          <div class="k">${escapeHtml(t("results.likely_explanation"))}</div>
-          <div class="v">${escapeHtml(whyReason)}</div>
-        </div>
-        <div class="item">
-          <div class="k">${escapeHtml(t("results.current_inputs"))}</div>
-          <div class="v">${escapeHtml(t("results.symptoms_label"))} <strong>${escapeHtml(symptomText)}</strong>${topSignal ? `<br>${escapeHtml(t("results.top_signal"))} <strong>${escapeHtml(topSignal.nutrient)}</strong> (${topSignal.score}% • ${escapeHtml(tierLabel(topSignal.tier))})` : ''}</div>
-        </div>
-      </div>
-      <div class="col">
-        <div class="tagline"><strong>${escapeHtml(t("results.doctor_title"))}</strong><br>${escapeHtml(t("results.doctor_sub"))}</div>
-        <div style="height:10px"></div>
-        <div class="list">${doctorTopics.length ? doctorTopics.map((x,i) => `<div class="item"><div class="k">${escapeHtml(t("results.topic"))} ${i+1}</div><div class="v">${escapeHtml(x)}</div></div>`).join('') : `<div class="fineprint">${escapeHtml(t("results.doctor_empty"))}</div>`}</div>
-      </div>
-    </div>`;
-  mainEl.appendChild(sCore);
-
-  const sAction = document.createElement("div");
-  sAction.className="section";
-  sAction.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("results.action_title"))}</strong><br>${escapeHtml(t("results.action_sub"))}</div>
-    <div style="height:10px"></div>
-    <div class="list">
-      <div class="item"><div class="k">${escapeHtml(t("results.action1_title"))}</div><div class="v">${topSignal ? `Focus on your <strong>${escapeHtml(topSignal.nutrient)}</strong> signal first instead of trying to change everything at once.` : `Log more symptoms or medications so GeneoRx can personalize your plan.`}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("results.action2_title"))}</div><div class="v">${escapeHtml(t("results.action2_body"))}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("results.action3_title"))}</div><div class="v">${escapeHtml(t("results.action3_body"))}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("results.action4_title"))}</div><div class="v">${escapeHtml(t("results.action4_body"))}</div></div>
-    </div>`;
-  mainEl.appendChild(sAction);
-
-  const sInsightBtn = document.createElement("div");
-  sInsightBtn.className = "section";
-  sInsightBtn.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("results.insight_title"))}</strong><br>${escapeHtml(t("results.insight_sub"))}</div>
-    <div class="btns"><button class="primary" id="openInsightBtn">${escapeHtml(t("results.insight_btn"))}</button></div>
-  `;
-  mainEl.appendChild(sInsightBtn);
-  sInsightBtn.querySelector("#openInsightBtn").addEventListener("click", openInsightModal);
-
-  const success = computeMedicationSuccessPrediction();
-  const patterns = detectHealthPatterns();
-  const population = computePopulationInsights();
-
-  const sPatterns = document.createElement("div");
-  sPatterns.className = "section";
-  sPatterns.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("results.patterns_title"))}</strong><br>${escapeHtml(t("results.patterns_sub"))}</div>
-    <div style="height:10px"></div>
-    <div class="item">
-      <div class="k">${escapeHtml(t("results.patterns_detected"))}</div>
-      <div class="v">${patterns.length
-        ? `<strong>${escapeHtml(patterns[0].title)}</strong><br>${escapeHtml(patterns[0].note)}`
-        : escapeHtml(t("results.patterns_none"))}</div>
-    </div>
-  `;
-  mainEl.appendChild(sPatterns);
-
-  const improveText = success.score >= 75
-    ? t("results.improve_high")
-    : success.score >= 50
-      ? t("results.improve_mid")
-      : t("results.improve_low");
-  const scoreCls = success.score >= 75 ? 'scoreHigh' : (success.score >= 50 ? 'scoreMod' : 'scoreLow');
-
-  const sAdvanced = document.createElement("div");
-  sAdvanced.className = "section";
-  sAdvanced.innerHTML = `
-    <div class="metricGrid">
-      <div class="metricCard"><div class="k">${escapeHtml(t("results.success_prob"))}</div><div style="display:flex;align-items:center;gap:12px;margin-top:8px"><div class="scoreBadge ${scoreCls}">${success.score}%</div><div><strong>${escapeHtml(success.level)}</strong><br><span class="fineprint">${escapeHtml(success.reason)}</span></div></div></div>
-      <div class="metricCard"><div class="k">${escapeHtml(t("results.population"))}</div><div class="v"><span class="fineprint">${escapeHtml(population.message)}</span><br>${population.trackedSymptoms.length ? `${escapeHtml(t("results.population_tracked"))} <strong>${escapeHtml(population.trackedSymptoms.join(', '))}</strong>` : `<span style="font-size:12px;opacity:.75">${escapeHtml(t("results.population_unlock"))}</span>`}</div></div>
-      <div class="metricCard"><div class="k">${escapeHtml(t("results.improve_success"))}</div><div class="v"><span class="fineprint">${escapeHtml(improveText)}</span></div></div>
-    </div>
-  `;
-  mainEl.appendChild(sAdvanced);
-
-  const sSafety = document.createElement("div");
-  sSafety.className = "section";
-  sSafety.innerHTML = `
-    <div class="row">
-      <div class="col">
-        <div class="tagline"><strong>${escapeHtml(t("results.interactions_title"))}</strong><br>${escapeHtml(t("results.interactions_sub"))}</div>
-        <div style="height:10px"></div>
-        ${interactions.length ? interactions.map(x=>`<div class="alertBox ${levelClass(x.level)}"><div class="k">${escapeHtml(x.level)} ${escapeHtml(t("results.priority"))}</div><div class="v"><strong>${escapeHtml(x.title)}</strong><br>${escapeHtml(x.note)}<br><span class="fineprint">${escapeHtml(x.action)}</span></div></div>`).join('<div style="height:10px"></div>') : `<div class="fineprint">${escapeHtml(t("results.interactions_none"))}</div>`}
-      </div>
-      <div class="col">
-        <div class="tagline"><strong>${escapeHtml(t("results.contraindications_title"))}</strong><br>${escapeHtml(t("results.contraindications_sub"))}</div>
-        <div style="height:10px"></div>
-        ${contraindications.length ? contraindications.map(x=>`<div class="alertBox ${levelClass(x.level)}"><div class="k">${escapeHtml(x.level)} ${escapeHtml(t("results.priority"))}</div><div class="v"><strong>${escapeHtml(x.title)}</strong><br>${escapeHtml(x.note)}<br><span class="fineprint">${escapeHtml(x.action)}</span></div></div>`).join('<div style="height:10px"></div>') : `<div class="fineprint">${escapeHtml(t("results.contraindications_none"))}</div>`}
-      </div>
-    </div>
-  `;
-  mainEl.appendChild(sSafety);
-  const planSupps = state.plan.recommendedSupplements?.length ? state.plan.recommendedSupplements : rec.map(x=>x.supplement);
-  const routine = buildRoutineFromSupplements(planSupps);
-
-  const sRoutine = document.createElement("div");
-  sRoutine.className = "section";
-  sRoutine.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("results.routine_title"))}</strong><br>${escapeHtml(t("results.routine_sub"))}</div>
-    <div style="height:10px"></div>
-
-    <div class="list">
-      <div class="item"><div class="k">${escapeHtml(t("results.routine.morning"))}</div><div class="v">${routine.morning.length ? routine.morning.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("results.routine.midday"))}</div><div class="v">${routine.midday.length ? routine.midday.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("results.routine.night"))}</div><div class="v">${routine.night.length ? routine.night.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("results.routine.notes"))}</div><div class="v">${routine.notes.length ? routine.notes.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
-    </div>
-  `;
-  mainEl.appendChild(sRoutine);
-
-  const s2 = document.createElement("div");
-  s2.className="section";
-
-  function topInlineCites(nutrient){
-    const claimsForNut = evByNut[nutrient] || [];
-    const seen = new Set();
-    const cites = [];
-    for(const c of claimsForNut){
-      for(const id of (c.citations||[])){
-        const t = String(id||"").trim();
-        if(!t || seen.has(t)) continue;
-        if(!citationToLink(t)) continue;
-        seen.add(t);
-        cites.push(t);
-      }
-    }
-    const top = cites.slice(0,2);
-    if(!top.length) return `<div class="fineprint">${escapeHtml(t("results.citations_not_loaded"))}</div>`;
-    return `<div class="fineprint">${escapeHtml(t("results.citations_label"))}</div><div class="inlineCites">${top.map(x=>renderCitationChip(x)).join("")}</div>`;
-  }
-
-  const tierClass = (tier) => tier==="High" ? "tierHigh" : (tier==="Moderate" ? "tierMod" : "tierLow");
-
-  let nutrientHtml = "";
-  if(!scores.length){
-    nutrientHtml = `<div class="fineprint">${escapeHtml(t("results.nutrient_none"))}</div>`;
-  } else {
-    nutrientHtml = scores.slice(0,10).map(([n,score], idx)=>{
-      const label = tierFromScore(score);
-      const claimsForNut = evByNut[n] || [];
-      const q = claimsForNut.length ? summarizeSourceQuality(claimsForNut) : "Pending";
-      const evId = `ev_${idx}`;
-      const sourceBadge =
-        q==="Pending"
-          ? `<div class="sourceBadge pending"><strong>${escapeHtml(t("results.source_quality"))}</strong> ${escapeHtml(tierLabel(q))}</div>`
-          : `<div class="sourceBadge ${badgeClass(q)}"><strong>${escapeHtml(t("results.source_quality"))}</strong> ${escapeHtml(tierLabel(q))}</div>`;
-
-      return `
-        <div class="item">
-          <div class="k">${escapeHtml(n)}</div>
-          <div class="v"><strong>${escapeHtml(tierLabel(label))}</strong> ${escapeHtml(t("results.signal"))} (${score}%)</div>
-
-          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-            ${sourceBadge}
-          </div>
-
-          ${topInlineCites(n)}
-
-          <div class="evrow">
-            <div class="fineprint">${escapeHtml(t("results.transparent_evidence"))}</div>
-            <div class="evbtn" data-evbtn="${evId}">${escapeHtml(t("results.evidence_toggle"))}</div>
-          </div>
-          <div class="evidence" id="${evId}" style="display:none">
-            ${renderEvidencePanel(n, claimsForNut)}
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  const supplementsHtml = rec.length
-    ? `<div class="list">
-        ${rec.map(r => `
-          <div class="item">
-            <div class="k">${escapeHtml(r.supplement)}</div>
-            <div class="v">
-              <span class="tierPill ${tierClass(r.tier)}">${escapeHtml(t("results.tier"))} <strong style="color:var(--txt)">${escapeHtml(tierLabel(r.tier))}</strong></span>
-              <span style="color: var(--muted)"> • ${escapeHtml(t("results.driven_by"))} ${escapeHtml(r.nutrient)} (${r.score}%)</span>
-            </div>
-          </div>
-        `).join("")}
-      </div>
-      <div class="fineprint" style="margin-top:10px">${escapeHtml(t("results.supplements_disclaimer"))}</div>`
-    : `<div class="fineprint">${escapeHtml(t("results.supplements_none"))}</div>`;
-
-  s2.innerHTML = `
-    <div class="row">
-      <div class="col">
-        <div class="tagline"><strong>${escapeHtml(t("results.nutrient_title"))}</strong><br>${escapeHtml(t("results.nutrient_sub"))}</div>
-        <div style="height:10px"></div>
-        <div class="list">${nutrientHtml}</div>
-      </div>
-
-      <div class="col">
-        <div class="tagline"><strong>${escapeHtml(t("results.supplements_title"))}</strong><br>${escapeHtml(t("results.supplements_sub"))}</div>
-        <div style="height:10px"></div>
-        <div class="item">${supplementsHtml}</div>
-
-        <div class="divider"></div>
-
-        <div class="item">
-          <div class="k">${escapeHtml(t("results.start_plan"))}</div>
-          <div class="fineprint">${escapeHtml(t("results.start_plan_hint"))}</div>
-          <div style="height:10px"></div>
-          <input id="startDate" type="date" />
-          <div class="btns">
-            <button class="primary" id="startPlanBtn">${escapeHtml(state.plan.started ? t("results.update_plan_btn") : t("results.start_plan_btn"))}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  mainEl.appendChild(s2);
-
-  /* evidence toggles */
-  s2.querySelectorAll("[data-evbtn]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const id = btn.getAttribute("data-evbtn");
-      const panel = document.getElementById(id);
-      panel.style.display = (panel.style.display==="none") ? "block" : "none";
-    });
-  });
-
-  const sd = s2.querySelector("#startDate");
-  const today = todayLocalISO();
-  sd.value = state.plan.startDate ? state.plan.startDate.slice(0,10) : today;
-
-  s2.querySelector("#startPlanBtn").addEventListener("click", ()=>{
-    const scoresNow = computeNutrientScores();
-    const recNow = recommendSupplements(scoresNow);
-    state.plan.started = true;
-    track("plan_started", { supplements: (state.plan.recommendedSupplements || []).length });
-    state.plan.startDate = new Date((sd.value || today) + "T00:00:00").toISOString();
-    state.plan.recommendedSupplements = recNow.map(x => x.supplement);
-    state.plan.routine = buildRoutineFromSupplements(state.plan.recommendedSupplements);
-    save();
-    toastT("toast.plan_saved");
-  });
-
+  const claims=claimsForSelectedMeds();
+  const byNutrient=aggregateEvidenceByNutrient(claims);
+  const alerts=[...computeDrugInteractions(),...computeContraindications()];
+  const section=document.createElement("div");section.className="section";
+  section.innerHTML=`<h3>${escapeHtml(t("review.reported_facts"))}</h3><p>${escapeHtml(reviewOverview("all"))}</p>
+    <div class="btns"><button class="primary" id="reviewSummary">${escapeHtml(t("parity.preview_summary"))}</button></div>
+    <details><summary>${escapeHtml(t("review.safety_title"))}</summary><p>${escapeHtml(t("review.limited_checks"))}</p>
+      ${alerts.length ? alerts.map(a=>`<p><strong>${escapeHtml(a.title)}</strong><br>${escapeHtml(a.note)}<br>${escapeHtml(a.action)}</p>`).join("") : `<p>${escapeHtml(t("review.no_rule_alerts"))}</p>`}
+      <p>${escapeHtml(t("review.coverage_note"))}</p></details>
+    <details><summary>${escapeHtml(t("review.evidence_title"))}</summary><p>${escapeHtml(t("review.evidence_general"))}</p>
+      ${Object.entries(byNutrient).map(([name,rows])=>`<h4>${escapeHtml(name)}</h4>${renderEvidencePanel(name,rows)}`).join("") || `<p>${escapeHtml(t("review.no_evidence"))}</p>`}</details>
+    <p class="fineprint">${escapeHtml(t("review.no_cause"))}</p>`;
+  mainEl.appendChild(section);
+  section.querySelector("#reviewSummary").addEventListener("click",()=>setStep(8));
   mainEl.appendChild(navButtons(true,true,"nav.continue"));
 }
 
@@ -3200,11 +2934,11 @@ function renderResults(){
 function renderCheckin(){
   const planSupps = state.plan.recommendedSupplements || [];
   const symptomUniverse = getSymptomUniverse();
-  const baseSymptoms = state.symptoms.selected.length ? state.symptoms.selected : symptomUniverse.slice(0,12);
+  const baseSymptoms = state.symptoms.selected;
 
   const last = latestCheckin();
-  const defaultAdh = last ? last.adherencePct : 70;
-  const defaultWell = last ? last.wellbeing : { energy: state.wellbeingBaseline.energy, mood: state.wellbeingBaseline.mood, sleep: state.wellbeingBaseline.sleep, focus: state.wellbeingBaseline.focus };
+  const defaultAdh = "";
+  const defaultWell = { energy:null, mood:null, sleep:null, focus:null };
 
   if (last) {
     mainEl.appendChild(renderLastCheckinCard(last, { showProgressLink: true, showDownloadReport: true }));
@@ -3228,10 +2962,7 @@ function renderCheckin(){
         <label>${escapeHtml(t("checkin.date"))}</label>
         <input id="ciDate" type="date" />
       </div>
-      <div class="col">
-        <label>${escapeHtml(t("checkin.adherence"))}</label>
-        <input id="ciAdh" type="number" min="0" max="100" value="${escapeHtml(String(defaultAdh))}" />
-      </div>
+      ${renderMedicationAnswers()}
     </div>
   `;
   mainEl.appendChild(s1);
@@ -3253,7 +2984,7 @@ function renderCheckin(){
   mainEl.appendChild(sSupp);
 
   const suppChips = sSupp.querySelector("#suppChips");
-  let taken = last?.supplementsTaken?.length ? [...last.supplementsTaken] : [];
+  let taken = [];
 
   function drawSuppChips(){
     suppChips.innerHTML = "";
@@ -3296,8 +3027,8 @@ function renderCheckin(){
   }
 
   function symRow(sym, idx, prev){
-    const defaultChange = prev?.change && CHECKIN_IMPACT_OPTIONS.includes(prev.change) ? prev.change : "No change";
-    const defaultSev = clamp(parseInt(prev?.severityNow ?? 5, 10), 0, 10);
+    const defaultChange = "";
+    const defaultSev = null;
     const row = document.createElement("div");
     row.className = "item sym-checkin-item";
     row.innerHTML = `
@@ -3310,7 +3041,7 @@ function renderCheckin(){
     return row;
   }
 
-  const symBase = baseSymptoms.slice(0,10);
+  const symBase = baseSymptoms;
   symBase.forEach((sym, idx)=> symList.appendChild(symRow(sym, idx, lastSymMap[sym])));
 
   /* wellbeing */
@@ -3371,14 +3102,21 @@ function renderCheckin(){
   mainEl.appendChild(sSave);
 
   sSave.querySelector("#ciSave").addEventListener("click", ()=>{
-    const dateISO = new Date((s1.querySelector("#ciDate").value || today) + "T00:00:00").toISOString();
-    const adherencePct = clamp(parseInt(s1.querySelector("#ciAdh").value || "0", 10), 0, 100);
+    const day = s1.querySelector("#ciDate").value || today;
+    if (day > today || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(new Date(day+"T12:00:00").getTime())) return alertT("checkin.date_invalid");
+    const dateISO = new Date(day + "T12:00:00").toISOString();
+    const medicationDoses = state.meds.map((med,idx)=>({ medId:med.medId, medicationName:(MED_DB.find(m=>m.id===med.medId)||{}).name || med.medId,
+      status:document.getElementById(`medStatus_${idx}`).value,
+      ...(document.getElementById(`medStatus_${idx}`).value === "some" ? { scheduled:document.getElementById(`medScheduled_${idx}`).value === "" ? null : Number(document.getElementById(`medScheduled_${idx}`).value), missed:document.getElementById(`medMissed_${idx}`).value === "" ? null : Number(document.getElementById(`medMissed_${idx}`).value) } : {}) }));
+    if(medicationDoses.some(d=>!d.status || (d.status === "some" && (!Number.isInteger(d.scheduled) || d.scheduled<1 || !Number.isInteger(d.missed) || d.missed<0 || d.missed>d.scheduled)))) return alertT("tracking.dose_error");
+    const adherencePct = reviewMedicationAdherence({ medicationDoses });
 
     const items = [];
     symBase.forEach((sym, idx)=>{
       const change = document.getElementById(`symChange_${idx}`).value;
-      const sevNow = clamp(parseInt(document.getElementById(`symSev_${idx}`).value || "0", 10), 0, 10);
-      items.push({ symptom: sym, change, changeScore: impactValue[change] ?? 0, severityNow: sevNow });
+      const raw = document.getElementById(`symSev_${idx}`).value;
+      if(!change) return;
+      items.push({ symptom:sym, change, changeScore:impactValue[change] ?? 0, ...(raw === "" ? {} : {severityNow:clamp(Number(raw),0,10)}) });
     });
 
     const wellbeing = readWellbeingScores({
@@ -3393,7 +3131,7 @@ function renderCheckin(){
     const systems = readBodySystemScores({ digestive:"ciDigestive", circulation:"ciCirculation", immunity:"ciImmunity" });
     Object.assign(wellbeing, systems);
 
-    const row = { dateISO, adherencePct, supplementsTaken:[...taken],
+    const row = { dateISO, adherencePct, medicationDoses, supplementsTaken:[...taken],
                   supplementsPlanned:[...planSupps],
                   wellbeing, symptoms:{items, improvementScore}, sideEffects, notes };
 
@@ -3423,6 +3161,7 @@ function renderCheckin(){
 
   sSave.querySelector("#ciDeleteLast").addEventListener("click", ()=>{
     if(!state.checkins.length) return alertT("checkin.no_delete_alert");
+    if(!confirm(t("design.delete_checkin_prompt"))) return;
     const removed = state.checkins.pop();
     // Tell the server to actually delete it — a merge save alone would leave
     // the row in place.
@@ -3448,9 +3187,9 @@ function buildTrendSeries(checkins, days){
   const byDay = new Map();
   dated.filter(x=>x.t>=fromT).forEach(({c,t})=>byDay.set(t,c));
   const points = [...byDay.entries()].sort((a,b)=>a[0]-b[0]).map(([t,c])=>({
-    date:dayStr(t), t, adherence:cl(c.adherencePct,100),
-    energy:cl(c.wellbeing&&c.wellbeing.energy,10), mood:cl(c.wellbeing&&c.wellbeing.mood,10),
-    sleep:cl(c.wellbeing&&c.wellbeing.sleep,10), focus:cl(c.wellbeing&&c.wellbeing.focus,10),
+    date:dayStr(t), t, adherence:typeof c.adherencePct === "number" ? cl(c.adherencePct,100) : null,
+    energy:typeof c.wellbeing?.energy === "number" ? cl(c.wellbeing.energy,10) : null, mood:typeof c.wellbeing?.mood === "number" ? cl(c.wellbeing.mood,10) : null,
+    sleep:typeof c.wellbeing?.sleep === "number" ? cl(c.wellbeing.sleep,10) : null, focus:typeof c.wellbeing?.focus === "number" ? cl(c.wellbeing.focus,10) : null,
   }));
   const symptoms = {};
   for(const [t,c] of byDay){
@@ -3523,17 +3262,17 @@ function renderProgress(){
     </div>`;
   mainEl.appendChild(sWeekly);
 
-  const dEnergy = last.wellbeing.energy - base.energy;
-  const dMood = last.wellbeing.mood - base.mood;
-  const dSleep = last.wellbeing.sleep - base.sleep;
-  const dFocus = last.wellbeing.focus - base.focus;
+  const dEnergy = typeof last.wellbeing.energy === "number" && typeof base.energy === "number" ? last.wellbeing.energy - base.energy : NaN;
+  const dMood = typeof last.wellbeing.mood === "number" && typeof base.mood === "number" ? last.wellbeing.mood - base.mood : NaN;
+  const dSleep = typeof last.wellbeing.sleep === "number" && typeof base.sleep === "number" ? last.wellbeing.sleep - base.sleep : NaN;
+  const dFocus = typeof last.wellbeing.focus === "number" && typeof base.focus === "number" ? last.wellbeing.focus - base.focus : NaN;
 
   const items = last.symptoms?.items || [];
-  const best = items.reduce((acc,x)=> (acc===null || (x.changeScore||0)>(acc.changeScore||0)) ? x : acc, null);
-  const worst = items.reduce((acc,x)=> (acc===null || (x.changeScore||0)<(acc.changeScore||0)) ? x : acc, null);
+  const best = items.filter(x=>x.change === "Slightly better" || x.change === "Much better").sort((a,b)=>b.changeScore-a.changeScore)[0];
+  const worst = items.filter(x=>x.change === "Worse").sort((a,b)=>a.changeScore-b.changeScore)[0];
 
   const scores = computeNutrientScores();
-  const topDriver = scores.length ? `${scores[0][0]} (${scores[0][1]}%)` : " ";
+  const topDriver = " ";
   const symScore = last.symptoms?.improvementScore ?? 0;
 
   const coach = computeWeeklyCoachMessage();
@@ -3542,16 +3281,16 @@ function renderProgress(){
   const trends = buildTrendSeries(state.checkins);
   let trendsBlock = "";
   if (trends.window && trends.points.length) {
-    const symColors = ["#22d3ee","#f472b6","#fbbf24","#a78bfa","#34d399","#fb923c"];
+    const symColors = ["#16352B","#C84B33","#5E8A6E","#B8860B","#7B5EA7","#3F7F8C"];
     const clean = (k)=> t(k).replace(/\s*\([^)]*\)\s*$/,"");
     const wellbeing = trendChartSvg([
-      {label:clean("wellbeing.energy"),color:"#fbbf24",points:trends.points.map(p=>[p.t,p.energy])},
-      {label:clean("wellbeing.mood"),color:"#f472b6",points:trends.points.map(p=>[p.t,p.mood])},
-      {label:clean("wellbeing.sleep"),color:"#22d3ee",points:trends.points.map(p=>[p.t,p.sleep])},
-      {label:clean("wellbeing.focus"),color:"#a78bfa",points:trends.points.map(p=>[p.t,p.focus])},
+      {label:clean("wellbeing.energy"),color:"#B8860B",points:trends.points.filter(p=>p.energy !== null).map(p=>[p.t,p.energy])},
+      {label:clean("wellbeing.mood"),color:"#C84B33",points:trends.points.filter(p=>p.mood !== null).map(p=>[p.t,p.mood])},
+      {label:clean("wellbeing.sleep"),color:"#3F7F8C",points:trends.points.filter(p=>p.sleep !== null).map(p=>[p.t,p.sleep])},
+      {label:clean("wellbeing.focus"),color:"#7B5EA7",points:trends.points.filter(p=>p.focus !== null).map(p=>[p.t,p.focus])},
     ], trends.window, 10, "0-10");
     const adherence = trendChartSvg([
-      {label:t("checkin.adherence"),color:"#34d399",points:trends.points.map(p=>[p.t,p.adherence])},
+      {label:t("checkin.adherence"),color:"#16352B",points:trends.points.filter(p=>p.adherence !== null).map(p=>[p.t,p.adherence])},
     ], trends.window, 100, "0-100%");
     const symNames = Object.keys(trends.symptoms).slice(0,6);
     const symptoms = symNames.length ? trendChartSvg(
@@ -3609,10 +3348,10 @@ function renderProgress(){
       <div class="item">
         <div class="k">${escapeHtml(t("progress.wellbeing_change"))}</div>
         <div class="v">
-          ${escapeHtml(compactMetricLabel("wellbeing.energy"))}: <strong>${dEnergy>=0?"+":""}${dEnergy}</strong> •
-          ${escapeHtml(compactMetricLabel("wellbeing.mood"))}: <strong>${dMood>=0?"+":""}${dMood}</strong> •
-          ${escapeHtml(compactMetricLabel("wellbeing.sleep"))}: <strong>${dSleep>=0?"+":""}${dSleep}</strong> •
-          ${escapeHtml(compactMetricLabel("wellbeing.focus"))}: <strong>${dFocus>=0?"+":""}${dFocus}</strong>
+          ${escapeHtml(compactMetricLabel("wellbeing.energy"))}: <strong>${fmtDelta(dEnergy)}</strong> •
+          ${escapeHtml(compactMetricLabel("wellbeing.mood"))}: <strong>${fmtDelta(dMood)}</strong> •
+          ${escapeHtml(compactMetricLabel("wellbeing.sleep"))}: <strong>${fmtDelta(dSleep)}</strong> •
+          ${escapeHtml(compactMetricLabel("wellbeing.focus"))}: <strong>${fmtDelta(dFocus)}</strong>
         </div>
       </div>
 
@@ -3623,7 +3362,7 @@ function renderProgress(){
 
       <div class="item">
         <div class="k">${escapeHtml(t("progress.adherence"))}</div>
-        <div class="v"><strong>${last.adherencePct}%</strong> ${escapeHtml(t("progress.adherence_sub"))}</div>
+        <div class="v"><strong>${adherenceLabel(reviewMedicationAdherence(last))}</strong> ${escapeHtml(t("review.answered_medication"))}</div>
       </div>
     </div>
     ${trendsBlock}
@@ -3634,7 +3373,7 @@ function renderProgress(){
 
   const timeline = document.createElement("div");
   timeline.className = "section";
-  const checkinTimeline = state.checkins.map((c,idx)=>`<div class="item"><div class="k">${escapeHtml(t("checkin.label_n"))} ${idx+1} • ${escapeHtml(fmtDate(c.dateISO))}</div><div class="v">${escapeHtml(t("common.adherence"))} <strong>${c.adherencePct}%</strong>${c.symptoms?.items?.length ? `<br>${escapeHtml(t("progress.symptoms_tracked"))} ${escapeHtml(c.symptoms.items.map(x=>x.symptom).join(', '))}` : ''}</div></div>`).join('');
+  const checkinTimeline = state.checkins.map((c,idx)=>`<div class="item"><div class="k">${escapeHtml(t("checkin.label_n"))} ${idx+1} • ${escapeHtml(fmtDate(c.dateISO))}</div><div class="v">${escapeHtml(t("common.adherence"))} <strong>${adherenceLabel(reviewMedicationAdherence(c))}</strong>${c.symptoms?.items?.length ? `<br>${escapeHtml(t("progress.symptoms_tracked"))} ${escapeHtml(c.symptoms.items.map(x=>x.symptom).join(', '))}` : ''}</div></div>`).join('');
   timeline.innerHTML = `
     <div class="tagline"><strong>${escapeHtml(t("progress.timeline_title"))}</strong><br>${escapeHtml(t("progress.timeline_sub"))}</div>
     <div style="height:10px"></div>
@@ -3706,255 +3445,20 @@ function renderCitations(){
    §1 at a glance, §2 depletion risk, §3 timeline, §4 body systems,
    §5 patterns, §6 labs, footer. Change one, change both. */
 function renderInsights(){
-  const scores     = computeNutrientScores();
-  const weekly     = computeWeeklyHealthScore();
-  const completion = computeMedicationCompletion();
-  const systems    = computeBodySystemsView();
-  const patterns   = detectHealthPatterns();
-  const labs       = buildLabRecommendations();
-  const top        = scores.length ? scores[0] : null;
-
-  const dash = "&mdash;";
-  const num  = v => (typeof v === "number") ? String(v) : dash;
-  /* Units, because these tiles are not on one scale: completion and the
-     depletion score are 0-100, the body-systems average is 0-10. Same defect
-     that was fixed on Home and in mobile InsightsStep.tsx. */
-  const unit = (v, key) => (typeof v === "number") ? `<span class="metricUnit">${escapeHtml(t(key))}</span>` : "";
-
-  /* ---- §1 at a glance ---- */
-  const s1 = document.createElement("div");
-  s1.className = "section";
-  s1.setAttribute("data-insight", "glance");
-  const deltaTxt = (weekly.delta === null)
-    ? escapeHtml(t("insights.no_comparison"))
-    : `${weekly.delta >= 0 ? "&#9650;" : "&#9660;"} ${Math.abs(weekly.delta)} ${escapeHtml(t("insights.vs_last_week"))}`;
-  s1.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("insights.title"))}</strong><div class="fineprint">${escapeHtml(t("insights.sub"))}</div></div>
-    <div class="metricGrid metricGrid--4">
-      <div class="metricCard">
-        <div class="k">${escapeHtml(t("insights.this_week"))}</div>
-        <div class="v metricVal">${num(weekly.score)}${unit(weekly.score, "insights.of_100")}</div>
-        <div class="fineprint">${deltaTxt}</div>
-      </div>
-      <div class="metricCard">
-        <div class="k">${escapeHtml(t("insights.completion"))}</div>
-        <div class="v metricVal">${num(completion.score)}${unit(completion.score, "insights.of_100")}</div>
-        <div class="fineprint">${escapeHtml(t("insights.answered_of", {answered: completion.answered, total: completion.total}))}</div>
-      </div>
-      <div class="metricCard">
-        <div class="k">${escapeHtml(t("insights.top_risk"))}</div>
-        <div class="v metricVal">${top ? top[1] : dash}${top ? unit(top[1], "insights.of_100") : ""}</div>
-        <div class="fineprint">${top ? escapeHtml(top[0]) : escapeHtml(t("insights.none_yet"))}</div>
-      </div>
-      <div class="metricCard">
-        <div class="k">${escapeHtml(t("insights.systems"))}</div>
-        <div class="v metricVal">${num(systems.average)}${unit(systems.average, "insights.of_10")}</div>
-        <div class="fineprint">${escapeHtml(t("insights.answered_of", {answered: systems.answered, total: systems.total}))}</div>
-      </div>
-    </div>`;
-  mainEl.appendChild(s1);
-
-  /* ---- §2 depletion risk ---- */
-  const s2 = document.createElement("div");
-  s2.className = "section";
-  s2.setAttribute("data-insight", "risk");
-  const riskRows = scores.slice(0,6).map(pair => {
-    const nutrient = pair[0], score = pair[1];
-    const tier = tierFromScore(score);
-    return `<div class="item">
-      <div class="k">${escapeHtml(nutrient)} <span class="tierPill ${tier === "High" ? "tierHigh" : (tier === "Moderate" ? "tierMod" : "tierLow")}">${escapeHtml(tierLabel(tier))}</span></div>
-      <div class="v">${score}</div>
-    </div>`;
-  }).join("");
-  s2.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("insights.depletion_title"))}</strong></div>
-    <div class="list">${riskRows || `<div class="fineprint">${escapeHtml(t("insights.depletion_empty"))}</div>`}</div>
-    <div class="fineprint">${escapeHtml(t("insights.depletion_note"))}</div>
-    ${top ? `<div class="btns"><button class="ghost mini" id="insGoEvidence">${escapeHtml(t("insights.open_evidence"))}</button></div>` : ""}`;
-  mainEl.appendChild(s2);
-  if(top){
-    const b = document.getElementById("insGoEvidence");
-    if(b) b.addEventListener("click", () => setStep(4));
-  }
-
-  /* ---- §3 depletion timeline ---- */
-  const s3 = document.createElement("div");
-  s3.className = "section";
-  s3.setAttribute("data-insight", "timeline");
-  const tlRows = (state.meds || []).slice(0,3).map(m => {
-    const months = Math.max(0, m.durationMonths || 0);
-    const pct = Math.round(Math.min(1, months / 24) * 100);
-    return `<div class="item">
-      <div class="k">${escapeHtml(((MED_DB.find(x => x.id === m.medId) || {}).name) || m.medId)}</div>
-      <div class="v">${months}${escapeHtml(t("insights.months_short"))}
-        <span class="revealTrack" style="display:inline-block;width:90px;vertical-align:middle;margin-left:8px">
-          <span class="revealBar" style="display:block;width:${pct}%;background:linear-gradient(90deg,var(--cyan),var(--violet))"></span>
-        </span>
-      </div>
-    </div>`;
-  }).join("");
-  s3.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("insights.timeline_title"))}</strong><div class="fineprint">${escapeHtml(t("insights.timeline_sub"))}</div></div>
-    <div class="list">${tlRows || `<div class="fineprint">${escapeHtml(t("insights.timeline_empty"))}</div>`}</div>
-    <div class="fineprint">${escapeHtml(t("insights.timeline_note"))}</div>`;
-  mainEl.appendChild(s3);
-
-  /* ---- §4 body systems ---- */
-  const s4 = document.createElement("div");
-  s4.className = "section";
-  s4.setAttribute("data-insight", "systems");
-  const sysRows = systems.rows.map(r => {
-    const answered = typeof r.value === "number";
-    const pct = answered ? Math.round((r.value / 10) * 100) : 0;
-    return `<div class="item"${answered ? "" : ' style="opacity:.55"'}>
-      <div class="k">${escapeHtml(t("wellbeing." + r.key))}</div>
-      <div class="v">${answered ? r.value : dash}
-        <span class="revealTrack" style="display:inline-block;width:90px;vertical-align:middle;margin-left:8px">
-          ${answered ? `<span class="revealBar" style="display:block;width:${pct}%;background:var(--cyan)"></span>` : ""}
-        </span>
-      </div>
-    </div>`;
-  }).join("");
-  s4.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("insights.systems_title"))}</strong>
-      <div class="fineprint">${escapeHtml(t("insights.answered_of", {answered: systems.answered, total: systems.total}))}</div></div>
-    <div class="list">${sysRows}</div>
-    <div class="fineprint">${escapeHtml(t("insights.systems_note"))}</div>
-    ${systems.answered < systems.total ? `<div class="btns"><button class="ghost mini" id="insGoCheckin">${escapeHtml(t("insights.rate_missing"))}</button></div>` : ""}`;
-  mainEl.appendChild(s4);
-  const bc = document.getElementById("insGoCheckin");
-  if(bc) bc.addEventListener("click", () => setStep(5));
-
-  /* ---- §5 patterns — ALL of them, not just patterns[0] ---- */
-  const s5 = document.createElement("div");
-  s5.className = "section";
-  s5.setAttribute("data-insight", "patterns");
-  const patRows = patterns.map(pt => `
-    <div class="item">
-      <div class="k">${escapeHtml(pt.title)} <span class="tierPill ${pt.confidence === "High" ? "tierHigh" : "tierMod"}">${escapeHtml(pt.confidence)}</span></div>
-      <div class="v" style="font-weight:400;color:var(--muted)">${escapeHtml(pt.note)}</div>
-    </div>`).join("");
-  s5.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("insights.patterns_title"))}</strong><div class="fineprint">${escapeHtml(t("insights.patterns_sub"))}</div></div>
-    <div class="list">${patRows || `<div class="fineprint">${escapeHtml(t("insights.patterns_empty"))}</div>`}</div>
-    <div class="fineprint">${escapeHtml(t("insights.patterns_note"))}</div>`;
-  mainEl.appendChild(s5);
-
-  /* ---- §6 labs ---- */
-  const s6 = document.createElement("div");
-  s6.className = "section";
-  s6.setAttribute("data-insight", "labs");
-  const labRows = labs.map(rec => `
-    <div class="item">
-      <div class="k">${escapeHtml(rec.nutrient)} <span class="tierPill ${rec.tier === "High" ? "tierHigh" : (rec.tier === "Moderate" ? "tierMod" : "tierLow")}">${escapeHtml(tierLabel(rec.tier))}</span></div>
-      <div class="v" style="font-weight:400">${rec.noRoutineLab
-        ? `<span style="color:var(--muted2)">${escapeHtml(t("insights.labs_none"))}</span>`
-        : rec.labs.map(l => `<span class="chip" aria-pressed="false">${escapeHtml(l)}</span>`).join(" ")}</div>
-    </div>`).join("");
-  s6.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("insights.labs_title"))}</strong><div class="fineprint">${escapeHtml(t("insights.labs_sub"))}</div></div>
-    <div class="list">${labRows || `<div class="fineprint">${escapeHtml(t("insights.labs_empty"))}</div>`}</div>
-    <div class="banner">${escapeHtml(t("insights.labs_note"))}</div>`;
-  mainEl.appendChild(s6);
-
-  /* ---- footer: snapshot + assistant ---- */
-  const s7 = document.createElement("div");
-  s7.className = "section";
-  s7.innerHTML = `<div class="btns">
-      <button class="ghost" id="insSnapshot">${escapeHtml(t("insights.snapshot"))}</button>
-    </div>`;
-  mainEl.appendChild(s7);
-  const bs = document.getElementById("insSnapshot");
-  if(bs) bs.addEventListener("click", () => { if(typeof openSnapshotModal === "function") openSnapshotModal(); else setStep(6); });
-
-  /* The assistant lived only on the terminal Summary step until now. */
-  const s8 = document.createElement("div");
-  s8.className = "section";
-  mainEl.appendChild(s8);
-  if(typeof mountAssistantPanel === "function") mountAssistantPanel(s8);
-
-  mainEl.appendChild(navButtons(true, true, "nav.continue"));
+  renderProgress();
 }
 
 function renderSummaryTab(){
-  const meds = state.meds.map(m=>{
-    const med = MED_DB.find(x=>x.id===m.medId);
-    return med ? med.name : m.medId;
-  });
-  const last = latestCheckin();
-  const flags = safetyFlags();
-  const insight = computeInsightEngine();
-  const success = computeMedicationSuccessPrediction();
-  const patterns = detectHealthPatterns();
-  const interactions = computeDrugInteractions();
-  const contraindications = computeContraindications();
-  const story = generateDynamicHealthStory();
-  const noneLabel = t("summary.none");
-
-  const sStory = document.createElement("div");
-  sStory.className = "section";
-  sStory.innerHTML = `
-    <div class="tagline">
-      <strong>${escapeHtml(t("summary.health_story_title"))}</strong><br>
-      ${escapeHtml(t("summary.health_story_sub"))}
-      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("summary.health_story_lead"))}</div>
-    </div>
-    <div style="height:12px"></div>
-    <div class="v" style="line-height:1.6">${escapeHtml(story)}</div>
-    <div class="btns">
-      <button type="button" class="primary" id="summarySnapshotBtn">${escapeHtml(t("progress.snapshot_btn"))}</button>
-      <button type="button" class="primary" id="summaryInsightBtn">${escapeHtml(t("results.insight_btn"))}</button>
-    </div>
-  `;
-  mainEl.appendChild(sStory);
-  sStory.querySelector("#summarySnapshotBtn").addEventListener("click", openSnapshotModal);
-  sStory.querySelector("#summaryInsightBtn").addEventListener("click", openInsightModal);
-
-  /* The three Home scores and the report row, as the side panel shows them on
-     every other step — that panel is hidden on this one. */
-  const sScores = document.createElement("div");
-  sScores.className = "section";
-  sScores.innerHTML = renderHomeScores();
-  mainEl.appendChild(sScores);
-  wireHomeScores(sScores);
-
-  const s1 = document.createElement("div");
-  s1.className = "section";
-  s1.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("summary.dashboard_title"))}</strong><br>${escapeHtml(t("summary.dashboard_sub"))}</div>
-    <div style="height:10px"></div>
-    <div class="list">
-      <div class="item"><div class="k">${escapeHtml(t("summary.account_label"))}</div><div class="v">${escapeHtml(state.account.email || t("common.guest"))} • Consent: ${state.account.consent ? t("sidebar.consent_yes") : t("sidebar.consent_no")}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("summary.medications"))}</div><div class="v">${meds.length ? escapeHtml(meds.join(", ")) : escapeHtml(t("summary.no_meds_added"))}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("summary.symptoms_field"))}</div><div class="v">${state.symptoms.selected.length ? escapeHtml(state.symptoms.selected.join(", ")) : escapeHtml(t("summary.no_symptoms_selected"))}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("sidebar.safety_flags"))}</div><div class="v">${flags.length ? escapeHtml(flags.join(", ")) : escapeHtml(noneLabel)}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("summary.success_prediction_full"))}</div><div class="v"><strong>${success.score}%</strong> • ${escapeHtml(success.level)}<br>${escapeHtml(success.reason)}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("summary.detected_pattern"))}</div><div class="v">${patterns.length ? `<strong>${escapeHtml(patterns[0].title)}</strong><br>${escapeHtml(patterns[0].note)}` : escapeHtml(t("summary.no_pattern_detected"))}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("summary.drug_interactions"))}</div><div class="v">${interactions.length ? escapeHtml(interactions.map(x=>x.title).join(", ")) : escapeHtml(t("summary.no_interactions"))}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("summary.contraindications"))}</div><div class="v">${contraindications.length ? escapeHtml(contraindications.map(x=>x.title).join(", ")) : escapeHtml(t("summary.no_contraindications"))}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("summary.insight_summary"))}</div><div class="v"><strong>${escapeHtml(insight.summary)}</strong><br>${escapeHtml(insight.meaning)}</div></div>
-      <div class="item"><div class="k">${escapeHtml(t("summary.latest_checkin"))}</div><div class="v">${last ? `${fmtDate(last.dateISO)} • ${t("sidebar.adherence")} ${last.adherencePct}%` : escapeHtml(t("sidebar.no_checkins"))}</div></div>
-    </div>
-  `;
-
-  if (IS_GUEST && localHasMeaningfulData(state)) {
-    const cta = document.createElement("div");
-    cta.className = "save-account-cta";
-    cta.style.marginTop = "14px";
-    cta.innerHTML = `
-      <div class="save-account-cta-title">${escapeHtml(t("save_account.summary_title"))}</div>
-      <div class="fineprint">${escapeHtml(t("save_account.summary_sub"))}</div>
-      <div class="btns" style="margin-top:12px">
-        <button class="primary" type="button" id="summarySaveAccountBtn">${escapeHtml(t("save_account.summary_btn"))}</button>
-      </div>
-    `;
-    cta.querySelector("#summarySaveAccountBtn").addEventListener("click", ()=> openSaveAccountModal(1));
-    s1.appendChild(cta);
-  }
-
-  mainEl.appendChild(s1);
-  mountAssistantPanel(mainEl);
-  mainEl.appendChild(summaryExitButtons());
+  const range=window.geneorxReviewRange || "7"; const records=reviewRecords(range); const last=records.at(-1);
+  const section=document.createElement("div");section.className="section";
+  const meds=state.meds.map(m=>{const row=last?.medicationDoses?.find(d=>d.medId===m.medId); return `<div class="item"><strong>${escapeHtml((MED_DB.find(x=>x.id===m.medId)||{}).name || m.medId)}</strong><br>${escapeHtml(row ? t("tracking.dose."+row.status) : t("checkin.not_answered"))}</div>`;}).join("");
+  section.innerHTML=`<label for="summaryRange">${escapeHtml(t("review.this_period"))}</label><select id="summaryRange">${["7","30","all"].map(v=>`<option value="${v}" ${range===v?"selected":""}>${escapeHtml(t("parity.range."+v))}</option>`).join("")}</select>
+    <p class="fineprint">${escapeHtml(reviewPeriodLabel(range,records))}</p><p>${escapeHtml(reviewOverview(range))}</p><h3>${escapeHtml(t("review.current_medications"))}</h3>${meds || `<p>${escapeHtml(t("meds.none_yet"))}</p>`}
+    <h3>${escapeHtml(t("review.symptoms_changes"))}</h3>${last?.symptoms?.items?.length ? last.symptoms.items.map(i=>`<p><strong>${escapeHtml(i.symptom)}</strong><br>${escapeHtml(impactLabel(i.change))}${typeof i.severityNow === "number" ? ` · ${i.severityNow}/10` : ""}</p>`).join("") : `<p>${escapeHtml(t("review.no_symptom_records"))}</p>`}
+    <div class="btns"><button class="primary" id="recordPreview">${escapeHtml(t("parity.preview_summary"))}</button></div><p class="fineprint">${escapeHtml(t("parity.record_note"))}</p>`;
+  mainEl.appendChild(section);
+  section.querySelector("#summaryRange").addEventListener("change",e=>{window.geneorxReviewRange=e.target.value;renderAll();});
+  section.querySelector("#recordPreview").addEventListener("click",()=>{openSnapshotModal();snapText.textContent=reviewRecordText(range);});
 }
 
 /* ===== ASK GENEORX (web assistant panel) ===== */
@@ -3979,14 +3483,22 @@ function mountAssistantPanel(parent){
   const sendBtn = sec.querySelector("#assistantSend");
   const suggestsWrap = sec.querySelector("#assistantSuggests");
 
-  [t("assistant.prompt_why_score"), t("assistant.prompt_interactions"), t("assistant.prompt_what_changed")].forEach(sug=>{
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "assistant-chip";
-    chip.textContent = sug;
-    chip.addEventListener("click", ()=> send(sug));
-    suggestsWrap.appendChild(chip);
-  });
+  let options = null;
+  const inputRow = sec.querySelector('.assistant-inputrow');
+  inputRow.hidden = true;
+  fetch('/api/assistant/options').then(res=>res.ok ? res.json() : Promise.reject()).then(data=>{
+    options = data;
+    const personalOn = data.mode === 'personalized' && !!state.account.aiConsent;
+    inputRow.hidden = !personalOn;
+    const note=document.createElement('p'); note.className='fineprint';
+    note.textContent=data.mode==='catalog_only' ? 'General AI guidance. Personal records and chat history are not sent to the free provider.' : personalOn ? 'Personal cloud chat uses your confirmed entries.' : t('assistant.consent_needed');
+    sec.querySelector('.tagline').appendChild(note);
+    const prompts=data.mode==='catalog_only' ? data.prompts : !personalOn ? [] : [t('assistant.prompt_how_doing'),t('assistant.prompt_why_score'),t('assistant.prompt_interactions'),t('assistant.prompt_what_changed')].map(label=>({label}));
+    prompts.forEach(prompt=>{
+      const chip=document.createElement('button'); chip.type='button';chip.className='assistant-chip';chip.textContent=prompt.label;
+      chip.addEventListener('click',()=>send(prompt.label,prompt.id));suggestsWrap.appendChild(chip);
+    });
+  }).catch(()=>{suggestsWrap.textContent=t('assistant.unavailable');});
 
   function addBubble(role, text){
     const b = document.createElement("div");
@@ -3998,11 +3510,11 @@ function mountAssistantPanel(parent){
   }
 
   let busy = false;
-  async function send(text){
+  async function send(text,promptId){
     const content = (text || "").trim();
-    if(!content || busy) return;
+    if(!content || busy || !options || (options.mode==='catalog_only' && !promptId)) return;
     busy = true;
-    suggestsWrap.style.display = "none";
+    suggestsWrap.style.display = 'none';
     addBubble("user", content);
     messages.push({ role:"user", content });
     input.value = "";
@@ -4012,13 +3524,14 @@ function mountAssistantPanel(parent){
         method:"POST",
         headers:{ "Content-Type":"application/json", "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content || "" },
         body: JSON.stringify({
-          messages,
-          context: { medications: state.meds.map(m=>{ const md = MED_DB.find(x=>x.id===m.medId); return md?md.name:m.medId; }), symptoms: state.symptoms.selected || [] },
+          messages: options.mode==='catalog_only' ? [{role:'user',content:'General guidance'}] : messages,
+          prompt_id: promptId,
+          context: options.mode==='personalized' ? { medications: state.meds.map(m=>{ const md = MED_DB.find(x=>x.id===m.medId); return md?md.name:m.medId; }), symptoms: state.symptoms.selected || [] } : undefined,
           language: portalLang(),
         }),
       });
       const data = await res.json().catch(()=>({}));
-      if(res.ok && data.source === "ai" && data.reply){
+      if(res.ok && (data.source === "ai" || data.source === "restricted") && data.reply){
         pending.textContent = data.reply;
         messages.push({ role:"assistant", content: data.reply });
       } else {
@@ -4030,6 +3543,7 @@ function mountAssistantPanel(parent){
       pending.classList.add("assistant-notice");
     } finally {
       busy = false;
+      suggestsWrap.style.display='';
       log.scrollTop = log.scrollHeight;
     }
   }

@@ -8,40 +8,48 @@
   @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 
   @stack('styles')
 
   <style>
     :root {
-      --teal:        #0E7C66;
-      --teal-dark:   #075F4F;
-      --teal-light:  #3FB39A;
-      --teal-50:     #ECF6F3;
-      --teal-100:    #D7EDE7;
+      /* Warm Editorial: cream paper, pine green, one coral action colour */
+      --teal:        #24503F;
+      --teal-dark:   #16352B;
+      --teal-light:  #3C7A63;
+      --teal-50:     #E4EEDF;
+      --teal-100:    #CFE0CF;
 
-      --bg:          #FFFFFF;
-      --bg-soft:     #F7FAF9;
-      --bg-muted:    #F1F5F4;
+      --coral:       #C84B33;
+      --coral-dark:  #B03F29;
+      --pine:        #16352B;
+      --sage:        #CFE0CF;
 
-      --text:        #0F1F1B;
-      --text-soft:   #3C4F4A;
-      --text-muted:  #6B7B77;
-      --danger:      #B91C1C;
-      --danger-50:   #FEF2F2;
-      --danger-100:  #FECACA;
+      --bg:          #FFFBF3;
+      --bg-soft:     #F7F1E6;
+      --bg-muted:    #F2EADB;
 
-      --border:      #DDE6E3;
-      --border-soft: #E8EDEC;
+      --text:        #1E2B25;
+      --text-soft:   #3B4A42;
+      --text-muted:  #5E6A60;
+      --text-dim:    #7A8478;
+      --danger:      #B8402C;
+      --danger-50:   #F8DDD6;
+      --danger-100:  #EFC7BD;
 
-      --shadow-sm: 0 1px 2px rgba(15, 31, 27, 0.04);
-      --shadow:    0 4px 16px rgba(15, 31, 27, 0.06);
-      --shadow-lg: 0 12px 36px rgba(15, 31, 27, 0.09);
+      --border:      #E6D9C0;
+      --border-soft: #EFE5D0;
 
-      --r:           10px;
-      --r-lg:        14px;
+      --shadow-sm: 0 1px 2px rgba(22, 53, 43, 0.05);
+      --shadow:    0 1px 0 rgba(22, 53, 43, 0.03), 0 18px 36px -22px rgba(22, 53, 43, 0.32);
+      --shadow-lg: 0 24px 48px -24px rgba(22, 53, 43, 0.42);
 
-      --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --r:           20px;
+      --r-lg:        28px;
+
+      --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+      --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
 
@@ -1136,6 +1144,54 @@
       .page-head h1 { font-size: 18px; }
       .auth-card .hd, .auth-card .bd { padding: 14px; }
     }
+
+    /* =========================================
+       WARM EDITORIAL REFINEMENTS
+       Cream ground, paper cards, pine structure, coral for the one action.
+    ========================================= */
+    body {
+      background:
+        radial-gradient(circle at 106% -2%, #E4EEDF 0 340px, transparent 341px),
+        radial-gradient(circle at -6% 10%, #F2E3CC 0 190px, transparent 191px),
+        var(--bg-soft);
+      background-attachment: fixed;
+    }
+    h1, h2, h3, .page-head h1, .card > .hd h2, .card-hd h2, .settings-page-title, .settings-card-title, .nav-name {
+      font-family: var(--serif);
+      color: var(--pine);
+    }
+    .nav { background: rgba(247, 241, 230, 0.92); border-bottom: 1.5px solid var(--border); }
+    .nav-name { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+    .nav-logo { border-radius: 50%; background: var(--pine); padding: 4px; width: 34px; height: 34px; }
+    .nav-link { font-weight: 600; }
+    .nav-link.active { color: var(--pine); }
+    .nav-link.active::after { background: var(--coral); height: 3px; border-radius: 3px; }
+    .nav-avatar { background: var(--pine); }
+    .nav-dropdown { border: 1.5px solid var(--border); border-radius: 24px; box-shadow: var(--shadow-lg); }
+    .nav-drop-item { border-radius: 14px; }
+    .btn, .primary, .ghost, .danger, button.btn { border-radius: 999px; font-weight: 600; }
+    .btn-primary, .primary { background: var(--coral); color: #fff; border-color: var(--coral); box-shadow: 0 12px 22px -12px rgba(200, 75, 51, 0.7); font-weight: 700; }
+    .btn-primary:hover, .primary:hover { background: var(--coral-dark); border-color: var(--coral-dark); }
+    .btn-outline, .ghost { background: transparent; border: 1.5px solid #D7C8A8; color: var(--pine); }
+    .btn-outline:hover, .ghost:hover { border-color: var(--teal); background: var(--bg); color: var(--pine); }
+    .btn-danger { background: #fff; border: 1.5px solid #EFC7BD; color: var(--danger); }
+    .btn-danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .card, .settings-card, .modal { border: 1.5px solid var(--border); border-radius: 28px; box-shadow: var(--shadow); background: var(--bg); }
+    .card > .hd, .settings-card-header { border-bottom-color: var(--border-soft); }
+    .section, .item, .contactBox, .evidence, .metricCard, .coachBox { border-radius: 22px; }
+    .settings-card-icon { border-radius: 50%; background: var(--teal-50); }
+    .settings-card-icon svg { color: var(--pine); }
+    .settings-page-title { font-size: 32px; font-weight: 700; letter-spacing: -0.8px; }
+    .settings-page-sub { font-size: 16px; }
+    .field input[type=password], .field input[type=text], input, select, textarea { border: 1.5px solid #A39270; border-radius: 20px; background: var(--bg); }
+    .field input:focus, input:focus, select:focus, textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 4px rgba(207, 224, 207, 0.85); outline: none; }
+    .step, .chip, .badge, .covPill, .sourceBadge, .tierPill { border-radius: 999px; }
+    .step.on, .chip[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: #fff; }
+    .toast { background: var(--pine); }
+    .guest-bar { background: #FBEFD4; border-bottom-color: #EBD9A8; color: #7A5410; }
+    .geneorx-brand { display: inline-flex; align-items: center; gap: 11px; }
+    .geneorx-brandmark { display: inline-flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; background: var(--pine); border-radius: 50% !important; box-shadow: 0 10px 18px -10px rgba(22, 53, 43, 0.6); }
+    .geneorx-brand-name { font-family: var(--serif); font-size: 21px; font-weight: 700; letter-spacing: -0.5px; color: var(--pine); }
   </style>
 </head>
 <body>
@@ -1144,7 +1200,7 @@
   <nav class="nav">
     <div class="nav-inner">
       <div class="nav-brand">
-        @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false, 'href' => route('home')])
+        @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 34, 'href' => route('home')])
       </div>
 
       <div class="nav-links">

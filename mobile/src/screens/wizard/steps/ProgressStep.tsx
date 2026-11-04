@@ -1,325 +1,126 @@
+import { useSetup } from '@/store/SetupContext';
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import { Button } from '@/components/Button';
-import { ReportPickerModal } from '@/components/ReportPickerModal';
-import { useToast } from '@/components/Toast';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { AppIcon } from '@/components/AppIcon';
+import { DropdownSelect } from '@/components/DropdownSelect';
+import { ProgressRatingBars } from '@/components/ProgressRatingBars';
+import { CheckinDetailModal } from '@/components/CheckinDetailModal';
+import { TrackingExplanation } from '@/components/TrackingExplanation';
+import { EditorSheet, ListRow, refined } from '@/components/RefinedUI';
 import { useWizard } from '@/store/WizardContext';
-import { useMedCatalog } from '@/store/MedCatalogContext';
-import {
-  buildClinicianSnapshotText,
-  computeNutrientScores,
-  computeWeeklyCoachMessage,
-  computeWeeklyHealthScore,
-  fmtDate,
-  impactLabel,
-  latestCheckin,
-} from '@/wizard/engine';
-import { shareClinicianSnapshot, downloadDoctorReport } from '@/wizard/reports';
-import { buildTrendSeries } from '@/wizard/trends';
-import { TrendChart, type TrendLine } from '@/components/TrendChart';
-import { ScoreRing } from '@/components/ScoreRing';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useDashboardNavigation } from '@/navigation/useDashboardNavigation';
-import { Divider, FinePrint, HelpNote, NoteBox, Section, Tagline } from '@/screens/wizard/ui';
-import { colors, radius, spacing } from '@/theme';
+import { checkinsInRange, knownAdherenceAverage, reviewPeriod, type ReviewRange } from '@/wizard/reviewData';
+import { progressPoints, progressComparison, type ProgressMeasure } from '@/wizard/progressChart';
+import { latestUpdate } from '@/wizard/latestUpdate';
+import { medicationAdherence, adherenceLabel } from '@/wizard/medicationTracking';
+import { fmtDate, impactLabel, type TranslateFn } from '@/wizard/engine';
+import { BODY_SYSTEM_KEYS, type WizardCheckin } from '@/wizard/types';
+import { FinePrint } from '@/screens/wizard/ui';
+import { progressPalette as palette } from '@/theme/progress';
+import { colors } from '@/theme';
+import { readableCheckinDate } from '@/wizard/checkinEditor';
 
-const SYMPTOM_COLORS = ['#22d3ee', '#f472b6', '#fbbf24', '#a78bfa', '#34d399', '#fb923c'];
+const checkinSymptomSummary = (c: WizardCheckin, t: TranslateFn) => c.symptoms.items.slice(0, 2).map(i => `${i.symptom} · ${impactLabel(i.change, t)}`).join(', ');
+const checkinAdherence = (c: WizardCheckin, t: TranslateFn) => medicationAdherence(c) !== null ? t('parity.percent_taken', { value: medicationAdherence(c)! }) : t('parity.unknown_doses');
 
 export const ProgressStep: React.FC = () => {
-  const { state } = useWizard();
-  const { catalog } = useMedCatalog();
+  const setup = useSetup();
+  const { state, setStep } = useWizard();
   const { t, language } = useTranslation();
-  const toast = useToast();
-  const goToDashboard = useDashboardNavigation();
-  const [snapOpen, setSnapOpen] = useState(false);
-  const [reportPickerOpen, setReportPickerOpen] = useState(false);
-  const [reportIndex, setReportIndex] = useState<number | undefined>();
-
-  const coach = useMemo(() => computeWeeklyCoachMessage(state, t, catalog), [state, language, t, catalog]);
-  const last = useMemo(() => latestCheckin(state), [state]);
-  const weekly = useMemo(() => computeWeeklyHealthScore(state), [state]);
-  const trends = useMemo(() => buildTrendSeries(state.checkins), [state.checkins]);
-  const snapshot = useMemo(() => buildClinicianSnapshotText(state, t, undefined, catalog), [state, language, t, catalog]);
-
-  const base = state.wellbeingBaseline;
-  const deltas = last
-    ? {
-        energy: last.wellbeing.energy - base.energy,
-        mood: last.wellbeing.mood - base.mood,
-        sleep: last.wellbeing.sleep - base.sleep,
-        focus: last.wellbeing.focus - base.focus,
-      }
-    : null;
-
-  const improvementScore = last
-    ? (last.symptoms.items || []).reduce((acc, x) => acc + (x.changeScore || 0), 0)
-    : 0;
-
-  const symptomItems = last ? last.symptoms.items || [] : [];
-  const mostImproved = symptomItems.length
-    ? symptomItems.reduce((acc, x) => ((x.changeScore || 0) > (acc.changeScore || 0) ? x : acc))
-    : null;
-  const leastImproved = symptomItems.length
-    ? symptomItems.reduce((acc, x) => ((x.changeScore || 0) < (acc.changeScore || 0) ? x : acc))
-    : null;
-  const nutrientScores = useMemo(() => computeNutrientScores(state, catalog), [state, catalog]);
-  const topDriver = nutrientScores.length ? `${nutrientScores[0][0]} (${nutrientScores[0][1]}%)` : null;
-
-  const shareSnapshot = async () => {
-    const ok = await shareClinicianSnapshot(state, t, { catalog, title: t('portal.share') });
-    if (ok) toast.show(t('toast.shared'));
+  const { fontScale } = useWindowDimensions();
+  const [range, setRange] = useState<ReviewRange>('7');
+  const [measure, setMeasure] = useState('');
+  const [sheet, setSheet] = useState<'more' | 'history' | 'explain' | null>(null);
+  const [detailIndex, setDetailIndex] = useState<number | null>(null);
+  const checkins = useMemo(() => checkinsInRange(state.checkins, range), [state.checkins, range]);
+  const symptomNames = [...new Set(checkins.flatMap(c => c.symptoms.items.map(item => item.symptom)))];
+  const choices = [
+    ...symptomNames.map(name => ({ value: `symptom:${name}`, label: name, measure: { kind: 'symptom', name } as ProgressMeasure })),
+    ...BODY_SYSTEM_KEYS.map(name => ({ value: `wellbeing:${name}`, label: t(`wellbeing.${name}`).replace(/\s*\([^)]*\)\s*$/, ''), measure: { kind: 'wellbeing', name } as ProgressMeasure })),
+  ];
+  const active = choices.find(choice => choice.value === measure) || choices[0];
+  const points = progressPoints(checkins, active.measure);
+  const { first, last, hasComparison } = progressComparison(points);
+  const update = latestUpdate(checkins, t);
+  const latest = update.checkin;
+  const average = knownAdherenceAverage(checkins);
+  const period = reviewPeriod(range, checkins);
+  const shortDate = (time: number | string) => new Date(time).toLocaleDateString(language, { month: 'short', day: 'numeric', ...(range === 'all' ? { year: 'numeric' } : {}) });
+  const detail = detailIndex === null ? null : state.checkins[detailIndex] ?? null;
+  const openRecord = (record: WizardCheckin) => {
+    const index = state.checkins.indexOf(record);
+    if (index >= 0) setDetailIndex(index);
   };
+  const openFromSheet = (record: WizardCheckin) => { setSheet(null); setTimeout(() => openRecord(record), 350); };
+  const changeSheet = (next: 'history' | 'explain') => { setSheet(null); setTimeout(() => setSheet(next), 350); };
+  const stacked = fontScale > 1.3;
 
-  const copySnapshot = async () => {
-    try {
-      await Clipboard.setStringAsync(snapshot);
-      toast.show(t('toast.copied'));
-    } catch {
-      // clipboard unavailable — nothing to surface
-    }
-  };
-
-  const downloadReport = async (idx: number) => {
-    const ok = await downloadDoctorReport(state, t, idx, catalog, language);
-    if (ok) {
-      toast.show(t('toast.report_downloaded'));
-      goToDashboard();
-    } else {
-      toast.show(t('toast.report_failed'), 'error');
-    }
-  };
-
-  return (
-    <View style={{ gap: spacing.md }}>
-      <HelpNote what={t('step.6.sub')} why={t('checkin.sub')} />
-      <Section style={styles.signal}>
-        <Text style={styles.kicker}>{t('results.coach_title').toUpperCase()}</Text>
-        <Text style={styles.head}>{coach.headline}</Text>
-        {coach.bullets.map((b, i) => (
-          <Text key={i} style={styles.bullet}>• {b}</Text>
-        ))}
-        <NoteBox>{t('results.next_best_action')} {coach.nextBestAction}</NoteBox>
-      </Section>
-
-      {/* Weekly Health Score — sits directly above the trend charts it
-          summarises, rather than in a separate place from its own evidence. */}
-      <Section>
-        <Tagline title={t('insights.this_week')} body={t('insights.weekly_basis')} />
-        <View style={styles.weeklyRow}>
-          <ScoreRing value={weekly.score} size={78} stroke={8} gradient />
-          <View style={styles.weeklyBody}>
-            {weekly.delta !== null ? (
-              <Text style={[styles.weeklyDelta, weekly.delta >= 0 ? styles.weeklyUp : styles.weeklyDown]}>
-                {weekly.delta >= 0 ? '▲' : '▼'} {Math.abs(weekly.delta)} {t('insights.vs_last_week')}
-              </Text>
-            ) : (
-              <Text style={styles.weeklyMuted}>{t('insights.no_comparison')}</Text>
-            )}
-            {weekly.drivers.map((d) => (
-              <Text key={d.key} style={styles.weeklyDriver}>
-                {t(`wellbeing.${d.key}`)} {d.delta > 0 ? '+' : ''}{d.delta}
-              </Text>
-            ))}
-          </View>
-        </View>
-      </Section>
-
-      {deltas ? (
-        <Section>
-          <Tagline title={t('progress.what_changed')} />
-          <View style={styles.deltaGrid}>
-            {(['energy', 'mood', 'sleep', 'focus'] as const).map((k) => {
-              const v = deltas[k];
-              const color = v > 0 ? colors.success : v < 0 ? colors.danger : colors.textMuted;
-              return (
-                <View key={k} style={styles.deltaCell}>
-                  <Text style={styles.deltaLabel}>{t(`wellbeing.${k}`).replace(/\s*\([^)]*\)\s*$/, '')}</Text>
-                  <Text style={[styles.deltaVal, { color }]}>{v >= 0 ? `+${v}` : v}</Text>
-                </View>
-              );
-            })}
-          </View>
-          <Divider />
-          {mostImproved ? (
-            <View style={styles.rowBetween}>
-              <Text style={styles.metaLabel}>{t('progress.most_improved')}</Text>
-              <Text style={styles.changeVal}>
-                {mostImproved.symptom} ({impactLabel(mostImproved.change, t)})
-              </Text>
-            </View>
-          ) : null}
-          {leastImproved ? (
-            <View style={styles.rowBetween}>
-              <Text style={styles.metaLabel}>{t('progress.least_improved')}</Text>
-              <Text style={styles.changeVal}>
-                {leastImproved.symptom} ({impactLabel(leastImproved.change, t)})
-              </Text>
-            </View>
-          ) : null}
-          {topDriver ? (
-            <View style={styles.rowBetween}>
-              <Text style={styles.metaLabel}>{t('progress.top_driver')}</Text>
-              <Text style={styles.changeVal}>{topDriver}</Text>
-            </View>
-          ) : null}
-          <View style={styles.rowBetween}>
-            <Text style={styles.metaLabel}>{t('progress.symptom_score')}</Text>
-            <Text style={styles.metaVal}>{improvementScore >= 0 ? `+${improvementScore}` : improvementScore}</Text>
-          </View>
-          <FinePrint>{t('progress.symptom_score_sub')}</FinePrint>
-          <View style={styles.rowBetween}>
-            <Text style={styles.metaLabel}>{t('checkin.adherence')}</Text>
-            <Text style={styles.metaVal}>{last?.adherencePct}%</Text>
-          </View>
-        </Section>
-      ) : (
-        <Section>
-          <Tagline title={t('sidebar.no_checkins')} body={t('checkin.sub')} />
-        </Section>
-      )}
-
-      <Section>
-        <Tagline title={t('modal.snapshot.title')} body={t('progress.weekly_sub')} />
-        <Button title={t('progress.snapshot_btn')} onPress={() => setSnapOpen(true)} />
-        <Button title={t('portal.share')} variant="secondary" onPress={shareSnapshot} />
-        {state.checkins.length ? (
-          <Button
-            title={t('progress.download_report')}
-            variant="secondary"
-            onPress={() => {
-              setReportIndex(undefined);
-              setReportPickerOpen(true);
-            }}
-          />
-        ) : null}
-      </Section>
-
-      {trends.window && trends.points.length ? (
-        <Section>
-          <Tagline title={t('progress.trends_title')} body={t('progress.trends_sub')} />
-          <Text style={styles.chartLabel}>{t('progress.trends_wellbeing')}</Text>
-          <TrendChart
-            fromT={trends.window.fromT}
-            toT={trends.window.toT}
-            yMax={10}
-            yCaption="0-10"
-            lines={[
-              { label: t('wellbeing.energy').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.amber, points: trends.points.map((p) => [p.t, p.energy] as [number, number]) },
-              { label: t('wellbeing.mood').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.pink, points: trends.points.map((p) => [p.t, p.mood] as [number, number]) },
-              { label: t('wellbeing.sleep').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.primary, points: trends.points.map((p) => [p.t, p.sleep] as [number, number]) },
-              { label: t('wellbeing.focus').replace(/\s*\([^)]*\)\s*$/, ''), color: colors.violet, points: trends.points.map((p) => [p.t, p.focus] as [number, number]) },
-            ]}
-          />
-          <Text style={styles.chartLabel}>{t('checkin.adherence')}</Text>
-          <TrendChart
-            fromT={trends.window.fromT}
-            toT={trends.window.toT}
-            yMax={100}
-            yCaption="0-100%"
-            lines={[
-              { label: t('checkin.adherence'), color: colors.success, points: trends.points.map((p) => [p.t, p.adherence] as [number, number]) },
-            ]}
-          />
-          {Object.keys(trends.symptoms).length ? (
-            <>
-              <Text style={styles.chartLabel}>{t('progress.trends_symptoms')}</Text>
-              <TrendChart
-                fromT={trends.window.fromT}
-                toT={trends.window.toT}
-                yMax={10}
-                yCaption="0-10"
-                lines={Object.entries(trends.symptoms).slice(0, 6).map(([name, series], i): TrendLine => ({
-                  label: name,
-                  color: SYMPTOM_COLORS[i % SYMPTOM_COLORS.length],
-                  points: series.map((pt) => [pt.t, pt.severity] as [number, number]),
-                }))}
-              />
-              <FinePrint>{t('progress.trends_symptoms_hint')}</FinePrint>
-            </>
-          ) : null}
-        </Section>
-      ) : null}
-
-      {state.checkins.length ? (
-        <Section>
-          <Tagline title={t('progress.timeline_title')} body={t('progress.timeline_sub')} />
-          {state.checkins.map((c, idx) => (
-            <View key={idx} style={styles.timelineItem}>
-              <Text style={styles.tlTitle}>{t('checkin.label_n')} {idx + 1} • {fmtDate(c.dateISO)}</Text>
-              <Text style={styles.tlBody}>{t('common.adherence')} {c.adherencePct}%</Text>
-              {c.symptoms.items.length ? (
-                <FinePrint>{t('progress.tracked_symptoms')} {c.symptoms.items.map((x) => x.symptom).join(', ')}</FinePrint>
-              ) : null}
-              <Button
-                title={t('progress.download_report')}
-                variant="secondary"
-                onPress={() => downloadReport(idx)}
-              />
-            </View>
-          ))}
-        </Section>
-      ) : null}
-
-      <Modal visible={snapOpen} transparent animationType="fade" onRequestClose={() => setSnapOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setSnapOpen(false)} />
-        <View style={styles.modalWrap} pointerEvents="box-none">
-          <View style={styles.modal}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.snapText}>{snapshot}</Text>
-            </ScrollView>
-            <View style={{ gap: 8 }}>
-              <Button title={t('modal.snapshot.copy')} onPress={copySnapshot} />
-              <Button title={t('modal.snapshot.close')} variant="secondary" onPress={() => setSnapOpen(false)} />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <ReportPickerModal
-        visible={reportPickerOpen}
-        preferredIndex={reportIndex}
-        onClose={() => setReportPickerOpen(false)}
-        onSuccess={goToDashboard}
-      />
-
-      <Section>
-        <Button title={t('nav.home')} variant="ghost" onPress={goToDashboard} />
-      </Section>
+  return <View style={styles.page}>
+    <View style={[styles.rangeRow, stacked && styles.stacked]}>
+      <Text style={[styles.caption, { flexShrink: 1 }]}>{shortDate(period.from)} – {shortDate(period.to)}</Text>
+      <View style={{ width: stacked ? '100%' : 140 }}><DropdownSelect inline appearance="dark" accessibilityLabel={t('parity.date_range')} value={range} onChange={value => setRange(value as ReviewRange)} options={(['7', '30', 'all'] as const).map(value => ({ value, label: t('parity.range.' + value) }))} /></View>
     </View>
-  );
+    {checkins.length ? <>
+      <View style={styles.card}>
+        <View style={[styles.measureRow, stacked && styles.stacked]}>
+          <View style={{ flex: stacked ? undefined : 1, alignSelf: 'stretch' }}><DropdownSelect inline appearance="dark" accessibilityLabel={t('clean.progress_measure')} value={active.value} options={choices.map(({ value, label }) => ({ value, label }))} onChange={setMeasure} /></View>
+          <Text style={[styles.caption, { flexShrink: 1 }]}>{t(active.measure.kind === 'symptom' ? 'easy_use.severity' : 'easy_use.wellbeing_rating')}</Text>
+        </View>
+        <View style={{ gap: 4 }}>
+          <Text style={styles.comparison} accessibilityLabel={hasComparison ? t('easy_use.rating_change', { from: first!.value!, to: last!.value! }) : last ? t('progress_view.rating_value', { value: last.value! }) : t('progress_view.not_rated')}>{hasComparison ? `${first!.value} → ${last!.value}` : last?.value ?? '—'}<Text style={styles.unit}> {t('easy_use.out_of_ten')}</Text></Text>
+          <Text style={styles.caption}>{hasComparison ? t('progress_view.comparison_dates', { from: shortDate(first!.time), to: shortDate(last!.time) }) : last ? shortDate(last.time) : t('parity.no_ratings')}</Text>
+        </View>
+        <ProgressRatingBars key={`${range}:${active.value}`} points={points} highlighted={last?.key} onOpen={point => openRecord(point.record)} />
+        <Text style={styles.caption}>{t(active.measure.kind === 'symptom' ? 'easy_use.severity_scale' : 'easy_use.wellbeing_scale')}</Text>
+        {points.some(point => point.value === null) ? <Text style={styles.caption}>— {t('progress_view.not_rated')}</Text> : null}
+      </View>
+      {latest ? <View style={styles.card}>
+        <Text accessibilityRole="header" style={styles.cardTitle}>{t('progress_view.latest')}</Text>
+        <Text style={styles.body}>{update.symptomProgress ? t('progress_view.reported', { changes: update.progress }) : t('progress_view.no_changes')}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('parity.open_checkin', { date: fmtDate(latest.dateISO) })} onPress={() => openRecord(latest)} style={({ pressed }) => [styles.latestLink, pressed && styles.pressed]}>
+          <Text style={styles.linkText}>{t('progress_view.view_date', { date: readableCheckinDate(latest.dateISO, language) })}</Text>
+          <AppIcon name="arrow" size={17} color={palette.accent} />
+        </Pressable>
+      </View> : null}
+    </> : <View style={styles.card}>
+      <Text style={styles.cardTitle}>{t('design.no_checkins_title')}</Text>
+      <Text style={styles.body}>{t('parity.no_period_records')}</Text>
+      <Pressable accessibilityRole="button" onPress={() => setStep(5)} style={({ pressed }) => [styles.emptyAction, pressed && styles.pressed]}><Text style={[styles.linkText, { color: palette.background }]}>{t('simple.check_in')}</Text></Pressable>
+    </View>}
+    <View style={styles.footer}>
+      {!setup.active ? <Pressable accessibilityRole="button" onPress={() => setStep(8)} style={({ pressed }) => [styles.summaryLink, pressed && styles.pressed]}><Text style={styles.linkText}>{t('progress_view.summary')}</Text><AppIcon name="file" size={17} color={palette.accent} /></Pressable> : null}
+      {checkins.length ? <Pressable accessibilityRole="button" accessibilityLabel={t('progress_view.more')} onPress={() => setSheet('more')} style={({ pressed }) => [styles.more, pressed && styles.pressed]}><Text style={{ color: palette.accent, fontSize: 24 }}>···</Text></Pressable> : null}
+    </View>
+    <EditorSheet visible={sheet === 'more'} title={t('progress_view.more')} onClose={() => setSheet(null)}><ListRow icon="calendar" title={t('clean.checkin_history')} onPress={() => changeSheet('history')} /><ListRow icon="spark" title={t('easy.explain_progress')} onPress={() => changeSheet('explain')} last /></EditorSheet>
+    <EditorSheet visible={sheet === 'explain'} title={t('easy.explain_progress')} onClose={() => setSheet(null)}><TrackingExplanation range={range} measure={active.value} onOpenRecord={openFromSheet} /></EditorSheet>
+    <EditorSheet visible={sheet === 'history'} title={t('ai.history_title')} onClose={() => setSheet(null)}>
+      <FinePrint>{t('parity.medication_taken')}: {adherenceLabel(average, t('checkin.not_answered'))}</FinePrint><FinePrint>{t('parity.known_average')}</FinePrint>
+      <View>{[...checkins].reverse().map((record, index, all) => {
+        const taken = checkinAdherence(record, t), symptoms = checkinSymptomSummary(record, t);
+        return <Pressable key={`${record.clientId || record.id || record.dateISO}:${index}`} accessibilityRole="button" accessibilityLabel={`${t('parity.open_checkin', { date: fmtDate(record.dateISO) })}, ${taken}${symptoms ? `, ${symptoms}` : ''}`} onPress={() => openFromSheet(record)} style={({ pressed }) => [{ minHeight: 48, paddingVertical: 10, gap: 4, borderBottomWidth: index === all.length - 1 ? 0 : StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft }, pressed && styles.pressed]}><Text style={refined.rowTitle}>{fmtDate(record.dateISO)}</Text><Text style={refined.meta}>{symptoms ? `${taken} · ${symptoms}` : taken}</Text></Pressable>;
+      })}</View>
+    </EditorSheet>
+    <CheckinDetailModal visible={detail !== null} checkin={detail} index={detailIndex ?? 0} onClose={() => setDetailIndex(null)} />
+  </View>;
 };
 
 const styles = StyleSheet.create({
-  signal: { backgroundColor: colors.primary50, borderColor: colors.primary100 },
-  kicker: { fontSize: 11, fontWeight: '800', color: colors.primary, letterSpacing: 1 },
-  head: { fontSize: 17, fontWeight: '700', color: colors.text },
-  bullet: { fontSize: 13, color: colors.textSoft, lineHeight: 19 },
-
-  weeklyRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  weeklyBody: { flex: 1, gap: 3 },
-  weeklyDelta: { fontSize: 15, fontWeight: '800' },
-  weeklyUp: { color: colors.success },
-  weeklyDown: { color: colors.danger },
-  weeklyMuted: { fontSize: 14, fontWeight: '700', color: colors.textMuted },
-  weeklyDriver: { fontSize: 12, color: colors.textMuted },
-  deltaGrid: { flexDirection: 'row', gap: spacing.sm },
-  deltaCell: { flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', gap: 2 },
-  deltaLabel: { fontSize: 11, color: colors.textMuted, textTransform: 'capitalize' },
-  deltaVal: { fontSize: 20, fontWeight: '800' },
-
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, gap: 12 },
-  metaLabel: { fontSize: 14, color: colors.textSoft },
-  metaVal: { fontSize: 15, fontWeight: '700', color: colors.text },
-  changeVal: { fontSize: 14, fontWeight: '700', color: colors.text, flexShrink: 1, textAlign: 'right' },
-
-  chartLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted, marginTop: 10, marginBottom: 2 },
-  timelineItem: { gap: 2, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
-  tlTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
-  tlBody: { fontSize: 13, color: colors.textSoft },
-
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15,31,27,0.45)' },
-  modalWrap: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', padding: spacing.lg },
-  modal: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: 12, maxHeight: '82%' },
-  snapText: { fontSize: 12, color: colors.textSoft, fontFamily: undefined, lineHeight: 18 },
+  page: { gap: 16 },
+  rangeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  stacked: { flexDirection: 'column', alignItems: 'stretch' },
+  card: { backgroundColor: palette.surface, borderRadius: 24, padding: 18, gap: 12 },
+  measureRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  cardTitle: { color: palette.text, fontSize: 17, lineHeight: 24, fontWeight: '600' },
+  comparison: { color: palette.text, fontSize: 34, lineHeight: 43, fontWeight: '500', letterSpacing: -1 },
+  unit: { color: palette.muted, fontSize: 15, lineHeight: 22, letterSpacing: 0 },
+  caption: { color: palette.muted, fontSize: 14, lineHeight: 21 },
+  body: { color: palette.text, fontSize: 17, lineHeight: 26 },
+  latestLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', minHeight: 48, gap: 9 },
+  linkText: { color: palette.accent, fontSize: 17, lineHeight: 24, fontWeight: '500', flexShrink: 1 },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  summaryLink: { flexDirection: 'row', alignItems: 'center', minHeight: 48, flexShrink: 1, gap: 9 },
+  more: { width: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  emptyAction: { backgroundColor: palette.accent, minHeight: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', padding: 12 },
+  pressed: { opacity: 0.65 },
 });

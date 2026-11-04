@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
-import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
@@ -65,10 +55,6 @@ export const ResetPasswordScreen: React.FC<Props> = ({ route }) => {
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         <AmbientBackground />
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-          <View style={s.brandRow}>
-            <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
-            <Text style={s.brandName}>GeneoRx</Text>
-          </View>
 
           <View style={s.iconWrap}>
             <View style={[s.iconCircle, { backgroundColor: colors.successBg, borderColor: colors.success }]}>
@@ -98,10 +84,6 @@ export const ResetPasswordScreen: React.FC<Props> = ({ route }) => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={s.brandRow}>
-            <Image source={require('../../assets/logo.png')} style={s.logo} resizeMode="contain" />
-            <Text style={s.brandName}>GeneoRx</Text>
-          </View>
 
           <View style={s.iconWrap}>
             <View style={s.iconCircle}>
@@ -117,6 +99,7 @@ export const ResetPasswordScreen: React.FC<Props> = ({ route }) => {
           <View style={s.field}>
             <Text style={s.label}>{t('mobile.auth.new_password')}</Text>
             <TextInput
+              accessibilityLabel={t('mobile.auth.new_password')}
               value={password}
               onChangeText={setPassword}
               placeholder={t('mobile.settings.new_pw_ph')}
@@ -132,6 +115,7 @@ export const ResetPasswordScreen: React.FC<Props> = ({ route }) => {
           <View style={s.field}>
             <Text style={s.label}>{t('mobile.settings.confirm_new_password')}</Text>
             <TextInput
+              accessibilityLabel={t('mobile.settings.confirm_new_password')}
               value={confirm}
               onChangeText={setConfirm}
               placeholder={t('mobile.settings.confirm_pw_ph')}
@@ -175,7 +159,7 @@ const s = StyleSheet.create({
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 36, alignSelf: 'flex-start' },
   logo: { height: 32, width: 124 },
-  brandName: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  brandName: { fontSize: 17, fontWeight: '500', color: colors.text, letterSpacing: -0.2 },
 
   iconWrap: { marginBottom: 24 },
   iconCircle: {
@@ -186,12 +170,12 @@ const s = StyleSheet.create({
   },
   iconText: { fontSize: 32 },
 
-  title: { fontSize: 28, fontWeight: '800', color: colors.text, letterSpacing: -0.6, marginBottom: 10, textAlign: 'center' },
-  sub: { fontSize: 15, color: colors.textSoft, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
-  em: { fontWeight: '700', color: colors.text },
+  title: { fontSize: 24, fontWeight: '600', color: colors.text, letterSpacing: -0.6, marginBottom: 10, textAlign: 'center' },
+  sub: { fontSize: 17, color: colors.textSoft, textAlign: 'center', lineHeight: 22, marginBottom: 28 },
+  em: { fontWeight: '500', color: colors.text },
 
   field: { width: '100%', gap: 6, marginBottom: 16 },
-  label: { fontSize: 13.5, fontWeight: '600', color: colors.textSoft },
+  label: { fontSize: 13.5, fontWeight: '500', color: colors.textSoft },
   input: {
     height: 50, paddingHorizontal: 14,
     borderWidth: 1, borderColor: colors.border, borderRadius: 12,
@@ -201,5 +185,5 @@ const s = StyleSheet.create({
   backBtn: { padding: 8, marginBottom: 24 },
   backText: { fontSize: 14.5, color: colors.textMuted, fontWeight: '500' },
 
-  legal: { fontSize: 12.5, color: colors.textDim, textAlign: 'center', lineHeight: 18, paddingHorizontal: 16 },
+  legal: { fontSize: 12.5, color: colors.textDim, textAlign: 'center', lineHeight: 22, paddingHorizontal: 16 },
 });

@@ -1,461 +1,94 @@
+import { FeedbackModal } from '@/components/FeedbackModal';
 import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  Image,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { TopBar } from '@/components/TopBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useProfile } from '@/store/ProfileContext';
 import { useAuth } from '@/auth/AuthContext';
-import { clearToken } from '@/auth/tokenStorage';
 import { useWizard } from '@/store/WizardContext';
-import { setReminderPreference } from '@/api/profile';
-import { enablePushNotifications, disablePushNotifications } from '@/notifications/push';
-import { wizardToSavePayload } from '@/wizard/sync';
-import { defaultWizardState } from '@/wizard/types';
+import { useReminderSettings } from '@/hooks/useReminderSettings';
 import { AmbientBackground } from '@/components/AmbientBackground';
+import { SaveState } from '@/components/SaveState';
 import { Input } from '@/components/Input';
 import { DropdownSelect } from '@/components/DropdownSelect';
 import { Button } from '@/components/Button';
-import { Loader } from '@/components/Loader';
+import { EditorSheet, ListRow, SectionHeading, refined } from '@/components/RefinedUI';
+import { Section, FinePrint } from '@/screens/wizard/ui';
+import { useToast } from '@/components/Toast';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTranslation } from '@/hooks/useTranslation';
-import { colors, spacing } from '@/theme';
+import { colors } from '@/theme';
 import type { ProfileStackParamList } from '@/navigation/ProfileStack';
+import { isValidOptionalAge, normalizeOptionalAge } from '@/wizard/account';
 
 export const ProfileScreen: React.FC = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
-  const { data, loading, refresh, save } = useProfile();
+  const toast = useToast();
+  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList, 'ProfileMain'>>();
+  const route = useRoute<RouteProp<ProfileStackParamList, 'ProfileMain'>>();
+  const { data, loading, refresh } = useProfile();
   const { signOut, user, isGuest } = useAuth();
-  const { reset: resetWizard } = useWizard();
+  const { state, savePayload } = useWizard();
   const { page, scrollBottom } = useResponsiveLayout();
-
+  const reminder = useReminderSettings();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [editor, setEditor] = useState<'personal' | 'health' | 'privacy' | null>(null);
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
   const [phone, setPhone] = useState('');
   const [pregnant, setPregnant] = useState(false);
   const [kidneyDisease, setKidneyDisease] = useState(false);
   const [anticoagulants, setAnticoagulants] = useState(false);
-  const [consent, setConsent] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [reminders, setReminders] = useState(false);
-  const [remindersBusy, setRemindersBusy] = useState(false);
-
+  useEffect(() => { if (route.params?.edit) { setEditor(route.params.edit); navigation.setParams({ edit: undefined }); } }, [route.params?.edit, navigation]);
   useEffect(() => {
-    if (!data) return;
-    setAge(String(data.profile?.age ?? ''));
-    setGender(data.profile?.gender ?? '');
-    setPhone(data.profile?.phone ?? '');
-    setPregnant(!!data.profile?.pregnant);
-    setKidneyDisease(!!data.profile?.kidneyDisease);
-    setAnticoagulants(!!data.profile?.anticoagulants);
-    setConsent(!!data.account?.consent);
-    const prefs = (data.portal_state as { reminderPreferences?: { enabled?: boolean } } | undefined)?.reminderPreferences;
-    setReminders(!!prefs?.enabled);
-  }, [data]);
-
-  async function toggleReminders(next: boolean) {
-    setRemindersBusy(true);
-    try {
-      if (next) {
-        // Requesting the OS permission + registering the token must succeed
-        // before we record the opt-in, so the cron never targets a device that
-        // can't actually receive.
-        const ok = await enablePushNotifications();
-        if (!ok) {
-          Alert.alert(t('mobile.reminders.denied_title'), t('mobile.reminders.denied_body'));
-          setReminders(false);
-          return;
-        }
-        await setReminderPreference(true);
-        setReminders(true);
-      } else {
-        await disablePushNotifications();
-        await setReminderPreference(false);
-        setReminders(false);
-      }
-    } catch (err) {
-      Alert.alert(
-        t('mobile.profile.save_error_title'),
-        err instanceof Error ? err.message : t('mobile.profile.save_error_body'),
-      );
-    } finally {
-      setRemindersBusy(false);
-    }
-  }
-
-  async function onSave() {
+    if (editor) return;
+    setAge(state.profile.age); setGender(state.profile.gender); setPhone(state.profile.phone);
+    setPregnant(state.profile.pregnant); setKidneyDisease(state.profile.kidneyDisease); setAnticoagulants(state.profile.anticoagulants);
+  }, [state.profile, editor]);
+  const saveDetails = async () => {
+    if (!isValidOptionalAge(age)) { Alert.alert(t('mobile.alert.error'), t('parity.age_error')); return; }
+    if (phone.length > 30) { Alert.alert(t('mobile.alert.error'), t('parity.phone_error')); return; }
     setSaving(true);
-    try {
-      await save({
-        profile: { age, gender, phone, pregnant, kidneyDisease, anticoagulants },
-        account: { consent },
-      });
-      Alert.alert(t('mobile.profile.saved_title'), t('mobile.profile.saved_body'));
-    } catch (err) {
-      Alert.alert(
-        t('mobile.profile.save_error_title'),
-        err instanceof Error ? err.message : t('mobile.profile.save_error_body'),
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function confirmResetApp() {
-    Alert.alert(
-      t('mobile.profile.reset_title'),
-      t('mobile.profile.reset_body'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('mobile.profile.reset_btn'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Wipe the server copy first, while we still have a valid token —
-              // resetWizard() alone only schedules a debounced save that would
-              // fire after sign-out and silently 401.
-              // replace_all makes the server actually wipe check-in history —
-              // a plain merge save would preserve it, since absence no longer
-              // means deletion.
-              await save({ ...wizardToSavePayload(defaultWizardState(), []), replace_all: true });
-            } catch {
-              // offline — local wipe still proceeds
-            }
-            try {
-              resetWizard();
-              await AsyncStorage.clear();
-              await clearToken();
-            } catch {
-              // best-effort — still sign out below
-            }
-            await signOut();
-          },
-        },
-      ],
-    );
-  }
-
-  if (loading && !data) return <Loader />;
-
-  const displayName = data?.user?.name || user?.name || t('mobile.profile.your_account');
-  const displayEmail = data?.user?.email || user?.email || '';
-  const initials = displayName.charAt(0).toUpperCase();
-
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <AmbientBackground />
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: scrollBottom }]}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={page}>
-        {/* HEADER */}
-        <View style={styles.brandRow}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.brandLogo}
-            resizeMode="contain"
-          />
-          <Text style={styles.brandName}>GeneoRx</Text>
-          <Pressable
-            onPress={() => navigation.navigate('Settings')}
-            style={({ pressed }) => [styles.settingsBtn, pressed && { opacity: 0.7 }]}
-            hitSlop={8}
-          >
-            <Text style={styles.settingsBtnText}>{t('mobile.profile.settings')}</Text>
-          </Pressable>
-        </View>
-
-        {/* PROFILE HEADER */}
-        <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
-          <View style={styles.profileMeta}>
-            <Text style={styles.profileName}>{displayName}</Text>
-            <Text style={styles.profileEmail}>{displayEmail || t('mobile.profile.no_email')}</Text>
-            <View style={[styles.planTag, isGuest && styles.planTagGuest]}>
-              <Text style={[styles.planTagText, isGuest && styles.planTagTextGuest]}>
-                {isGuest ? t('mobile.profile.guest_mode') : t('mobile.profile.free_plan')}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ASK A DOCTOR */}
-        <Pressable
-          onPress={() => navigation.navigate('Doctor')}
-          style={({ pressed }) => [styles.section, styles.doctorRow, pressed && { opacity: 0.8 }]}
-          accessibilityRole="button"
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.doctorTitle}>{t('doctor.nav')}</Text>
-            <Text style={styles.doctorSub}>{t('doctor.sub')}</Text>
-          </View>
-          <Text style={styles.doctorChevron}>&#8250;</Text>
-        </Pressable>
-
-        {/* HEALTH PROFILE SECTION */}
-        <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTag}>  {t('mobile.profile.health_tag')}</Text>
-            <Text style={styles.sectionTitle}>{t('mobile.profile.about_you')}</Text>
-            <Text style={styles.sectionSub}>{t('mobile.profile.about_sub')}</Text>
-          </View>
-
-          <View style={styles.row}>
-            <View style={styles.col}>
-              <Input label={t('account.age')} value={age} onChangeText={setAge} keyboardType="number-pad" placeholder={t('account.age_placeholder')} />
-            </View>
-            <View style={styles.col}>
-              <DropdownSelect
-                label={t('account.gender')}
-                placeholder={t('account.gender')}
-                value={gender}
-                onChange={setGender}
-                options={[
-                  { value: 'Female', label: t('gender.female') },
-                  { value: 'Male', label: t('gender.male') },
-                  { value: 'Non-binary', label: t('gender.non_binary') },
-                  { value: 'Prefer not to say', label: t('gender.prefer_not') },
-                ]}
-              />
-            </View>
-          </View>
-          <Input label={t('mobile.profile.phone_optional')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+1 555 000 0000" />
-        </View>
-
-        {/* SAFETY FLAGS */}
-        <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTag}>  {t('mobile.profile.safety_tag')}</Text>
-            <Text style={styles.sectionTitle}>{t('mobile.profile.safety_title')}</Text>
-            <Text style={styles.sectionSub}>{t('mobile.profile.safety_sub')}</Text>
-          </View>
-
-          <Toggle
-            label={t('account.pregnant')}
-            description={t('mobile.profile.pregnant_desc')}
-            value={pregnant}
-            onValueChange={setPregnant}
-          />
-          <Toggle
-            label={t('account.chip.kidney')}
-            description={t('mobile.profile.kidney_desc')}
-            value={kidneyDisease}
-            onValueChange={setKidneyDisease}
-          />
-          <Toggle
-            label={t('account.chip.anticoag')}
-            description={t('mobile.profile.anticoag_desc')}
-            value={anticoagulants}
-            onValueChange={setAnticoagulants}
-          />
-        </View>
-
-        {/* CONSENT */}
-        <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTag}>  {t('mobile.profile.consent_tag')}</Text>
-            <Text style={styles.sectionTitle}>{t('mobile.profile.consent_title')}</Text>
-          </View>
-          <Toggle
-            label={t('mobile.profile.consent_label')}
-            description={t('mobile.profile.consent_desc')}
-            value={consent}
-            onValueChange={setConsent}
-          />
-        </View>
-
-        {/* REMINDERS */}
-        <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>{t('mobile.reminders.title')}</Text>
-            <Text style={styles.sectionSub}>{t('mobile.reminders.sub')}</Text>
-          </View>
-          <Toggle
-            label={t('mobile.reminders.weekly_label')}
-            description={t('mobile.reminders.weekly_desc')}
-            value={reminders}
-            onValueChange={remindersBusy ? () => undefined : toggleReminders}
-          />
-        </View>
-
-        {/* ACTIONS */}
-        <View style={styles.actions}>
-          <Button title={t('mobile.profile.save')} onPress={onSave} loading={saving} />
-          <Button title={t('mobile.profile.sign_out')} variant="secondary" onPress={signOut} />
-          <Pressable
-            onPress={confirmResetApp}
-            style={({ pressed }) => [styles.resetLink, pressed && { opacity: 0.6 }]}
-            hitSlop={8}
-          >
-            <Text style={styles.resetLinkText}>{t('mobile.profile.reset_link')}</Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.legal}>{t('mobile.settings.copyright')}</Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-};
-
-const Toggle: React.FC<{
-  label: string;
-  description?: string;
-  value: boolean;
-  onValueChange: (v: boolean) => void;
-}> = ({ label, description, value, onValueChange }) => (
-  <View style={toggleStyles.row}>
-    <View style={{ flex: 1 }}>
-      <Text style={toggleStyles.label}>{label}</Text>
-      {description ? <Text style={toggleStyles.description}>{description}</Text> : null}
+    try { const outcome = await savePayload({ profile: { age: normalizeOptionalAge(age), gender, phone, pregnant, kidneyDisease, anticoagulants } }); setEditor(null); toast.show(t('tracking.saved.' + outcome)); }
+    catch (error) { toast.show(error instanceof Error ? error.message : t('mobile.alert.try_again'), 'error'); }
+    finally { setSaving(false); }
+  };
+  const setAiConsent = async (aiConsent: boolean) => {
+    setSaving(true);
+    try { const outcome = await savePayload({ account: { aiConsent } }); toast.show(t('tracking.saved.' + outcome)); }
+    catch (error) { toast.show(error instanceof Error ? error.message : t('mobile.alert.try_again'), 'error'); }
+    finally { setSaving(false); }
+  };
+  const setConsent = async (consent: boolean) => {
+    setSaving(true);
+    try { const outcome = await savePayload({ account: { consent } }); toast.show(t('tracking.saved.' + outcome)); }
+    catch (error) { toast.show(error instanceof Error ? error.message : t('mobile.alert.try_again'), 'error'); }
+    finally { setSaving(false); }
+  };
+  const name = data?.user?.name || user?.name || t('common.guest');
+  return <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}><AmbientBackground /><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 20, paddingBottom: scrollBottom }} refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}><View style={[page, { gap: 20 }]}>
+    <TopBar />
+    <Text accessibilityRole="header" style={styles.title}>{t('refined.account_title')}</Text>
+    <SaveState />
+    <View style={styles.identity}><View style={styles.avatar} accessible={false}><Text style={{ fontSize: 26, fontWeight: '700', color: colors.onPine }}>{name.trim().slice(0, 1).toUpperCase()}</Text></View><View style={{ flex: 1, gap: 5 }}><Text style={{ color: colors.text, fontSize: 21, lineHeight: 28, fontWeight: '500' }}>{name}</Text><Text style={refined.meta}>{isGuest ? t('mobile.profile.guest_mode') : user?.email}</Text></View></View>
+    <View style={refined.listGroup}>
+      <ListRow icon="account" title={t('refined.personal_title')} onPress={() => setEditor('personal')} />
+      <ListRow icon="heart" title={t('parity.health')} onPress={() => setEditor('health')} />
+      <ListRow icon="plan" title={t('mobile.profile.settings')} onPress={() => navigation.navigate('Settings')} />
+      <ListRow icon="file" title={t('clean.tracking_privacy')} onPress={() => setEditor('privacy')} />
+      <ListRow icon="spark" title={t('ai.feedback')} onPress={() => setFeedbackOpen(true)} last />
     </View>
-    <Switch
-      value={value}
-      onValueChange={onValueChange}
-      trackColor={{ true: colors.primaryLight, false: colors.border }}
-      thumbColor={value ? colors.primary : '#FFFFFF'}
-      ios_backgroundColor={colors.border}
-    />
-  </View>
-);
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.backgroundAlt },
-  content: {
-    alignItems: 'center',
-    paddingTop: spacing.sm,
-    gap: spacing.md,
-  },
-
-  /* BRAND */
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  brandLogo: { height: 32, width: 124 },
-  brandName: { fontSize: 14.5, fontWeight: '800', color: colors.text, letterSpacing: -0.2, flex: 1 },
-  settingsBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: colors.primary50,
-  },
-  settingsBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primaryDark,
-  },
-
-  /* PROFILE HEADER */
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: colors.background,
-    borderRadius: 14,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primary50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.primary100,
-  },
-  avatarText: { fontSize: 22, fontWeight: '800', color: colors.primaryDark },
-  profileMeta: { flex: 1 },
-  profileName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    letterSpacing: -0.3,
-    marginBottom: 2,
-  },
-  profileEmail: { fontSize: 13, color: colors.textMuted, marginBottom: 8 },
-  planTag: {
-    alignSelf: 'flex-start',
-    paddingVertical: 3,
-    paddingHorizontal: 9,
-    borderRadius: 5,
-    backgroundColor: colors.primary50,
-  },
-  planTagText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    color: colors.primaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  planTagGuest: { backgroundColor: colors.surfaceAlt },
-  planTagTextGuest: { color: colors.textMuted },
-
-  /* SECTION */
-  section: {
-    backgroundColor: colors.background,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  doctorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  doctorTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
-  doctorSub: { fontSize: 14, lineHeight: 20, color: colors.textMuted, marginTop: 2 },
-  doctorChevron: { fontSize: 24, color: colors.textMuted },
-  sectionHead: { gap: 4, marginBottom: 4 },
-  sectionTag: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: colors.primaryDark,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
-  sectionSub: { fontSize: 13, color: colors.textMuted, lineHeight: 18, marginTop: 2 },
-
-  row: { flexDirection: 'row', gap: spacing.sm },
-  col: { flex: 1 },
-
-  /* ACTIONS */
-  actions: { gap: 10, marginTop: 4 },
-  resetLink: { alignItems: 'center', paddingVertical: 8, marginTop: 2 },
-  resetLinkText: { fontSize: 13, fontWeight: '600', color: colors.danger },
-
-  legal: {
-    fontSize: 11.5,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
-});
-
-const toggleStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
-  },
-  label: { fontSize: 15, fontWeight: '600', color: colors.text },
-  description: { fontSize: 12.5, color: colors.textMuted, marginTop: 2, lineHeight: 17 },
-});
+    <FeedbackModal visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+    <Button title={t('mobile.profile.sign_out')} variant="ghost" onPress={() => { void signOut(); }} />
+  </View></ScrollView>
+    <EditorSheet visible={editor !== null} title={t(editor === 'privacy' ? 'clean.tracking_privacy' : editor === 'health' ? 'parity.health' : 'refined.personal_title')} onClose={() => { if (!saving) setEditor(null); }} footer={editor === 'privacy' ? undefined : <Button title={t('tracking.save_details')} loading={saving} onPress={() => { void saveDetails(); }} />}>
+      {editor === 'privacy' ? <><Toggle label={t('parity.consent')} detail={t('parity.consent_sub')} value={state.account.consent} disabled={saving} onChange={v => { void setConsent(v); }} /><Toggle label={t('ai.consent_label')} detail={t('ai.consent_sub')} value={state.account.aiConsent} disabled={saving} onChange={v => { void setAiConsent(v); }} /></> : editor === 'personal' ? <><Input label={t('account.age')} value={age} onChangeText={setAge} keyboardType="number-pad" maxLength={3} /><DropdownSelect label={t('account.gender')} value={gender} onChange={setGender} options={['Female','Male','Non-binary','Prefer not to say'].map((v,i) => ({ value: v, label: t(['gender.female','gender.male','gender.non_binary','gender.prefer_not'][i]) }))} /><Input label={t('mobile.profile.phone_optional')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={30} /></> : <><Toggle label={t('account.pregnant')} detail={t('mobile.profile.pregnant_desc')} value={pregnant} onChange={setPregnant} /><Toggle label={t('account.chip.kidney')} detail={t('mobile.profile.kidney_desc')} value={kidneyDisease} onChange={setKidneyDisease} /><Toggle label={t('account.chip.anticoag')} detail={t('mobile.profile.anticoag_desc')} value={anticoagulants} onChange={setAnticoagulants} /></>}
+    </EditorSheet>
+  </SafeAreaView>;
+};
+const Toggle: React.FC<{ label: string; detail?: string; value: boolean; disabled?: boolean; onChange: (v: boolean) => void }> = ({ label, detail, value, disabled, onChange }) => <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 10 }}><View style={{ flex: 1, gap: 4 }}><Text style={refined.rowTitle}>{label}</Text>{detail ? <Text style={refined.meta}>{detail}</Text> : null}</View><Switch accessibilityLabel={label} value={value} disabled={disabled} onValueChange={onChange} trackColor={{ false: colors.border, true: colors.primary }} thumbColor={value ? colors.onPrimary : '#FFFFFF'} /></View>;
+const styles = StyleSheet.create({safe:{ flex:1,backgroundColor:colors.background }, title:{flex:1,fontSize:33,lineHeight:39,fontWeight:'700',letterSpacing:-.8,color:colors.pine},identity:{flexDirection:'row',alignItems:'center',gap:14,paddingVertical:20},avatar:{width:64,height:64,borderRadius:32,alignItems:'center',justifyContent:'center',backgroundColor:colors.pine,borderWidth:3,borderColor:colors.coralSoft}});

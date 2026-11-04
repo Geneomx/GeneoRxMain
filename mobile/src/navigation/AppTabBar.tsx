@@ -1,13 +1,15 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { AppTabsParamList } from '@/navigation/AppTabs';
 import type { ClinicTabsParamList } from '@/navigation/ClinicTabs';
 import { TAB_BAR_HEIGHT } from '@/hooks/useResponsiveLayout';
-import { colors, gradients, radius, touchMin } from '@/theme';
+import { colors, shadow, touchMin } from '@/theme';
+import { useWizard } from '@/store/WizardContext';
+import { dashboardPalette as palette } from '@/theme/dashboard';
 
 /**
  * This bar is shared by the patient tabs and the clinician's two, so the order
@@ -29,20 +31,22 @@ const ICON_SIZE_COMPACT = 24;
 
 export const AppTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   const { t } = useTranslation();
+  const { openPlanHub } = useWizard();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const iconOnly = width < 360;
+  const { width, fontScale } = useWindowDimensions();
+  const navigationScale = Math.min(fontScale, 1.5);
+  const iconOnly = false;
   const bottomInset = Math.max(insets.bottom, 8);
 
   return (
-    <View style={[styles.wrap, { height: TAB_BAR_HEIGHT + bottomInset, paddingBottom: bottomInset }]}>
+    <View style={[styles.wrap, { minHeight: TAB_BAR_HEIGHT + bottomInset, height: Math.max(TAB_BAR_HEIGHT, 40 + 34 * navigationScale) + bottomInset, paddingBottom: bottomInset }]}>
       <View style={styles.row}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
           const { options } = descriptors[route.key];
           const icon = options.tabBarIcon?.({
             focused,
-            color: focused ? colors.onPrimary : colors.textSoft,
+            color: focused ? colors.onPine : palette.muted,
             size: iconOnly ? ICON_SIZE_COMPACT : ICON_SIZE,
           });
 
@@ -54,6 +58,7 @@ export const AppTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, nav
               target: route.key,
               canPreventDefault: true,
             });
+            if (!event.defaultPrevented && route.name === 'Guided') openPlanHub();
             if (!focused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }
@@ -70,21 +75,12 @@ export const AppTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, nav
               style={styles.item}
             >
               <View style={[styles.pill, focused ? styles.pillOn : styles.pillOff]}>
-                {focused && (
-                  <LinearGradient
-                    colors={gradients.stepActive}
-                    start={gradients.start}
-                    end={gradients.end}
-                    style={StyleSheet.absoluteFill}
-                  />
-                )}
-                <View style={[styles.iconWrap, iconOnly && styles.iconWrapLarge]}>{icon}</View>
+                <View style={[styles.iconWrap, focused && styles.iconWrapFocused, iconOnly && styles.iconWrapLarge]}>{icon}</View>
                 {!iconOnly ? (
                   <Text
+                    maxFontSizeMultiplier={1.5}
+                    numberOfLines={1}
                     style={[styles.label, focused ? styles.labelOn : styles.labelOff]}
-                    numberOfLines={2}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.8}
                   >
                     {label}
                   </Text>
@@ -100,17 +96,21 @@ export const AppTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, nav
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: colors.backgroundAlt,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSoft,
+    backgroundColor: colors.background,
     paddingTop: 6,
-    paddingHorizontal: 4,
+    paddingHorizontal: 16,
   },
   row: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'stretch',
-    gap: 3,
+    gap: 4,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 34,
+    padding: 6,
+    ...shadow.raised,
   },
   item: {
     flex: 1,
@@ -123,42 +123,44 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 5,
+    paddingVertical: 4,
     paddingHorizontal: 2,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderRadius: 28,
+    borderWidth: 0,
     gap: 3,
     overflow: 'hidden',
   },
   pillOff: {
-    backgroundColor: colors.ghostBg,
-    borderColor: colors.borderSoft,
+    backgroundColor: 'transparent',
   },
   pillOn: {
-    backgroundColor: 'transparent',
-    borderColor: 'rgba(40, 225, 255, 0.35)',
+    backgroundColor: colors.pine,
   },
   iconWrap: {
-    height: ICON_SIZE,
+    width: 44,
+    height: 27,
+    borderRadius: 12,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconWrapFocused: { backgroundColor: 'transparent' },
   iconWrapLarge: {
     height: ICON_SIZE_COMPACT + 4,
   },
   label: {
-    fontSize: 10.5,
-    lineHeight: 12,
+    fontSize: 12.5,
+    lineHeight: 18,
     textAlign: 'center',
     maxWidth: '100%',
     paddingHorizontal: 1,
   },
   labelOff: {
-    fontWeight: '600',
-    color: colors.textSoft,
+    fontWeight: '700',
+    color: palette.muted,
   },
   labelOn: {
-    fontWeight: '900',
-    color: colors.onPrimary,
+    fontWeight: '700',
+    color: colors.onPine,
   },
 });

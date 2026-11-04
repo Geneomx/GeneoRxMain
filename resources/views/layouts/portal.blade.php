@@ -6,6 +6,9 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>GeneoRx — Trusted Health Companion Portal</title>
   @include('partials.logo-head')
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
   @include('include.style')
   @stack('styles')
   <style>
@@ -110,9 +113,10 @@
     }
     .save-account-cta-title { font-weight: 900; font-size: 15px; margin-bottom: 6px; }
   </style>
+  <link rel="stylesheet" href="{{ asset('css/clean-ui.css') }}">
 </head>
-<body>
-  @include('partials.logo-bg-animation')
+<body class="gx-clean">
+  <a class="skip-link" href="#main-content">Skip to content</a>
   <div id="toast" class="toast" data-i18n="toast.saved">Saved ✓</div>
 
   <div id="backdrop" class="modalBackdrop"></div>
@@ -295,9 +299,9 @@
     </div>
   </div>
 
-  <div class="wrap">
+  <main class="wrap" id="main-content">
     @yield('content')
-  </div>
+  </main>
 
   @yield('scripts')
 </body>

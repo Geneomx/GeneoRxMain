@@ -7,26 +7,30 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { AppState } from 'react-native';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { createDraftStore } from '@/wizard/draftStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchProfile, saveProfile } from '@/api/profile';
 import { useAuth } from '@/auth/AuthContext';
 import type { MedEntry } from '@/content/wizardData';
 import { normalizeStep } from '@/content/wizardData';
-import { loadGuestProfile } from '@/store/guestStore';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import { defaultWizardState, type WizardState } from '@/wizard/types';
 import {
   applyProfileToWizard,
   applySavePayload,
-  backendResponseHasData,
-  localHasMeaningfulData,
-  mergeBackendIntoWizard,
   wizardToSavePayload,
 } from '@/wizard/sync';
-import type { SaveProfilePayload } from '@/types/api';
+import type { ProfileResponse, SaveProfilePayload } from '@/types/api';
 import { emitSyncError } from '@/store/syncEvents';
 
-const STORAGE_KEY = 'geniorx_consumer_portal_v1_split';
+import { ApiError, getApiBaseUrl } from '@/api/client';
+import { createSaveQueue, wizardStorageKey } from '@/wizard/session';
+import { reconcileCheckinIds } from '@/wizard/sync';
+import { refreshTrackingRecord } from '@/wizard/refreshTrackingRecord';
+import { CheckinDraftProvider } from './CheckinDraftContext';
+import { SetupProvider } from './SetupContext';
 const TOTAL_STEPS = 10;
 const BACKEND_SAVE_MS = 450;
 
@@ -34,17 +38,24 @@ function clampStep(n: number): number {
   return Math.max(0, Math.min(TOTAL_STEPS - 1, n));
 }
 
+export type SaveStatus = 'loading' | 'saving' | 'saved' | 'device' | 'pending' | 'error' | 'unavailable';
+export type SaveOutcome = 'synced' | 'device' | 'pending';
 interface WizardContextValue {
   state: WizardState;
   hydrated: boolean;
   syncing: boolean;
+  saveStatus: SaveStatus;
+  retrySave: () => Promise<SaveOutcome>;
+  serverProfile: ProfileResponse | null;
   update: (mutator: (draft: WizardState) => void) => void;
   setStep: (n: number) => void;
+  planHubOpen: boolean;
+  openPlanHub: () => void;
   next: () => void;
   prev: () => void;
   reset: () => void;
   refresh: () => Promise<void>;
-  savePayload: (payload: SaveProfilePayload) => Promise<void>;
+  savePayload: (payload: SaveProfilePayload) => Promise<SaveOutcome>;
   /**
    * Ephemeral (not persisted/synced) — what Results should surface at the top
    * and land the user on, when they arrive from a spot that names something:
@@ -62,200 +73,246 @@ export type FocusTarget =
 const WizardContext = createContext<WizardContextValue | undefined>(undefined);
 
 export const WizardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isGuest } = useAuth();
+  const storageKey = wizardStorageKey(getApiBaseUrl(), user?.email, isGuest);
+  // Remount the session when the account changes: no previous patient's state,
+  // pending timer or response may become visible in the next account.
+  return <CheckinDraftProvider key={storageKey} storageKey={storageKey}><WizardSession storageKey={storageKey}>{children}</WizardSession></CheckinDraftProvider>;
+};
+
+const WizardSession: React.FC<{ storageKey: string; children: React.ReactNode }> = ({ storageKey, children }) => {
   const { token, isGuest, loading: authLoading } = useAuth();
   const { catalog, mergeCustomMeds } = useMedCatalog();
   const [state, setState] = useState<WizardState>(defaultWizardState);
   const [hydrated, setHydrated] = useState(false);
+  const [planHubOpen, setPlanHubOpen] = useState(true);
+  const [setupReset, setSetupReset] = useState(0);
+  const openPlanHub = useCallback(() => setPlanHubOpen(true), []);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('loading');
+  const { online, ready } = useNetworkStatus();
+  const onlineRef = useRef(online);
+  onlineRef.current = online;
+  const writeDraft = useMemo(() => createDraftStore(AsyncStorage, storageKey), [storageKey]);
   const [syncing, setSyncing] = useState(false);
+  const [serverProfile, setServerProfile] = useState<ProfileResponse | null>(null);
   const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
   const stateRef = useRef(state);
-  const catalogRef = useRef<MedEntry[]>(catalog);
+  const catalogRef = useRef(catalog);
+  const active = useRef(true);
+  const revision = useRef(0);
+  const dirtyRef = useRef(false);
+  const accountSnapshotAvailable = useRef(false);
+  const pendingDeletes = useRef<Array<string | number>>([]);
   const backendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  stateRef.current = state;
+  const enqueue = useRef(createSaveQueue()).current;
   catalogRef.current = catalog;
 
-  const persistLocal = useCallback((next: WizardState) => {
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => undefined);
-  }, []);
-
-  const scheduleBackendSave = useCallback(() => {
-    if (isGuest || !token) return;
-    if (backendTimerRef.current) clearTimeout(backendTimerRef.current);
-    backendTimerRef.current = setTimeout(() => {
-      void (async () => {
-        setSyncing(true);
-        try {
-          await saveProfile(wizardToSavePayload(stateRef.current, catalogRef.current));
-        } catch {
-          emitSyncError();
-        } finally {
-          setSyncing(false);
-        }
-      })();
-    }, BACKEND_SAVE_MS);
-  }, [isGuest, token]);
-
-  const commit = useCallback(
-    (next: WizardState) => {
-      setState(next);
-      persistLocal(next);
-      scheduleBackendSave();
-    },
-    [persistLocal, scheduleBackendSave],
-  );
-
-  const loadInitial = useCallback(async () => {
-    let local = defaultWizardState();
+  const persistLocal = useCallback(async (next: WizardState, dirty = true) => {
+    const savedRevision = revision.current;
+    if (active.current) setSaveStatus('saving');
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) local = { ...defaultWizardState(), ...(JSON.parse(raw) as Partial<WizardState>) };
-    } catch {
-      // ignore
+      await writeDraft({ state: next, dirty, customMedCatalog: catalogRef.current.filter(med => med.id.startsWith('custom_')), deletedCheckins: [...pendingDeletes.current] });
+      if (active.current && revision.current === savedRevision) setSaveStatus(isGuest ? 'device' : dirty ? 'pending' : 'saved');
+    } catch (error) {
+      if (active.current) setSaveStatus('error');
+      throw error;
     }
+  }, [writeDraft, isGuest]);
 
-    if (isGuest) {
-      try {
-        const guest = await loadGuestProfile();
-        if (!localHasMeaningfulData(local) && backendResponseHasData(guest)) {
-          local = applyProfileToWizard(local, guest);
-        }
-      } catch {
-        // ignore
-      }
-      local.step = normalizeStep(local.step, true);
-      return local;
-    }
-
-    if (!token) {
-      local.step = normalizeStep(local.step, false);
-      return local;
-    }
-
-    const snapshot = JSON.parse(JSON.stringify(local)) as WizardState;
-    try {
-      const data = await fetchProfile();
-      const { state: merged, needsBackendPush } = mergeBackendIntoWizard(local, data, snapshot);
-
-      const ps = data.portal_state || {};
-      if (Array.isArray(ps.customMedCatalog)) {
-        mergeCustomMeds(ps.customMedCatalog as MedEntry[]);
-      }
-
-      if (needsBackendPush) {
-        persistLocal(merged);
-        try {
-          await saveProfile(wizardToSavePayload(merged, catalogRef.current));
-        } catch {
-          emitSyncError();
-        }
-      }
-      merged.step = normalizeStep(merged.step, false);
-      return merged;
-    } catch {
-      emitSyncError();
-      local.step = normalizeStep(local.step, false);
-      return local;
-    }
-  }, [isGuest, token, mergeCustomMeds, persistLocal]);
-
-  const refresh = useCallback(async () => {
-    if (isGuest || !token) return;
+  const sync = useCallback((snapshot: WizardState, intent?: SaveProfilePayload, savedRevision = revision.current): Promise<SaveOutcome> => enqueue(async () => {
+    if (!active.current || isGuest || !token) return 'device';
+    if (!onlineRef.current) { setSaveStatus('pending'); return 'pending'; }
     setSyncing(true);
+    setSaveStatus('saving');
     try {
-      const data = await fetchProfile();
-      const snapshot = JSON.parse(JSON.stringify(stateRef.current)) as WizardState;
-      const { state: merged } = mergeBackendIntoWizard(stateRef.current, data, snapshot);
-      const ps = data.portal_state || {};
-      if (Array.isArray(ps.customMedCatalog)) {
-        mergeCustomMeds(ps.customMedCatalog as MedEntry[]);
-      }
-      commit(merged);
-    } catch {
-      emitSyncError();
+      const payload = wizardToSavePayload(snapshot, catalogRef.current);
+      const deleted = [...new Set([...pendingDeletes.current, ...(intent?.deleted_checkins || [])])];
+      if (deleted.length) payload.deleted_checkins = deleted;
+      if (intent?.replace_all) payload.replace_all = true;
+      await saveProfile(payload, token);
+      if (!active.current) return 'synced';
+      pendingDeletes.current = pendingDeletes.current.filter(id => !deleted.includes(id));
+      const unchanged = revision.current === savedRevision;
+      dirtyRef.current = !unchanged;
+      let next = stateRef.current;
+      try {
+        const response = await fetchProfile(undefined, token);
+        if (!active.current) return 'synced';
+        setServerProfile(response);
+        next = reconcileCheckinIds(stateRef.current, response.checkins);
+      } catch { next = stateRef.current; /* Keep edits made while id recovery was pending. */ }
+      if (!active.current) return 'synced';
+      // Re-read the revision after id recovery; a newer edit may have arrived.
+      dirtyRef.current = revision.current !== savedRevision;
+      stateRef.current = next;
+      setState(next);
+      await persistLocal(next, dirtyRef.current);
+      return 'synced';
+    } catch (error) {
+      if (active.current) { setSaveStatus(error instanceof ApiError && error.status >= 400 && error.status < 500 && ![408, 429].includes(error.status) ? 'error' : 'pending'); emitSyncError(); }
+      throw error;
     } finally {
-      setSyncing(false);
+      if (active.current) setSyncing(false);
     }
-  }, [isGuest, token, commit, mergeCustomMeds]);
+  }), [enqueue, isGuest, token, persistLocal]);
+
+  const commit = useCallback((next: WizardState, autosave = true) => {
+    // An unreachable first load must never upload an empty replacement profile.
+    if (!isGuest && token && !accountSnapshotAvailable.current) {
+      setSaveStatus('unavailable');
+      return Promise.reject(new Error('Load your account before editing its tracking record.'));
+    }
+    revision.current += 1;
+    dirtyRef.current = true;
+    stateRef.current = next;
+    setState(next);
+    const durable = persistLocal(next);
+    if (backendTimerRef.current) clearTimeout(backendTimerRef.current);
+    if (autosave && !isGuest && token) {
+      backendTimerRef.current = setTimeout(() => { void durable.then(() => sync(stateRef.current)).catch(() => undefined); }, BACKEND_SAVE_MS);
+    }
+    return durable;
+  }, [persistLocal, isGuest, token, sync]);
+
+  const retrySave = useCallback(async (): Promise<SaveOutcome> => {
+    if (!isGuest && token && (!accountSnapshotAvailable.current || !dirtyRef.current)) {
+      setSaveStatus('loading');
+      const before = revision.current;
+      let loaded = false;
+      try {
+        const data = await fetchProfile(undefined, token);
+        loaded = true;
+        if (!active.current) return 'pending';
+        accountSnapshotAvailable.current = true;
+        setServerProfile(data);
+        if (before !== revision.current || dirtyRef.current) return await sync(stateRef.current);
+        const next = applyProfileToWizard(stateRef.current, data);
+        stateRef.current = next;
+        setState(next);
+        await persistLocal(next, false);
+        return 'synced';
+      } catch (error) { if (active.current && !loaded) setSaveStatus(accountSnapshotAvailable.current ? 'device' : 'unavailable'); throw error; }
+    }
+    await persistLocal(stateRef.current, dirtyRef.current);
+    if (isGuest || !token) return 'device';
+    try { return await sync(stateRef.current); } catch { return 'pending'; }
+  }, [persistLocal, isGuest, token, sync]);
 
   useEffect(() => {
     if (authLoading) return;
-    let active = true;
+    active.current = true;
     (async () => {
-      const loaded = await loadInitial();
-      if (active) {
-        setState(loaded);
-        setHydrated(true);
+      let local = defaultWizardState();
+      let dirty = false;
+      let accountReadFailed = false;
+      try {
+        const raw = await AsyncStorage.getItem(storageKey);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          local = { ...local, ...cached.state };
+          accountSnapshotAvailable.current = !!cached.state;
+          if (Array.isArray(cached.customMedCatalog)) { catalogRef.current = [...new Map([...catalogRef.current, ...cached.customMedCatalog].map(med => [med.id, med])).values()]; mergeCustomMeds(cached.customMedCatalog); }
+          dirty = cached.dirty === true;
+          dirtyRef.current = dirty;
+          pendingDeletes.current = Array.isArray(cached.deletedCheckins) ? cached.deletedCheckins : [];
+        }
+        // The legacy device-wide cache has no reliable owner. Do not import
+        // it into a signed-in account or silently upload another user's data.
+        if (token && !isGuest) {
+          const data = await fetchProfile(undefined, token);
+          if (!active.current) return;
+          accountSnapshotAvailable.current = true;
+          setServerProfile(data);
+          if (Array.isArray(data.portal_state?.customMedCatalog)) { const custom = data.portal_state.customMedCatalog as MedEntry[]; catalogRef.current = [...new Map([...catalogRef.current, ...custom].map(med => [med.id, med])).values()]; mergeCustomMeds(custom); }
+          if (dirty) {
+            local = reconcileCheckinIds(local, data.checkins);
+          } else {
+            local = applyProfileToWizard(local, data);
+          }
+        }
+      } catch { if (token && !isGuest) { accountReadFailed = true; emitSyncError(); } }
+      if (!active.current) return;
+      local.step = normalizeStep(local.step, isGuest);
+      stateRef.current = local;
+      setState(local);
+      setHydrated(true);
+      if (accountReadFailed && !accountSnapshotAvailable.current) {
+        setSaveStatus('unavailable');
+      } else {
+        void persistLocal(local, dirty).then(() => {
+          if (active.current && accountReadFailed && !dirty) setSaveStatus('device');
+        }).catch(() => undefined);
       }
+      if (dirty && token && !isGuest) void sync(local).catch(() => undefined);
     })();
     return () => {
-      active = false;
+      active.current = false;
       if (backendTimerRef.current) clearTimeout(backendTimerRef.current);
     };
-  }, [loadInitial, authLoading, token, isGuest]);
+  }, [authLoading, storageKey, token, isGuest, mergeCustomMeds, sync]);
 
-  const update = useCallback(
-    (mutator: (draft: WizardState) => void) => {
-      setState((prev) => {
-        const draft: WizardState = JSON.parse(JSON.stringify(prev));
-        mutator(draft);
-        persistLocal(draft);
-        scheduleBackendSave();
-        return draft;
+  const refresh = useCallback(async () => {
+    if (isGuest || !token) return;
+    if (backendTimerRef.current) clearTimeout(backendTimerRef.current);
+    try {
+      await refreshTrackingRecord({
+        pending: () => dirtyRef.current,
+        revision: () => revision.current,
+        active: () => active.current,
+        sync: () => sync(stateRef.current),
+        load: () => fetchProfile(undefined, token),
+        apply: async data => {
+          accountSnapshotAvailable.current = true;
+          setServerProfile(data);
+          const next = applyProfileToWizard(stateRef.current, data);
+          stateRef.current = next;
+          setState(next);
+          await persistLocal(next, false);
+        },
       });
-    },
-    [persistLocal, scheduleBackendSave],
-  );
+    } catch { if (!accountSnapshotAvailable.current) setSaveStatus('unavailable'); emitSyncError(); }
+  }, [isGuest, token, sync, persistLocal]);
 
-  const savePayload = useCallback(
-    async (payload: SaveProfilePayload) => {
-      const draft: WizardState = JSON.parse(JSON.stringify(stateRef.current));
-      applySavePayload(draft, payload);
-      commit(draft);
-      if (!isGuest && token) {
-        setSyncing(true);
-        try {
-          const built = wizardToSavePayload(draft, catalogRef.current);
-          // The rebuilt payload is derived from state and so cannot carry these
-          // intent flags; forward them from the caller's payload explicitly.
-          if (payload.deleted_checkins?.length) built.deleted_checkins = payload.deleted_checkins;
-          if (payload.replace_all) built.replace_all = true;
-          await saveProfile(built);
-        } catch {
-          emitSyncError();
-        } finally {
-          setSyncing(false);
-        }
-      }
-    },
-    [commit, isGuest, token],
-  );
-
-  const setStep = useCallback(
-    (n: number) => update((d) => { d.step = normalizeStep(clampStep(n), isGuest); }),
-    [update, isGuest],
-  );
-  const next = useCallback(
-    () => update((d) => { d.step = normalizeStep(clampStep(d.step + 1), isGuest); }),
-    [update, isGuest],
-  );
-  const prev = useCallback(
-    () => update((d) => { d.step = normalizeStep(clampStep(d.step - 1), isGuest); }),
-    [update, isGuest],
-  );
-  const reset = useCallback(() => {
-    const fresh = defaultWizardState();
-    commit(fresh);
+  const update = useCallback((mutator: (draft: WizardState) => void) => {
+    const draft = JSON.parse(JSON.stringify(stateRef.current)) as WizardState;
+    mutator(draft);
+    void commit(draft).catch(() => undefined);
   }, [commit]);
 
-  const value = useMemo<WizardContextValue>(
-    () => ({
-      state, hydrated, syncing, update, setStep, next, prev, reset, refresh, savePayload,
-      focusTarget, setFocusTarget,
-    }),
-    [state, hydrated, syncing, update, setStep, next, prev, reset, refresh, savePayload, focusTarget],
-  );
+  const savePayload = useCallback(async (payload: SaveProfilePayload) => {
+    const draft = JSON.parse(JSON.stringify(stateRef.current)) as WizardState;
+    applySavePayload(draft, payload);
+    if (payload.deleted_checkins?.length) pendingDeletes.current = [...new Set([...pendingDeletes.current, ...payload.deleted_checkins])];
+    await commit(draft, false);
+    // A successful local write is usable offline; only cloud sync may be pending.
+    try { return await sync(draft, payload); } catch (error) { if (error instanceof ApiError && error.status >= 400 && error.status < 500 && ![408, 429].includes(error.status)) throw error; return 'pending' as const; }
+  }, [commit, sync]);
 
-  return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>;
+  const setStep = useCallback((n: number) => {
+    setPlanHubOpen(false);
+    const next = { ...stateRef.current, step: normalizeStep(clampStep(n), isGuest) };
+    stateRef.current = next;
+    setState(next);
+    // Navigation is local UI state, not a health-data edit or a reason to
+    // resend a complete profile to the server.
+    if (isGuest || !token || accountSnapshotAvailable.current) void persistLocal(next, dirtyRef.current).catch(() => undefined);
+  }, [isGuest, token, persistLocal]);
+  const next = useCallback(() => setStep(stateRef.current.step + 1), [setStep]);
+  const prev = useCallback(() => setStep(stateRef.current.step - 1), [setStep]);
+  const reset = useCallback(() => { void commit(defaultWizardState(), false).then(() => setSetupReset(value => value + 1)).catch(() => undefined); }, [commit]);
+  useEffect(() => {
+    if (hydrated && ready && online && dirtyRef.current && !isGuest && token) void sync(stateRef.current).catch(() => undefined);
+  }, [hydrated, ready, online, isGuest, token, sync]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', appState => {
+      if (appState === 'active' && hydrated && dirtyRef.current) void retrySave().catch(() => undefined);
+    });
+    return () => subscription.remove();
+  }, [hydrated, retrySave]);
+  const value = useMemo<WizardContextValue>(() => ({
+    state, hydrated, syncing, saveStatus, retrySave, serverProfile, update, setStep, planHubOpen, openPlanHub, next, prev, reset, refresh, savePayload, focusTarget, setFocusTarget,
+  }), [state, hydrated, syncing, saveStatus, retrySave, serverProfile, update, setStep, planHubOpen, openPlanHub, next, prev, reset, refresh, savePayload, focusTarget]);
+  return <WizardContext.Provider value={value}><SetupProvider storageKey={storageKey} state={state} hydrated={hydrated} isGuest={isGuest} setStep={setStep} planHubOpen={planHubOpen} resetKey={setupReset}>{children}</SetupProvider></WizardContext.Provider>;
 };
 
 export function useWizard(): WizardContextValue {

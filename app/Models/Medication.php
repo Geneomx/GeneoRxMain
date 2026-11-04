@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MedicationEvidence;
 use Illuminate\Database\Eloquent\Model;
 
 class Medication extends Model
@@ -68,7 +69,7 @@ class Medication extends Model
                 'id' => $m->slug,
                 'name' => $m->name,
                 'symptomChips' => $m->symptom_chips ?? [],
-                'claims' => $m->claims ?? [],
+                'claims' => MedicationEvidence::correct($m->claims ?? []),
                 'aliases' => $m->aliases ?? [],
             ])
             ->toArray();

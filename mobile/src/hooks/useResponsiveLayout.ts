@@ -3,13 +3,13 @@ import { useWindowDimensions } from 'react-native';
 import { layout, spacing } from '@/theme';
 
 /** Bottom tab bar body height — keep in sync with AppTabBar. */
-export const TAB_BAR_HEIGHT = 68;
+export const TAB_BAR_HEIGHT = 72;
 
 export function useResponsiveLayout() {
   const { width, height } = useWindowDimensions();
 
   return useMemo(() => {
-    const horizontal = width < 340 ? spacing.md : spacing.lg;
+    const horizontal = width < 340 ? spacing.md : width < 500 ? 20 : spacing.lg;
     const contentWidth = Math.min(width, layout.contentMaxWidth);
 
     return {

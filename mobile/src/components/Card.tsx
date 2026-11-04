@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { StyleSheet, View, ViewStyle } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { colors, radius, shadow, spacing, typography } from '@/theme';
 
 interface Props {
@@ -21,10 +22,10 @@ export const Card: React.FC<Props> = ({ title, subtitle, children, style, accent
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+    borderRadius: radius.card,
+    padding: 18,
     gap: spacing.sm,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: colors.borderSoft,
     ...shadow.card,
   },

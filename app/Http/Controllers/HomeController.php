@@ -13,9 +13,23 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class HomeController extends Controller
 {
+    /**
+     * Keys every hydrated check-in must carry so clients can read them
+     * without guarding, even for rows stored before `data` existed.
+     */
+    private const CHECKIN_ENVELOPE_DEFAULTS = [
+        'symptoms' => ['items' => []],
+        'wellbeing' => ['energy' => null, 'mood' => null, 'sleep' => null, 'focus' => null, 'digestive' => null, 'circulation' => null, 'immunity' => null],
+        'supplementsTaken' => [],
+        'supplementsPlanned' => [],
+        'sideEffects' => '',
+        'medicationDoses' => [],
+    ];
+
     public function treatment()
     {
         $user = auth()->user();
@@ -90,40 +104,39 @@ class HomeController extends Controller
             'account' => [
                 'email' => $user->email,
                 'consent' => (bool) data_get($portal, 'account.consent', false),
+                'aiConsent' => (bool) data_get($portal, 'account.aiConsent', false),
                 'subscribed' => $user->isSubscribed(),
             ],
             'plan' => data_get($portal, 'plan'),
             'portal_state' => $portal,
-            'medications' => $medications->map(fn ($m) => [
+            'medications' => $medications->map(fn ($m) => array_merge([
                 'id' => $m->id,
                 'medId' => $m->medication_name,
                 'dose' => $m->dosage,
                 'durationMonths' => $m->duration_months ?? 0,
-            ]),
+            ], Arr::only((array) ($portal['medicationDetails'][$m->medication_name] ?? []), ['strength', 'frequency', 'startDate', 'modelInputsConfirmed']))),
             'symptoms' => $symptoms->map(fn ($s) => [
                 'id' => $s->id,
                 'name' => $s->symptom_name,
             ]),
             'checkins' => $checkins->map(function (CheckIn $c) {
+                // Every row leaves with the same typed envelope, whether it was
+                // stored with a full JSON blob or only the denormalized columns
+                // (legacy / data-less rows). Stored values win over defaults;
+                // top-level array_replace keeps list-valued keys intact.
                 $data = is_array($c->data) ? $c->data : [];
-                if (count($data) > 0) {
-                    $base = $data;
-                    unset($base['id']);
+                unset($data['id']);
 
-                    return array_merge($base, [
-                        'id' => $c->id,
-                        'dateISO' => $c->date_checked?->toIso8601String() ?? (string) data_get($data, 'dateISO', ''),
-                        'adherencePct' => (int) ($c->adherence_percentage ?? data_get($data, 'adherencePct', 0)),
-                        'notes' => (string) ($c->notes !== null && $c->notes !== '' ? $c->notes : data_get($data, 'notes', '')),
-                    ]);
-                }
-
-                return [
+                $row = array_replace(self::CHECKIN_ENVELOPE_DEFAULTS, $data, [
                     'id' => $c->id,
-                    'dateISO' => $c->date_checked?->toIso8601String() ?? '',
-                    'adherencePct' => (int) ($c->adherence_percentage ?? 0),
-                    'notes' => (string) ($c->notes ?? ''),
-                ];
+                    'dateISO' => $c->date_checked?->toIso8601String() ?? (string) data_get($data, 'dateISO', ''),
+                    'adherencePct' => $c->adherence_percentage === null ? null : (int) $c->adherence_percentage,
+                    'notes' => (string) ($c->notes !== null && $c->notes !== '' ? $c->notes : data_get($data, 'notes', '')),
+                ]);
+                $row['symptoms'] = array_replace(self::CHECKIN_ENVELOPE_DEFAULTS['symptoms'], is_array($row['symptoms']) ? $row['symptoms'] : []);
+                $row['wellbeing'] = array_replace(self::CHECKIN_ENVELOPE_DEFAULTS['wellbeing'], is_array($row['wellbeing']) ? $row['wellbeing'] : []);
+
+                return $row;
             })->values(),
         ]);
     }
@@ -143,17 +156,50 @@ class HomeController extends Controller
         $validated = $request->validate([
             'account.email' => 'nullable|email',
             'account.consent' => 'nullable|boolean',
-            'profile.age' => 'nullable',
+            'account.aiConsent' => 'nullable|boolean',
+            'profile.age' => 'nullable|integer|between:1,120',
             'profile.gender' => 'nullable|string',
             'profile.phone' => 'nullable|string',
             'profile.pregnant' => 'nullable|boolean',
             'profile.kidneyDisease' => 'nullable|boolean',
             'profile.anticoagulants' => 'nullable|boolean',
             'medications' => 'nullable|array',
+            'medications.*' => 'required|array',
+            'medications.*.medId' => 'required|string|max:255',
+            'medications.*.dose' => 'nullable|string|max:100',
+            'medications.*.strength' => 'nullable|string|max:100',
+            'medications.*.frequency' => 'nullable|string|max:100',
+            'medications.*.startDate' => 'nullable|date_format:Y-m-d',
+            'portal_state.symptoms.details.*.onsetDate' => 'nullable|date_format:Y-m-d',
+            'portal_state.symptoms.details.*.severity' => 'nullable|in:mild,moderate,severe',
+            'portal_state.symptoms.details.*.notes' => 'nullable|string|max:2000',
+            'medications.*.modelInputsConfirmed' => 'nullable|boolean',
+            'medications.*.durationMonths' => 'nullable|numeric|min:0|max:1800',
             'symptoms' => 'nullable|array',
             'checkins' => 'nullable|array',
+            'checkins.*' => 'required|array',
+            'checkins.*.clientId' => 'nullable|uuid|distinct',
+            'checkins.*.dateISO' => 'required|date|before:tomorrow',
+            'checkins.*.adherencePct' => 'nullable|integer|between:0,100',
+            'checkins.*.medicationDoses' => 'nullable|array|max:100',
+            'checkins.*.medicationDoses.*.medId' => 'required|string|max:255',
+            'checkins.*.medicationDoses.*.medicationName' => 'required|string|max:255',
+            'checkins.*.medicationDoses.*.status' => 'required|in:all,some,unsure,not-scheduled',
+            'checkins.*.medicationDoses.*.scheduled' => 'nullable|integer|min:1|max:100000',
+            'checkins.*.medicationDoses.*.missed' => 'nullable|integer|min:0|max:100000',
+            'checkins.*.wellbeing' => 'nullable|array',
+            'checkins.*.wellbeing.energy' => 'nullable|numeric|between:0,10',
+            'checkins.*.wellbeing.mood' => 'nullable|numeric|between:0,10',
+            'checkins.*.wellbeing.sleep' => 'nullable|numeric|between:0,10',
+            'checkins.*.wellbeing.focus' => 'nullable|numeric|between:0,10',
+            'checkins.*.wellbeing.digestive' => 'nullable|numeric|between:0,10',
+            'checkins.*.wellbeing.circulation' => 'nullable|numeric|between:0,10',
+            'checkins.*.wellbeing.immunity' => 'nullable|numeric|between:0,10',
+            'checkins.*.notes' => 'nullable|string|max:10000',
             'plan' => 'nullable|array',
             'portal_state' => 'nullable|array',
+            'portal_state.summaryOverview' => 'nullable|array:7,30,all|max:3',
+            'portal_state.summaryOverview.*' => 'nullable|string|max:2000',
             // Check-in history is merged, not replaced, so a stale or empty
             // client array can no longer wipe it. Deletion is explicit:
             //  - deleted_checkins: ids the client intentionally removed
@@ -162,97 +208,139 @@ class HomeController extends Controller
             'replace_all' => 'nullable|boolean',
         ]);
 
-        $dob = null;
-        if (! empty($validated['profile']['age'])) {
-            $age = (int) $validated['profile']['age'];
-            if ($age > 0 && $age < 150) {
-                $dob = now()->subYears($age)->toDateString();
+        // Portal state is versioned JSON too. Nested validation must not drop
+        // sibling keys such as wellbeingBaseline or reminderPreferences.
+        if (is_array($request->input('portal_state'))) {
+            $validated['portal_state'] = $request->input('portal_state');
+        }
+
+        // Check-ins intentionally carry versioned JSON (wellbeing, completion,
+        // symptom ratings, supplements and future fields). Nested validation
+        // above checks the required envelope; retain the full validated rows
+        // rather than Laravel's projection of only the named child fields.
+        if (isset($validated['checkins'])) {
+            $validated['checkins'] = $request->input('checkins');
+        }
+
+        // Reject invalid dose counts before any part of the profile is written.
+        foreach ($validated['checkins'] ?? [] as $index => $checkin) {
+            if (! array_key_exists('medicationDoses', $checkin)) {
+                continue;
+            }
+            $entries = $checkin['medicationDoses'] ?? [];
+            $ids = [];
+            foreach ($entries as $entry) {
+                if (in_array($entry['medId'], $ids, true) || ($entry['status'] === 'some' && (! isset($entry['scheduled'], $entry['missed']) || $entry['missed'] > $entry['scheduled']))) {
+                    throw ValidationException::withMessages(["checkins.$index.medicationDoses" => 'Enter valid scheduled and missed counts for each medication.']);
+                }
+                $ids[] = $entry['medId'];
             }
         }
 
-        $profile = UserProfile::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'date_of_birth' => $dob,
-                'gender' => $validated['profile']['gender'] ?? null,
-                'phone' => $validated['profile']['phone'] ?? null,
-                'pregnant' => $validated['profile']['pregnant'] ?? false,
-                'kidney_disease' => $validated['profile']['kidneyDisease'] ?? false,
-                'anticoagulants' => $validated['profile']['anticoagulants'] ?? false,
-            ]
-        );
-
-        $profile->update([
-            // A payload without a usable age must not wipe a stored birth date
-            'date_of_birth' => $dob ?? $profile->date_of_birth,
-            'gender' => $validated['profile']['gender'] ?? $profile->gender,
-            'phone' => $validated['profile']['phone'] ?? $profile->phone,
-            'pregnant' => $validated['profile']['pregnant'] ?? $profile->pregnant,
-            'kidney_disease' => $validated['profile']['kidneyDisease'] ?? $profile->kidney_disease,
-            'anticoagulants' => $validated['profile']['anticoagulants'] ?? $profile->anticoagulants,
-        ]);
-
-        if (array_key_exists('medications', $validated) && is_array($validated['medications'])) {
-            DB::transaction(function () use ($user, $validated) {
-                Medication::where('user_id', $user->id)->delete();
-                foreach ($validated['medications'] as $med) {
-                    Medication::create([
-                        'user_id' => $user->id,
-                        'medication_name' => $med['medId'] ?? '',
-                        'dosage' => $med['dose'] ?? '',
-                        'duration_months' => $med['durationMonths'] ?? 0,
-                    ]);
-                }
-            });
-        }
-
-        if (array_key_exists('symptoms', $validated) && is_array($validated['symptoms'])) {
-            DB::transaction(function () use ($user, $validated) {
-                Symptom::where('user_id', $user->id)->delete();
-                foreach ($validated['symptoms'] as $symptom) {
-                    Symptom::create([
-                        'user_id' => $user->id,
-                        'symptom_name' => is_array($symptom) ? ($symptom['name'] ?? $symptom) : $symptom,
-                    ]);
-                }
-            });
-        }
-
-        $mergedPortal = $profile->portal_state ?? [];
-        $portalChanged = false;
-        if (isset($validated['plan'])) {
-            $mergedPortal['plan'] = $validated['plan'];
-            $portalChanged = true;
-        }
-        if (isset($validated['portal_state']) && is_array($validated['portal_state'])) {
-            $mergedPortal = array_replace_recursive($mergedPortal, $validated['portal_state']);
-            // List-valued keys must replace wholesale — index-wise merging would
-            // resurrect entries the client deleted.
-            foreach (['feedback', 'customMedCatalog', 'symptoms'] as $listKey) {
-                if (array_key_exists($listKey, $validated['portal_state'])) {
-                    $mergedPortal[$listKey] = $validated['portal_state'][$listKey];
+        return DB::transaction(function () use ($user, $validated) {
+            $dob = null;
+            if (! empty($validated['profile']['age'])) {
+                $age = (int) $validated['profile']['age'];
+                if ($age > 0 && $age < 150) {
+                    $dob = now()->subYears($age)->toDateString();
                 }
             }
-            $portalChanged = true;
-        }
-        if (array_key_exists('account', $validated) && is_array($validated['account'] ?? null) && array_key_exists('consent', $validated['account'] ?? [])) {
-            $mergedPortal['account'] = array_merge(
-                (array) ($mergedPortal['account'] ?? []),
+
+            $profile = UserProfile::firstOrCreate(
+                ['user_id' => $user->id],
                 [
-                    'consent' => (bool) $validated['account']['consent'],
+                    'date_of_birth' => $dob,
+                    'gender' => $validated['profile']['gender'] ?? null,
+                    'phone' => $validated['profile']['phone'] ?? null,
+                    'pregnant' => $validated['profile']['pregnant'] ?? false,
+                    'kidney_disease' => $validated['profile']['kidneyDisease'] ?? false,
+                    'anticoagulants' => $validated['profile']['anticoagulants'] ?? false,
                 ]
             );
-            $portalChanged = true;
-        }
-        if ($portalChanged) {
-            $profile->update(['portal_state' => $mergedPortal]);
-        }
 
-        if (array_key_exists('checkins', $validated) && is_array($validated['checkins'])) {
-            $this->syncCheckins($user, $profile, $validated);
-        }
+            $profile->update([
+                // A payload without a usable age must not wipe a stored birth date
+                'date_of_birth' => array_key_exists('age', $validated['profile'] ?? []) ? $dob : $profile->date_of_birth,
+                'gender' => $validated['profile']['gender'] ?? $profile->gender,
+                'phone' => array_key_exists('phone', $validated['profile'] ?? []) ? $validated['profile']['phone'] : $profile->phone,
+                'pregnant' => $validated['profile']['pregnant'] ?? $profile->pregnant,
+                'kidney_disease' => $validated['profile']['kidneyDisease'] ?? $profile->kidney_disease,
+                'anticoagulants' => $validated['profile']['anticoagulants'] ?? $profile->anticoagulants,
+            ]);
 
-        return response()->json(['success' => true, 'message' => 'Profile saved successfully']);
+            if (array_key_exists('medications', $validated) && is_array($validated['medications'])) {
+                DB::transaction(function () use ($user, $validated) {
+                    Medication::where('user_id', $user->id)->delete();
+                    foreach ($validated['medications'] as $med) {
+                        Medication::create([
+                            'user_id' => $user->id,
+                            'medication_name' => $med['medId'] ?? '',
+                            'dosage' => $med['dose'] ?? '',
+                            'duration_months' => $med['durationMonths'] ?? 0,
+                        ]);
+                    }
+                });
+            }
+
+            if (array_key_exists('symptoms', $validated) && is_array($validated['symptoms'])) {
+                DB::transaction(function () use ($user, $validated) {
+                    Symptom::where('user_id', $user->id)->delete();
+                    foreach ($validated['symptoms'] as $symptom) {
+                        Symptom::create([
+                            'user_id' => $user->id,
+                            'symptom_name' => is_array($symptom) ? ($symptom['name'] ?? $symptom) : $symptom,
+                        ]);
+                    }
+                });
+            }
+
+            $mergedPortal = $profile->portal_state ?? [];
+            $portalChanged = false;
+            if (array_key_exists('medications', $validated) && is_array($validated['medications'])) {
+                $details = [];
+                foreach ($validated['medications'] as $med) {
+                    $id = $med['medId'];
+                    $details[$id] = array_merge((array) ($mergedPortal['medicationDetails'][$id] ?? []), Arr::only($med, ['strength', 'frequency', 'startDate', 'modelInputsConfirmed']));
+                }
+                $mergedPortal['medicationDetails'] = $details;
+                $portalChanged = true;
+            }
+            if (isset($validated['plan'])) {
+                $mergedPortal['plan'] = $validated['plan'];
+                $portalChanged = true;
+            }
+            if (isset($validated['portal_state']) && is_array($validated['portal_state'])) {
+                $mergedPortal = array_replace_recursive($mergedPortal, $validated['portal_state']);
+                // List-valued keys must replace wholesale — index-wise merging would
+                // resurrect entries the client deleted.
+                foreach (['feedback', 'customMedCatalog', 'symptoms'] as $listKey) {
+                    if (array_key_exists($listKey, $validated['portal_state'])) {
+                        $mergedPortal[$listKey] = $validated['portal_state'][$listKey];
+                    }
+                }
+                $portalChanged = true;
+            }
+            foreach (['consent', 'aiConsent'] as $consentKey) {
+                if (array_key_exists('account', $validated) && is_array($validated['account'] ?? null) && array_key_exists($consentKey, $validated['account'] ?? [])) {
+                    $mergedPortal['account'] = array_merge(
+                        (array) ($mergedPortal['account'] ?? []),
+                        [
+                            $consentKey => (bool) $validated['account'][$consentKey],
+                        ]
+                    );
+                    $portalChanged = true;
+                }
+            }
+            if ($portalChanged) {
+                $profile->update(['portal_state' => $mergedPortal]);
+            }
+
+            if (array_key_exists('checkins', $validated) && is_array($validated['checkins'])) {
+                $this->syncCheckins($user, $profile, $validated);
+            }
+
+            return response()->json(['success' => true, 'message' => 'Profile saved successfully']);
+        });
     }
 
     /**
@@ -287,9 +375,10 @@ class HomeController extends Controller
             // incoming row can be matched either way.
             $existing = CheckIn::where('user_id', $user->id)->get();
             $byId = $existing->keyBy('id');
+            $byClientId = $existing->filter(fn ($row) => is_string(data_get($row->data, 'clientId')))->keyBy(fn ($row) => data_get($row->data, 'clientId'));
             $bySignature = [];
             foreach ($existing as $row) {
-                $bySignature[$this->checkinSignature($row->date_checked, (int) $row->adherence_percentage, (string) $row->notes)] ??= $row;
+                $bySignature[$this->checkinSignature($row->date_checked, $row->adherence_percentage === null ? null : (int) $row->adherence_percentage, (string) $row->notes)] ??= $row;
             }
 
             $matchedIds = [];
@@ -303,7 +392,31 @@ class HomeController extends Controller
 
                 $dateStr = $row['dateISO'] ?? null;
                 $dateChecked = $dateStr ? Carbon::parse((string) $dateStr) : now();
-                $adherence = (int) ($row['adherencePct'] ?? 0);
+                $adherence = isset($row['adherencePct']) ? (int) $row['adherencePct'] : null;
+                // The integer rule accepts numeric strings; store real ints so
+                // clients never read "7" where they expect 7.
+                if (is_array($row['medicationDoses'] ?? null)) {
+                    foreach ($row['medicationDoses'] as $i => $entry) {
+                        foreach (['scheduled', 'missed'] as $count) {
+                            if (is_array($entry) && isset($entry[$count])) {
+                                $row['medicationDoses'][$i][$count] = (int) $entry[$count];
+                            }
+                        }
+                    }
+                }
+                if (array_key_exists('medicationDoses', $row)) {
+                    $entries = array_values(array_filter($row['medicationDoses'] ?? [], fn ($entry) => $entry['status'] !== 'not-scheduled'));
+                    if ($entries === [] || collect($entries)->contains(fn ($entry) => $entry['status'] === 'unsure')) {
+                        $adherence = null;
+                    } elseif (collect($entries)->every(fn ($entry) => $entry['status'] === 'all')) {
+                        $adherence = 100;
+                    } elseif (collect($entries)->contains(fn ($entry) => ! isset($entry['scheduled']) || $entry['scheduled'] < 1)) {
+                        $adherence = null;
+                    } else {
+                        $adherence = (int) round((array_sum(array_column($entries, 'scheduled')) - collect($entries)->sum(fn ($entry) => $entry['status'] === 'all' ? 0 : ($entry['missed'] ?? 0))) / array_sum(array_column($entries, 'scheduled')) * 100);
+                    }
+                    $row['adherencePct'] = $adherence;
+                }
                 $notes = (string) ($row['notes'] ?? '');
 
                 $data = $row;
@@ -314,7 +427,7 @@ class HomeController extends Controller
 
                 $match = ($rowId !== null && $byId->has($rowId))
                     ? $byId->get($rowId)
-                    : ($bySignature[$signature] ?? null);
+                    : (isset($row['clientId']) ? $byClientId->get($row['clientId']) : ($bySignature[$signature] ?? null));
 
                 // Merge rather than overwrite the JSON blob. A client that does
                 // not know about a newer field (an older app build, or one
@@ -357,13 +470,13 @@ class HomeController extends Controller
      * row to a stored one. Mirrors the client-side dedupe key (date + adherence
      * + notes) so a plain re-save updates in place rather than duplicating.
      */
-    private function checkinSignature(mixed $dateChecked, int $adherence, string $notes): string
+    private function checkinSignature(mixed $dateChecked, ?int $adherence, string $notes): string
     {
         $day = $dateChecked instanceof \DateTimeInterface
             ? $dateChecked->format('Y-m-d')
             : (string) Carbon::parse((string) $dateChecked)->format('Y-m-d');
 
-        return $day.'|'.$adherence.'|'.trim($notes);
+        return $day.'|'.($adherence === null ? 'unknown' : $adherence).'|'.trim($notes);
     }
 
     private function calculateAge($dob)

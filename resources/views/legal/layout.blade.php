@@ -7,25 +7,25 @@
   @include('partials.logo-head')
   @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@1,8..60,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --teal:       #0E7C66;
-      --teal-dark:  #075F4F;
-      --teal-50:    #ECF6F3;
-      --teal-100:   #D7EDE7;
-      --bg:         #FFFFFF;
-      --bg-warm:    #FBF9F5;
-      --text:       #0F1F1B;
-      --text-soft:  #3C4F4A;
-      --text-muted: #6B7B77;
-      --border:     #DDE6E3;
-      --border-soft:#E8EDEC;
+      --teal: #24503F;
+      --teal-dark: #16352B;
+      --teal-50: #E4EEDF;
+      --teal-100: #CFE0CF;
+      --bg: #F7F1E6;
+      --bg-warm: #FFFBF3;
+      --text: #1E2B25;
+      --text-soft: #3B4A42;
+      --text-muted: #5E6A60;
+      --border: #E6D9C0;
+      --border-soft: #EFE5D0;
     }
     html { scroll-behavior: smooth; }
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       color: var(--text);
       background: var(--bg);
       min-height: 100vh;
@@ -83,7 +83,7 @@
       margin-bottom: 10px;
     }
     .doc-title em {
-      font-family: 'Source Serif 4', serif;
+      font-family: 'Fraunces', Georgia, serif;
       font-style: italic; font-weight: 400;
       color: var(--teal-dark);
     }

@@ -18,7 +18,7 @@ class AiSummaryTest extends TestCase
 
     private function fakeGemini(string $text): void
     {
-        config(['services.gemini.key' => 'test-key', 'services.gemini.model' => 'gemini-test']);
+        config(['services.gemini.data_mode' => 'personalized', 'services.gemini.key' => 'test-key', 'services.gemini.model' => 'gemini-test']);
 
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([

@@ -1,8 +1,8 @@
 /**
  * Unit tests for the pure scoring engine.
  *
- * Scope is deliberately narrow: `src/wizard/` only. Those modules are pure
- * TypeScript with no React Native imports, so they run under plain ts-jest in a
+ * Scope covers the pure wizard engine and the notification startup guard,
+ * whose native dependencies are mocked. They run under plain ts-jest in a
  * node environment — no jest-expo, no native mocks, no transform of the whole
  * RN dependency tree.
  *
@@ -13,7 +13,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src/wizard'],
+  roots: ['<rootDir>/src/wizard', '<rootDir>/src/notifications', '<rootDir>/src/api'],
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

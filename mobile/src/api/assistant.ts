@@ -8,12 +8,14 @@ export interface AssistantMessage {
 export interface AssistantContext {
   medications?: string[];
   symptoms?: string[];
+  /** Short lines from the user's recent check-ins (their track record), guests only. */
+  checkins?: string[];
 }
 
 export interface AssistantResult {
   reply: string | null;
   /** 'ai' when the model replied; 'unavailable' when no key is configured. */
-  source: 'ai' | 'unavailable';
+  source: 'ai' | 'unavailable' | 'restricted';
 }
 
 /**
@@ -24,14 +26,18 @@ export interface AssistantResult {
  */
 export function askAssistant(
   messages: AssistantMessage[],
-  opts: { context?: AssistantContext; language?: string } = {},
+  opts: { context?: AssistantContext; language?: string; promptId?: string } = {},
 ): Promise<AssistantResult> {
   return apiRequest<AssistantResult>('/mobile/assistant', {
     method: 'POST',
     body: {
       messages,
+      prompt_id: opts.promptId,
       context: opts.context,
       language: opts.language ?? 'en',
     },
   });
 }
+
+export interface AssistantOptions { mode: 'catalog_only' | 'personalized'; prompts: Array<{ id: string; label: string }> }
+export function fetchAssistantOptions() { return apiRequest<AssistantOptions>('/mobile/assistant/options'); }

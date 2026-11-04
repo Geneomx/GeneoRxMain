@@ -46,8 +46,7 @@ export function useSocialAuth(): SocialAuthHook {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Apple Sign In is only available on iOS 13+
-  const appleAvailable = Platform.OS === 'ios';
+  const apple = useAppleSocialAuth();
 
   // ── Google OAuth ─────────────────────────────────────────────────────────
   // expo-auth-session/providers/google sets up the full OAuth2 PKCE flow.
@@ -88,6 +87,15 @@ export function useSocialAuth(): SocialAuthHook {
     }
   }
 
+
+  return { signInWithGoogle, signInWithApple: apple.signInWithApple, appleAvailable: apple.appleAvailable, loading: loading || apple.loading, error: error || apple.error };
+}
+
+export function useAppleSocialAuth() {
+  const { socialSignIn } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const appleAvailable = Platform.OS === 'ios';
   // ── Apple Sign In ─────────────────────────────────────────────────────────
   async function signInWithApple(): Promise<void> {
     if (!appleAvailable) {
@@ -129,5 +137,5 @@ export function useSocialAuth(): SocialAuthHook {
     }
   }
 
-  return { signInWithGoogle, signInWithApple, appleAvailable, loading, error };
+  return { signInWithApple, appleAvailable, loading, error };
 }

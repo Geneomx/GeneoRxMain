@@ -14,18 +14,27 @@
  *    between check-ins. Never assume every check-in carries every symptom.
  */
 
-import type { WizardCheckin } from '@/wizard/types';
+import type { CheckinSymptomItem, WizardCheckin } from '@/wizard/types';
+
+/** Report a direction only when the patient recorded a change in that direction. */
+export function symptomHighlights(items: readonly CheckinSymptomItem[]) {
+  const improved = items.filter(x => Number.isFinite(x.changeScore) && x.changeScore > 0)
+    .sort((a, b) => b.changeScore - a.changeScore)[0] ?? null;
+  const worsened = items.filter(x => Number.isFinite(x.changeScore) && x.changeScore < 0)
+    .sort((a, b) => a.changeScore - b.changeScore)[0] ?? null;
+  return { improved, worsened };
+}
 
 export interface TrendPoint {
   /** Local calendar day, YYYY-MM-DD. */
   date: string;
   /** ms since epoch for the day, for x-axis positioning. */
   t: number;
-  adherence: number;
-  energy: number;
-  mood: number;
-  sleep: number;
-  focus: number;
+  adherence: number | null;
+  energy: number | null;
+  mood: number | null;
+  sleep: number | null;
+  focus: number | null;
 }
 
 export interface SymptomSeriesPoint {
@@ -95,11 +104,11 @@ export function buildTrendSeries(checkins: WizardCheckin[], days = 42): TrendSer
     .map(([t, c]) => ({
       date: dayString(t),
       t,
-      adherence: clampScore(c.adherencePct, 100),
-      energy: clampScore(c.wellbeing?.energy, 10),
-      mood: clampScore(c.wellbeing?.mood, 10),
-      sleep: clampScore(c.wellbeing?.sleep, 10),
-      focus: clampScore(c.wellbeing?.focus, 10),
+      adherence: typeof c.adherencePct === 'number' ? clampScore(c.adherencePct, 100) : null,
+      energy: typeof c.wellbeing?.energy === 'number' ? clampScore(c.wellbeing.energy, 10) : null,
+      mood: typeof c.wellbeing?.mood === 'number' ? clampScore(c.wellbeing.mood, 10) : null,
+      sleep: typeof c.wellbeing?.sleep === 'number' ? clampScore(c.wellbeing.sleep, 10) : null,
+      focus: typeof c.wellbeing?.focus === 'number' ? clampScore(c.wellbeing.focus, 10) : null,
     }));
 
   const symptoms: Record<string, SymptomSeriesPoint[]> = {};

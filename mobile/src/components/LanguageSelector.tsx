@@ -1,13 +1,6 @@
 import React, { useState } from 'react';
-import {
-  I18nManager,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { I18nManager, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '@/store/LanguageContext';
 import { useToast } from '@/components/Toast';
@@ -173,16 +166,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
   },
   triggerPressed: {
-    borderColor: 'rgba(40, 225, 255, 0.35)',
-    backgroundColor: 'rgba(40, 225, 255, 0.10)',
+    borderColor: colors.primary100,
+    backgroundColor: colors.primary50,
   },
   globe: {
-    fontSize: 13,
-    lineHeight: 16,
+    fontSize: 16,
+    lineHeight: 20,
   },
   triggerText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '500',
     color: colors.text,
     flexShrink: 1,
     flex: 1,
@@ -194,7 +187,7 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 10,
     color: colors.primary,
-    fontWeight: '800',
+    fontWeight: '500',
     marginTop: 1,
   },
   chevronOpen: {
@@ -208,7 +201,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     borderWidth: 1,
     borderColor: colors.borderSoft,
-    backgroundColor: 'rgba(15, 23, 54, 0.55)',
+    backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -218,12 +211,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   codeBadgeActive: {
-    borderColor: 'rgba(40, 225, 255, 0.45)',
-    backgroundColor: 'rgba(40, 225, 255, 0.14)',
+    borderColor: colors.primary,
+    backgroundColor: colors.primary50,
   },
   codeText: {
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '500',
     color: colors.textSoft,
     letterSpacing: 0.6,
   },
@@ -236,7 +229,7 @@ const styles = StyleSheet.create({
 
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(4, 6, 12, 0.78)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -278,21 +271,21 @@ const styles = StyleSheet.create({
   },
   sheetKicker: {
     fontSize: 10.5,
-    fontWeight: '800',
+    fontWeight: '500',
     letterSpacing: 1,
     textTransform: 'uppercase',
     color: colors.primary,
   },
   sheetTitle: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '500',
     color: colors.text,
     letterSpacing: -0.3,
   },
   sheetSub: {
-    fontSize: 13,
+    fontSize: 16,
     color: colors.textMuted,
-    lineHeight: 18,
+    lineHeight: 22,
     marginTop: 2,
   },
   sheetHeadBadge: {
@@ -302,14 +295,14 @@ const styles = StyleSheet.create({
   },
   sheetHeadBadgeLabel: {
     fontSize: 9.5,
-    fontWeight: '800',
+    fontWeight: '500',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: colors.textDim,
   },
   sheetHeadBadgeValue: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '500',
     color: colors.primaryLight,
   },
 
@@ -339,20 +332,20 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   optionSelected: {
-    backgroundColor: 'rgba(40, 225, 255, 0.10)',
-    borderColor: 'rgba(40, 225, 255, 0.38)',
+    backgroundColor: colors.primary50,
+    borderColor: colors.primary100,
   },
   optionTextWrap: {
     flex: 1,
     gap: 2,
   },
   optionLabel: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '500',
     color: colors.text,
   },
   optionLabelSelected: {
-    fontWeight: '800',
+    fontWeight: '500',
     color: colors.primaryLight,
   },
   optionHint: {
@@ -390,8 +383,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   doneBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '500',
     color: colors.textSoft,
   },
 });
