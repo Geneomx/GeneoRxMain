@@ -1,6 +1,7 @@
 import { medicationDetail } from '@/wizard/medicationTracking';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { fetchAiSummary, type AiSummaryResult } from '@/api/aiSummary';
 import { useTranslation } from '@/hooks/useTranslation';
 import { findMedName, useMedCatalog } from '@/store/MedCatalogContext';

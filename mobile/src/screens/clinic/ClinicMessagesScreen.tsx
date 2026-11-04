@@ -1,15 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
@@ -428,7 +419,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   bubbleMine: {
-    borderColor: 'rgba(40, 225, 255, 0.32)',
+    borderColor: colors.primary100,
     backgroundColor: colors.primary50,
     borderBottomLeftRadius: radius.md,
     borderBottomRightRadius: 4,

@@ -1,11 +1,11 @@
 import React, { createContext, forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
-import { Keyboard, ScrollView, type ScrollViewProps, TextInput } from 'react-native';
+import { Keyboard, ScrollView, type ScrollViewInstance, type ScrollViewProps, TextInput, type TextInputInstance } from 'react-native';
 
-export const FormFocusContext = createContext<(input: TextInput | null) => void>(() => undefined);
+export const FormFocusContext = createContext<(input: TextInputInstance | null) => void>(() => undefined);
 
 /** Recheck the focused field after the keyboard resizes a screen or bottom sheet. */
-export const FormScrollView = forwardRef<ScrollView, ScrollViewProps>((props, forwardedRef) => {
-  const scroll = useRef<ScrollView>(null);
+export const FormScrollView = forwardRef<ScrollViewInstance, ScrollViewProps>((props, forwardedRef) => {
+  const scroll = useRef<ScrollViewInstance>(null);
   const keyboardOpen = useRef(Keyboard.isVisible());
   const keyboardTop = useRef(Keyboard.metrics()?.screenY ?? Number.POSITIVE_INFINITY);
   const offsetY = useRef(0);
@@ -30,7 +30,7 @@ export const FormScrollView = forwardRef<ScrollView, ScrollViewProps>((props, fo
       });
     });
   }, []);
-  const onChildFocus = useCallback((input: TextInput | null) => {
+  const onChildFocus = useCallback((input: TextInputInstance | null) => {
     ownedInput.current = input;
     revealFocus();
   }, [revealFocus]);

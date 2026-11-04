@@ -1,14 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Easing,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Animated, Easing, Modal, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BrandIdentity } from '@/components/BrandHeader';
@@ -55,7 +47,7 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
   const [visible, setVisible] = useState(false);
   const [page, setPage] = useState(0);
   const [cardWidth, setCardWidth] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const slideCount = ABOUT_CARDS.length;
 
   const goTo = (p: number) => {
@@ -257,7 +249,7 @@ export const OnboardingModal: React.FC<Props> = ({ onDone, forceShow = false }) 
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(4, 6, 12, 0.72)',
+    backgroundColor: colors.overlay,
   },
 
   sheetContainer: {

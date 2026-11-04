@@ -1,15 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, type TextInputInstance, View } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
@@ -31,7 +22,7 @@ export const VerifyEmailScreen: React.FC = () => {
   const [sent, setSent] = useState(false);
   const verifyingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   // Registration sends the first code on the server. Reopening this screen
   // must not send duplicates or immediately hit the resend cooldown.

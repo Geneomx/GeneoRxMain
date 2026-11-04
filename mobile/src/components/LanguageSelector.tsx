@@ -1,13 +1,6 @@
 import React, { useState } from 'react';
-import {
-  I18nManager,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { I18nManager, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '@/store/LanguageContext';
 import { useToast } from '@/components/Toast';
@@ -173,8 +166,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
   },
   triggerPressed: {
-    borderColor: 'rgba(40, 225, 255, 0.35)',
-    backgroundColor: 'rgba(40, 225, 255, 0.10)',
+    borderColor: colors.primary100,
+    backgroundColor: colors.primary50,
   },
   globe: {
     fontSize: 16,
@@ -219,7 +212,7 @@ const styles = StyleSheet.create({
   },
   codeBadgeActive: {
     borderColor: colors.primary,
-    backgroundColor: 'rgba(40, 225, 255, 0.14)',
+    backgroundColor: colors.primary50,
   },
   codeText: {
     fontSize: 10,
@@ -236,7 +229,7 @@ const styles = StyleSheet.create({
 
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(4, 6, 12, 0.78)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -339,8 +332,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   optionSelected: {
-    backgroundColor: 'rgba(40, 225, 255, 0.10)',
-    borderColor: 'rgba(40, 225, 255, 0.38)',
+    backgroundColor: colors.primary50,
+    borderColor: colors.primary100,
   },
   optionTextWrap: {
     flex: 1,

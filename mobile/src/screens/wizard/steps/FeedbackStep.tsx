@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { sendFeedback, toFeedbackType } from '@/api/feedback';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';

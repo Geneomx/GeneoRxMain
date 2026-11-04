@@ -34,7 +34,7 @@ export function normalizeCheckin(raw: WizardCheckin): WizardCheckin {
 export function dedupeCheckins(checkins: WizardCheckin[]): WizardCheckin[] {
   const seen = new Set<string>();
   const deduped = (checkins || []).map(normalizeCheckin).filter((c) => {
-    const key = c.clientId || [
+    const key = c.clientId || (c.id != null ? `id:${c.id}` : '') || [
       c.dateISO,
       c.adherencePct,
       JSON.stringify(c.wellbeing || {}),
@@ -75,7 +75,8 @@ export function localHasMeaningfulData(s: WizardState | null | undefined): boole
     s.profile?.age ||
     s.profile?.gender ||
     s.plan?.started ||
-    s.account?.consent
+    s.account?.consent ||
+    s.account?.aiConsent
   );
 }
 
@@ -142,6 +143,7 @@ export function applyProfileToWizard(base: WizardState, data: ProfileResponse): 
   const email = data.user?.email || data.account?.email || '';
   if (email && !email.includes('guest@')) next.account.email = email;
   if (typeof data.account?.consent === 'boolean') next.account.consent = data.account.consent;
+  if (typeof data.account?.aiConsent === 'boolean') next.account.aiConsent = data.account.aiConsent;
 
   if (Array.isArray(data.medications)) next.meds = medsFromApi(data.medications);
   if (Array.isArray(data.symptoms)) {
@@ -223,6 +225,9 @@ export function mergeBackendIntoWizard(
         consent: typeof localSnapshot.account?.consent === 'boolean'
           ? localSnapshot.account.consent
           : next.account.consent,
+        aiConsent: typeof localSnapshot.account?.aiConsent === 'boolean'
+          ? localSnapshot.account.aiConsent
+          : next.account.aiConsent,
         email: data.user?.email && !data.user.email.includes('guest@')
           ? data.user.email
           : localSnapshot.account?.email && !localSnapshot.account.email.includes('guest@')
@@ -266,14 +271,22 @@ export function wizardToSavePayload(state: WizardState, medDb: MedEntry[]): Save
     })),
     symptoms: state.symptoms.selected.map((name) => ({ name })),
     plan: state.plan,
-    checkins: state.checkins as unknown as SaveProfilePayload['checkins'],
+    checkins: state.checkins.map(record => {
+      // Older records may have a percentage without individual dose answers.
+      // Sending an invented empty dose array would erase that stored estimate.
+      if (!record.medicationDoses?.length && record.adherencePct != null) {
+        const { medicationDoses: _doses, ...legacy } = record;
+        return legacy;
+      }
+      return record;
+    }) as unknown as SaveProfilePayload['checkins'],
     portal_state: {
       plan: state.plan,
       customMedCatalog: customMedCatalogFromDb(medDb),
       wellbeingBaseline: state.wellbeingBaseline,
       symptomOnlyMode: state.symptomOnlyMode,
       symptoms: { custom: state.symptoms.custom, severity: state.symptoms.severity, details: state.symptoms.details || {} },
-      account: { consent: state.account.consent },
+      account: { consent: state.account.consent, aiConsent: state.account.aiConsent },
       feedback: state.feedback,
       summaryOverview: state.summaryOverview || {},
       summaryOverviewBasis: state.summaryOverviewBasis || {},

@@ -1,14 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, BackHandler, Keyboard, KeyboardAvoidingView, Platform, Pressable, type ScrollViewInstance, StyleSheet, View, type ViewInstance } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { AppTabsParamList } from '@/navigation/AppTabs';
+import { useSetup } from '@/store/SetupContext';
+import { adjacentSetupStep, type SetupStep } from '@/wizard/setupFlow';
 import { AppText as Text } from '@/components/AppText';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { track } from '@/api/analytics';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { Button } from '@/components/Button';
 import { FormScrollView } from '@/components/FormScrollView';
 import { SaveState } from '@/components/SaveState';
-import { IconTile } from '@/components/RefinedUI';
-import type { AppIconName } from '@/components/AppIcon';
+import { AppIcon } from '@/components/AppIcon';
+import { TopBar } from '@/components/TopBar';
 import { WizardDockContext, WizardHeaderContext, type WizardAction } from '@/components/WizardDock';
 import { ReviewRangeSelect, WizardRangeContext } from '@/components/ReviewRangeSelect';
 import type { ReviewRange } from '@/wizard/reviewData';
@@ -29,22 +34,70 @@ import { ProgressStep } from './steps/ProgressStep';
 import { SummaryStep } from './steps/SummaryStep';
 import { FeedbackStep } from './steps/FeedbackStep';
 import { colors } from '@/theme';
-const Checkin: React.FC = () => <CheckinStep advanceToProgress />;
+import { useCheckinDrafts } from '@/store/CheckinDraftContext';
+import { hasUnfinishedCheckin } from '@/wizard/checkinEditor';
+const Checkin: React.FC = () => <CheckinStep />;
 const STEPS = [AccountStep, MedicationsStep, SymptomsStep, WellbeingStep, ResultsStep, Checkin, ProgressStep, InsightsStep, SummaryStep, FeedbackStep];
 
 export const WizardScreen: React.FC = () => {
-  const { state, planHubOpen, saveStatus, hydrated } = useWizard();
+  const { state, planHubOpen, openPlanHub, saveStatus, hydrated } = useWizard();
+  const { session: checkinSession, original: editingCheckin, drafts: checkinDrafts } = useCheckinDrafts();
   const { isGuest } = useAuth();
   const { t } = useTranslation();
+  const setup = useSetup();
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<BottomTabNavigationProp<AppTabsParamList>>();
   const { horizontal, scrollBottom } = useResponsiveLayout();
   const step = normalizeStep(state.step, isGuest);
+  const progressScreen = !planHubOpen && step === 6;
   const Step = STEPS[step];
   const [action, setAction] = useState<WizardAction | null>(null);
+  const guided = setup.active && !planHubOpen && setup.progress?.step === step;
+  const nextStep = adjacentSetupStep(step as SetupStep, isGuest, 1);
+  const missingMedicine = guided && step === 1 && !state.meds.length && !state.symptomOnlyMode;
+  const leave = () => { Keyboard.dismiss(); setup.pause(); navigation.navigate('Home'); };
+  const goBack = () => {
+    if (setup.busy || action?.loading) return;
+    Keyboard.dismiss();
+    if (!guided) openPlanHub();
+    else if (step === setup.steps[0]) leave();
+    else void setup.back();
+  };
+  useFocusEffect(React.useCallback(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!guided) return false;
+      goBack(); return true;
+    });
+    return () => subscription.remove();
+  }, [guided, step, setup.progress, setup.busy, action?.loading]));
+  const goNext = async () => {
+    Keyboard.dismiss();
+    if (nextStep === null) { if (await setup.finish()) navigation.navigate('Home'); }
+    else await setup.advance();
+  };
+  const skipCheckin = () => Alert.alert(t(editingCheckin ? 'setup.keep_title' : 'setup.skip_title'), t(editingCheckin ? 'setup.keep_body' : 'setup.skip_body'), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t(editingCheckin ? 'setup.keep_saved' : 'setup.skip_checkin'), onPress: () => { void goNext(); } },
+  ]);
   const [headerAction, setHeaderAction] = useState<WizardAction | null>(null);
   const [range, setRange] = useState<{ value: ReviewRange; onChange: (value: ReviewRange) => void } | null>(null);
-  const bodyRef = useRef<ScrollView | null>(null);
+  const viewport = useRef<ViewInstance>(null);
+  const [keyboardTop, setKeyboardTop] = useState<number | null>(Keyboard.metrics()?.screenY ?? null);
+  const [keyboardOverlap, setKeyboardOverlap] = useState(0);
+  const measureKeyboard = () => {
+    if (Platform.OS !== 'android' || keyboardTop === null) { setKeyboardOverlap(0); return; }
+    // Android may report y=0 relative to the SafeArea surface; include its top inset.
+    viewport.current?.measureInWindow((_x, y, _width, height) => setKeyboardOverlap(Math.max(0, Math.max(y, insets.top) + height - keyboardTop)));
+  };
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', event => setKeyboardTop(event.endCoordinates.screenY));
+    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboardTop(null));
+    return () => { shown.remove(); hidden.remove(); };
+  }, []);
+  useEffect(measureKeyboard, [keyboardTop, insets.top]);
+  const bodyRef = useRef<ScrollViewInstance | null>(null);
   const tracked = useRef<number | null>(null);
-  useEffect(() => { bodyRef.current?.scrollTo({ y: 0, animated: false }); }, [step, planHubOpen]);
+  useEffect(() => { bodyRef.current?.scrollTo({ y: 0, animated: false }); }, [step, planHubOpen, checkinSession]);
   useEffect(() => {
     if (planHubOpen || tracked.current === step) return;
     tracked.current = step;
@@ -52,15 +105,20 @@ export const WizardScreen: React.FC = () => {
     if (step === 4) track('results_viewed');
     if (step === 8) track('wizard_completed');
   }, [step, planHubOpen, t]);
-  return <WizardDockContext.Provider value={setAction}><WizardHeaderContext.Provider value={setHeaderAction}><WizardRangeContext.Provider value={setRange}><SafeAreaView style={styles.safe} edges={['top','left','right']}><AmbientBackground />
+  return <WizardDockContext.Provider value={setAction}><WizardHeaderContext.Provider value={setHeaderAction}><WizardRangeContext.Provider value={setRange}><SafeAreaView style={styles.safe} edges={['top','left','right']}>{!progressScreen ? <AmbientBackground /> : null}<View ref={viewport} collapsable={false} onLayout={measureKeyboard} style={{ flex: 1, paddingBottom: keyboardOverlap }}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={insets.top}>
     <FormScrollView ref={bodyRef} style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 20, paddingHorizontal: horizontal, paddingBottom: scrollBottom, gap: 16 }}>
-      {planHubOpen || step !== 0 ? <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>{t(planHubOpen ? 'parity.plan_title' : `design.step.${step}.title`)}</Text>{!planHubOpen && [1, 2].includes(step) && headerAction ? <Pressable accessibilityRole="button" accessibilityLabel={headerAction.title} onPress={headerAction.onPress} style={{ width: 48, minHeight: 48, borderRadius: 24, backgroundColor: colors.primary50, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: colors.primary, fontSize: 27, lineHeight: 32 }}>+</Text></Pressable> : null}</View> : null}
+      {planHubOpen ? <TopBar /> : null}
+      {guided ? <Text style={styles.sub}>{t('setup.step_count', { current: setup.steps.indexOf(step as SetupStep) + 1, total: setup.steps.length })}</Text> : null}
+      {planHubOpen || guided || step !== 0 ? <View style={styles.heading}>{!planHubOpen ? <Pressable accessibilityRole="button" accessibilityLabel={t(guided ? 'setup.back' : 'airy.back_to_plan')} disabled={setup.busy || !!action?.loading} onPress={goBack} style={styles.back}><View style={{ transform: [{ rotate: '180deg' }] }}><AppIcon name="chevron" size={18} color={colors.primary} /></View></Pressable> : null}<Text accessibilityRole="header" style={styles.title}>{t(planHubOpen ? 'parity.plan_title' : guided && step === 0 ? 'setup.about_you' : step === 5 && editingCheckin ? 'easy_use.edit_title' : `design.step.${step}.title`)}</Text>{!planHubOpen && [1, 2].includes(step) && headerAction ? <Pressable accessibilityRole="button" accessibilityLabel={headerAction.title} onPress={headerAction.onPress} style={{ width: 48, minHeight: 48, borderRadius: 14, backgroundColor: colors.primary50, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: colors.primary, fontSize: 27, lineHeight: 32 }}>+</Text></Pressable> : null}{!planHubOpen && step === 5 && (editingCheckin || hasUnfinishedCheckin(checkinDrafts.new)) && headerAction ? <Button title={headerAction.title} variant="ghost" compact style={{ maxWidth: '38%' }} onPress={headerAction.onPress} /> : null}</View> : null}
       {!planHubOpen && (step === 6 || step === 8) && range ? <View style={{ alignSelf: 'flex-end' }}><ReviewRangeSelect compact {...range} /></View> : null}
       <SaveState />
       {saveStatus === 'unavailable' ? <Text style={styles.sub}>{t('tracking.load_body')}</Text> : !hydrated ? <Text style={styles.sub}>{t('journey.loading')}</Text> : planHubOpen ? <PlanHub /> : <Step />}
     </FormScrollView>
-    {hydrated && !planHubOpen && step === 5 && action && saveStatus !== 'unavailable' ? <View style={[styles.dock,{paddingHorizontal:horizontal}]}><Button title={action.title} onPress={action.onPress} loading={action.loading} /></View> : null}
-  </SafeAreaView></WizardRangeContext.Provider></WizardHeaderContext.Provider></WizardDockContext.Provider>;
+    {hydrated && !planHubOpen && saveStatus !== 'unavailable' && (guided || step === 5 && action) ? <View style={[styles.dock,{paddingHorizontal:horizontal}]}>
+      {setup.error && guided ? <Text accessibilityRole="alert" style={styles.sub}>{t('setup.error')}</Text> : null}
+      <Button title={guided && step !== 0 && step !== 5 ? nextStep === null ? t('setup.finish') : t('setup.next', { screen: t(`design.step.${nextStep}.title`) }) : action?.title || t('journey.loading')} onPress={guided && step !== 0 && step !== 5 ? () => { void goNext(); } : action?.onPress} loading={setup.busy || !!action?.loading} disabled={missingMedicine || (step === 0 || step === 5) && !action} />
+      {guided && keyboardTop === null ? <Button title={t(step === 5 ? editingCheckin ? 'setup.keep_saved' : 'setup.skip_checkin' : 'setup.finish_later')} variant="ghost" disabled={setup.busy || !!action?.loading} onPress={step === 5 ? skipCheckin : leave} /> : null}
+    </View> : null}
+  </KeyboardAvoidingView></View></SafeAreaView></WizardRangeContext.Provider></WizardHeaderContext.Provider></WizardDockContext.Provider>;
 };
-const STEP_ICONS: Record<number, AppIconName> = { 0: 'account', 1: 'pill', 2: 'heart', 3: 'sun', 4: 'spark', 5: 'calendar', 6: 'chart', 7: 'chart', 8: 'file', 9: 'spark' };
-const styles=StyleSheet.create({safe:{flex:1,backgroundColor:colors.background},heading:{flexDirection:'row',alignItems:'center',gap:14},title:{flex:1,fontSize:29,lineHeight:35,fontWeight:'600',letterSpacing:-1,color:colors.text},sub:{fontSize: 17,lineHeight:22,color:colors.textMuted},dock:{backgroundColor:colors.background,paddingVertical:8}});
+const styles=StyleSheet.create({safe:{flex:1,backgroundColor:colors.background},heading:{flexDirection:'row',alignItems:'center',gap:12},back:{width:48,height:48,borderRadius:24,backgroundColor:colors.surface,borderWidth:1.5,borderColor:colors.border,alignItems:'center',justifyContent:'center'},title:{flex:1,fontSize:31,lineHeight:37,fontWeight:'700',letterSpacing:-.8,color:colors.pine},sub:{fontSize:17,lineHeight:22,color:colors.textMuted},dock:{backgroundColor:colors.background,paddingVertical:8}});

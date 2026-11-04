@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { colors, radius, spacing, touchMin, typography } from '@/theme';
+import { progressPalette } from '@/theme/progress';
 
 export type DropdownOption = {
   value: string;
@@ -17,6 +18,7 @@ type Props = {
   disabled?: boolean;
   inline?: boolean;
   accessibilityLabel?: string;
+  appearance?: 'light' | 'dark';
 };
 
 export const DropdownSelect: React.FC<Props> = ({
@@ -28,8 +30,10 @@ export const DropdownSelect: React.FC<Props> = ({
   disabled = false,
   inline = false,
   accessibilityLabel,
+  appearance = 'dark',
 }) => {
   const [open, setOpen] = useState(false);
+  const dark = appearance === 'dark';
 
   const selectedLabel = useMemo(
     () => options.find((o) => o.value === value)?.label,
@@ -43,13 +47,14 @@ export const DropdownSelect: React.FC<Props> = ({
 
   return (
     <View style={styles.wrap}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, dark && { color: progressPalette.muted }]}>{label}</Text> : null}
       <Pressable
         onPress={() => !disabled && setOpen(true)}
         disabled={disabled}
         style={({ pressed }) => [
           styles.trigger,
           inline && styles.triggerInline,
+          dark && { backgroundColor: 'transparent', borderColor: progressPalette.border },
           disabled && styles.triggerDisabled,
           pressed && !disabled && { opacity: 0.85 },
         ]}
@@ -59,17 +64,17 @@ export const DropdownSelect: React.FC<Props> = ({
         accessibilityState={{ disabled }}
       >
         <Text
-          style={[styles.triggerText, !selectedLabel && styles.triggerPlaceholder]}
+          style={[styles.triggerText, !selectedLabel && styles.triggerPlaceholder, dark && { color: progressPalette.text }]}
         >
           {selectedLabel ?? placeholder}
         </Text>
-        <Text style={styles.chevron}>▾</Text>
+        <Text style={[styles.chevron, dark && { color: progressPalette.muted }]}>▾</Text>
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-            {label ? <Text style={styles.sheetTitle}>{label}</Text> : null}
+          <Pressable style={[styles.sheet, dark && { backgroundColor: progressPalette.surface, borderColor: progressPalette.border }]} onPress={(e) => e.stopPropagation()}>
+            {label ? <Text style={[styles.sheetTitle, dark && { color: progressPalette.text }]}>{label}</Text> : null}
             <ScrollView style={styles.list} bounces={false} keyboardShouldPersistTaps="handled">
               {options.map((item) => {
                 const selected = item.value === value;
@@ -77,11 +82,14 @@ export const DropdownSelect: React.FC<Props> = ({
                 return (
                   <Pressable
                     key={item.value || '__placeholder__'}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
                     onPress={() => choose(item.value)}
                     style={({ pressed }) => [
                       styles.option,
                       selected && styles.optionSelected,
                       isPlaceholder && styles.optionPlaceholder,
+                      dark && selected && { backgroundColor: progressPalette.soft, borderColor: progressPalette.border },
                       pressed && { opacity: 0.85 },
                     ]}
                   >
@@ -90,11 +98,12 @@ export const DropdownSelect: React.FC<Props> = ({
                         styles.optionLabel,
                         selected && styles.optionLabelSelected,
                         isPlaceholder && styles.optionLabelPlaceholder,
+                        dark && { color: selected ? progressPalette.accent : progressPalette.text },
                       ]}
                     >
                       {item.label}
                     </Text>
-                    {selected && item.value ? <Text style={styles.check}>✓</Text> : null}
+                    {selected && item.value ? <Text style={[styles.check, dark && { color: progressPalette.accent }]}>✓</Text> : null}
                   </Pressable>
                 );
               })}
@@ -129,7 +138,7 @@ const styles = StyleSheet.create({
   chevron: { fontSize: 17, color: colors.textMuted },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {

@@ -1,93 +1,126 @@
-import { medicationAdherence } from '@/wizard/medicationTracking';
-import { TrackingExplanation } from '@/components/TrackingExplanation';
+import { useSetup } from '@/store/SetupContext';
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
-import { Button } from '@/components/Button';
-import { DropdownSelect } from '@/components/DropdownSelect';
-import { RatingBars } from '@/components/RatingBars';
-import { recordedRatings } from '@/wizard/ratingBars';
 import { AppIcon } from '@/components/AppIcon';
+import { DropdownSelect } from '@/components/DropdownSelect';
+import { ProgressRatingBars } from '@/components/ProgressRatingBars';
 import { CheckinDetailModal } from '@/components/CheckinDetailModal';
-import { ReviewRangeSelect } from '@/components/ReviewRangeSelect';
+import { TrackingExplanation } from '@/components/TrackingExplanation';
 import { EditorSheet, ListRow, refined } from '@/components/RefinedUI';
 import { useWizard } from '@/store/WizardContext';
 import { useTranslation } from '@/hooks/useTranslation';
-import { wellbeingRatingSeries, checkinsInRange, knownAdherenceAverage, symptomRatingSeries, type ReviewRange } from '@/wizard/reviewData';
-import { adherenceLabel } from '@/wizard/medicationTracking';
+import { checkinsInRange, knownAdherenceAverage, reviewPeriod, type ReviewRange } from '@/wizard/reviewData';
+import { progressPoints, progressComparison, type ProgressMeasure } from '@/wizard/progressChart';
+import { latestUpdate } from '@/wizard/latestUpdate';
+import { medicationAdherence, adherenceLabel } from '@/wizard/medicationTracking';
 import { fmtDate, impactLabel, type TranslateFn } from '@/wizard/engine';
-import type { WizardCheckin } from '@/wizard/types';
-import { Section, FinePrint } from '@/screens/wizard/ui';
+import { BODY_SYSTEM_KEYS, type WizardCheckin } from '@/wizard/types';
+import { FinePrint } from '@/screens/wizard/ui';
+import { progressPalette as palette } from '@/theme/progress';
 import { colors } from '@/theme';
+import { readableCheckinDate } from '@/wizard/checkinEditor';
 
-/** The two facts shown on every check-in row, so same-day records stay tellable apart. */
 const checkinSymptomSummary = (c: WizardCheckin, t: TranslateFn) => c.symptoms.items.slice(0, 2).map(i => `${i.symptom} · ${impactLabel(i.change, t)}`).join(', ');
 const checkinAdherence = (c: WizardCheckin, t: TranslateFn) => medicationAdherence(c) !== null ? t('parity.percent_taken', { value: medicationAdherence(c)! }) : t('parity.unknown_doses');
 
 export const ProgressStep: React.FC = () => {
+  const setup = useSetup();
   const { state, setStep } = useWizard();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const [range, setRange] = useState<ReviewRange>('7');
-  const [selection, setSelection] = useState({ scope: '', key: '' });
   const [measure, setMeasure] = useState('');
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [explainOpen, setExplainOpen] = useState(false);
+  const [sheet, setSheet] = useState<'more' | 'history' | 'explain' | null>(null);
   const [detailIndex, setDetailIndex] = useState<number | null>(null);
   const checkins = useMemo(() => checkinsInRange(state.checkins, range), [state.checkins, range]);
-  const symptomSeries = useMemo(() => symptomRatingSeries(checkins), [checkins]);
-  const wellbeingKeys = ['energy', 'mood', 'sleep', 'focus'] as const;
-  const choices = [...Object.keys(symptomSeries), ...wellbeingKeys];
-  const active = choices.includes(measure) ? measure : choices[0];
-  const isWellbeing = (wellbeingKeys as readonly string[]).includes(active);
-  const measureLabel = (key: string) => (wellbeingKeys as readonly string[]).includes(key) ? t(`wellbeing.${key}`).replace(/\s*\([^)]*\)\s*$/, '') : t('calm.symptom_severity', { name: key });
-  const rawPoints: Array<[number, number]> = isWellbeing ? wellbeingRatingSeries(checkins, active as typeof wellbeingKeys[number]) : symptomSeries[active] || [];
-  const points = recordedRatings(rawPoints);
-  const scope = `${range}:${active}`;
-  const picked = (selection.scope === scope ? points.find(point => point.key === selection.key) : undefined) || points.at(-1);
-  const label = measureLabel(active);
-  const value = picked?.value ?? null;
-  const delta = points.length > 1 && picked ? picked.value - points[0].value : null;
+  const symptomNames = [...new Set(checkins.flatMap(c => c.symptoms.items.map(item => item.symptom)))];
+  const choices = [
+    ...symptomNames.map(name => ({ value: `symptom:${name}`, label: name, measure: { kind: 'symptom', name } as ProgressMeasure })),
+    ...BODY_SYSTEM_KEYS.map(name => ({ value: `wellbeing:${name}`, label: t(`wellbeing.${name}`).replace(/\s*\([^)]*\)\s*$/, ''), measure: { kind: 'wellbeing', name } as ProgressMeasure })),
+  ];
+  const active = choices.find(choice => choice.value === measure) || choices[0];
+  const points = progressPoints(checkins, active.measure);
+  const { first, last, hasComparison } = progressComparison(points);
+  const update = latestUpdate(checkins, t);
+  const latest = update.checkin;
   const average = knownAdherenceAverage(checkins);
-  const shortDate = (timestamp: number) => new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  const detail = detailIndex === null ? null : state.checkins[detailIndex];
-  return <View style={{ gap: 12 }}>
-    <View style={[styles.rangeRow, fontScale > 1.3 && { flexDirection: 'column', alignItems: 'flex-start' }]}><FinePrint>{t('calm.recorded_changes')}</FinePrint><ReviewRangeSelect compact value={range} onChange={setRange} /></View>
-    {checkins.length ? <View style={styles.trend}>
-      <View style={[styles.valueRow, fontScale > 1.3 && { flexDirection: 'column', alignItems: 'flex-start' }]}>
-        <View style={{ flex: fontScale > 1.3 ? 0 : 1, gap: 6 }}><DropdownSelect inline accessibilityLabel={t('clean.progress_measure')} value={active} options={choices.map(choice => ({ value: choice, label: measureLabel(choice) }))} onChange={setMeasure} /><Text style={styles.value}>{value ?? '—'}<Text style={styles.unit}> / 10</Text></Text></View>
-        {picked ? <Text style={styles.dateBadge}>{shortDate(picked.time)}</Text> : null}
-      </View>
-      {points.length ? <>
-        <RatingBars points={points} selected={picked?.key} onSelect={key => setSelection({ scope, key })} />
-        {delta !== null ? <View style={styles.changeNote}><AppIcon name="chart" size={17} color={delta !== 0 && (isWellbeing ? delta > 0 : delta < 0) ? colors.success : colors.textMuted} /><Text style={[styles.caption, { flexShrink: 1, color: delta !== 0 && (isWellbeing ? delta > 0 : delta < 0) ? colors.success : colors.textMuted }]}>{t('dashboard.progress.change_since', { change: t(delta === 0 ? 'parity.rating_same' : delta > 0 ? Math.abs(delta) === 1 ? 'parity.point_higher' : 'parity.points_higher' : Math.abs(delta) === 1 ? 'parity.point_lower' : 'parity.points_lower', { count: Math.abs(delta) }), date: shortDate(points[0].time) })}</Text></View> : null}
-      </> : <FinePrint>{t('parity.no_ratings')}</FinePrint>}
-    </View> : <Section><Text style={refined.headingText}>{t('design.no_checkins_title')}</Text><Text style={refined.body}>{t('parity.no_period_records')}</Text><Button title={t('simple.check_in')} onPress={() => setStep(5)} /></Section>}
-    <View style={[styles.metrics, fontScale > 1.3 && { flexDirection: 'column' }]}>
-      <View style={styles.metric}><Text style={styles.caption}>{t('calm.saved_checkins')}</Text><Text style={styles.stat}>{checkins.length}</Text></View>
-      <View style={styles.metric}><Text style={styles.caption}>{t('calm.symptoms_tracked')}</Text><Text style={styles.stat}>{state.symptoms.selected.length}</Text></View>
+  const period = reviewPeriod(range, checkins);
+  const shortDate = (time: number | string) => new Date(time).toLocaleDateString(language, { month: 'short', day: 'numeric', ...(range === 'all' ? { year: 'numeric' } : {}) });
+  const detail = detailIndex === null ? null : state.checkins[detailIndex] ?? null;
+  const openRecord = (record: WizardCheckin) => {
+    const index = state.checkins.indexOf(record);
+    if (index >= 0) setDetailIndex(index);
+  };
+  const openFromSheet = (record: WizardCheckin) => { setSheet(null); setTimeout(() => openRecord(record), 350); };
+  const changeSheet = (next: 'history' | 'explain') => { setSheet(null); setTimeout(() => setSheet(next), 350); };
+  const stacked = fontScale > 1.3;
+
+  return <View style={styles.page}>
+    <View style={[styles.rangeRow, stacked && styles.stacked]}>
+      <Text style={[styles.caption, { flexShrink: 1 }]}>{shortDate(period.from)} – {shortDate(period.to)}</Text>
+      <View style={{ width: stacked ? '100%' : 140 }}><DropdownSelect inline appearance="dark" accessibilityLabel={t('parity.date_range')} value={range} onChange={value => setRange(value as ReviewRange)} options={(['7', '30', 'all'] as const).map(value => ({ value, label: t('parity.range.' + value) }))} /></View>
     </View>
-    {checkins.length ? <ListRow icon="calendar" title={t('clean.checkin_history')} onPress={() => setHistoryOpen(true)} last /> : null}
-    {checkins.length ? <Button variant="ghost" title={t('easy.explain_progress')} onPress={() => setExplainOpen(true)} /> : null}
-    <EditorSheet visible={explainOpen} title={t('easy.explain_progress')} onClose={() => setExplainOpen(false)}><TrackingExplanation range={range} measure={active} onOpenRecord={record => { setExplainOpen(false); setTimeout(() => setDetailIndex(state.checkins.indexOf(record)), 350); }} /></EditorSheet>
-    <EditorSheet visible={historyOpen} title={t('ai.history_title')} onClose={() => setHistoryOpen(false)}><FinePrint>{t('parity.medication_taken')}: {adherenceLabel(average, t('checkin.not_answered'))}</FinePrint><FinePrint>{t('parity.known_average')}</FinePrint><View>{[...checkins].reverse().map((c, index, all) => { const taken = checkinAdherence(c, t); const symptoms = checkinSymptomSummary(c, t); return <Pressable key={c.clientId || c.id || c.dateISO} accessibilityRole="button" accessibilityLabel={`${t('parity.open_checkin', { date: fmtDate(c.dateISO) })}, ${taken}${symptoms ? `, ${symptoms}` : ''}`} onPress={() => { setHistoryOpen(false); setDetailIndex(state.checkins.indexOf(c)); }} style={({ pressed }) => [{ minHeight: 48, paddingVertical: 10, gap: 4, borderBottomWidth: index === all.length - 1 ? 0 : StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft }, pressed && { opacity: 0.65 }]}><Text style={refined.rowTitle}>{fmtDate(c.dateISO)}</Text><Text style={refined.meta}>{symptoms ? `${taken} · ${symptoms}` : taken}</Text></Pressable>; })}</View></EditorSheet>
+    {checkins.length ? <>
+      <View style={styles.card}>
+        <View style={[styles.measureRow, stacked && styles.stacked]}>
+          <View style={{ flex: stacked ? undefined : 1, alignSelf: 'stretch' }}><DropdownSelect inline appearance="dark" accessibilityLabel={t('clean.progress_measure')} value={active.value} options={choices.map(({ value, label }) => ({ value, label }))} onChange={setMeasure} /></View>
+          <Text style={[styles.caption, { flexShrink: 1 }]}>{t(active.measure.kind === 'symptom' ? 'easy_use.severity' : 'easy_use.wellbeing_rating')}</Text>
+        </View>
+        <View style={{ gap: 4 }}>
+          <Text style={styles.comparison} accessibilityLabel={hasComparison ? t('easy_use.rating_change', { from: first!.value!, to: last!.value! }) : last ? t('progress_view.rating_value', { value: last.value! }) : t('progress_view.not_rated')}>{hasComparison ? `${first!.value} → ${last!.value}` : last?.value ?? '—'}<Text style={styles.unit}> {t('easy_use.out_of_ten')}</Text></Text>
+          <Text style={styles.caption}>{hasComparison ? t('progress_view.comparison_dates', { from: shortDate(first!.time), to: shortDate(last!.time) }) : last ? shortDate(last.time) : t('parity.no_ratings')}</Text>
+        </View>
+        <ProgressRatingBars key={`${range}:${active.value}`} points={points} highlighted={last?.key} onOpen={point => openRecord(point.record)} />
+        <Text style={styles.caption}>{t(active.measure.kind === 'symptom' ? 'easy_use.severity_scale' : 'easy_use.wellbeing_scale')}</Text>
+        {points.some(point => point.value === null) ? <Text style={styles.caption}>— {t('progress_view.not_rated')}</Text> : null}
+      </View>
+      {latest ? <View style={styles.card}>
+        <Text accessibilityRole="header" style={styles.cardTitle}>{t('progress_view.latest')}</Text>
+        <Text style={styles.body}>{update.symptomProgress ? t('progress_view.reported', { changes: update.progress }) : t('progress_view.no_changes')}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('parity.open_checkin', { date: fmtDate(latest.dateISO) })} onPress={() => openRecord(latest)} style={({ pressed }) => [styles.latestLink, pressed && styles.pressed]}>
+          <Text style={styles.linkText}>{t('progress_view.view_date', { date: readableCheckinDate(latest.dateISO, language) })}</Text>
+          <AppIcon name="arrow" size={17} color={palette.accent} />
+        </Pressable>
+      </View> : null}
+    </> : <View style={styles.card}>
+      <Text style={styles.cardTitle}>{t('design.no_checkins_title')}</Text>
+      <Text style={styles.body}>{t('parity.no_period_records')}</Text>
+      <Pressable accessibilityRole="button" onPress={() => setStep(5)} style={({ pressed }) => [styles.emptyAction, pressed && styles.pressed]}><Text style={[styles.linkText, { color: palette.background }]}>{t('simple.check_in')}</Text></Pressable>
+    </View>}
+    <View style={styles.footer}>
+      {!setup.active ? <Pressable accessibilityRole="button" onPress={() => setStep(8)} style={({ pressed }) => [styles.summaryLink, pressed && styles.pressed]}><Text style={styles.linkText}>{t('progress_view.summary')}</Text><AppIcon name="file" size={17} color={palette.accent} /></Pressable> : null}
+      {checkins.length ? <Pressable accessibilityRole="button" accessibilityLabel={t('progress_view.more')} onPress={() => setSheet('more')} style={({ pressed }) => [styles.more, pressed && styles.pressed]}><Text style={{ color: palette.accent, fontSize: 24 }}>···</Text></Pressable> : null}
+    </View>
+    <EditorSheet visible={sheet === 'more'} title={t('progress_view.more')} onClose={() => setSheet(null)}><ListRow icon="calendar" title={t('clean.checkin_history')} onPress={() => changeSheet('history')} /><ListRow icon="spark" title={t('easy.explain_progress')} onPress={() => changeSheet('explain')} last /></EditorSheet>
+    <EditorSheet visible={sheet === 'explain'} title={t('easy.explain_progress')} onClose={() => setSheet(null)}><TrackingExplanation range={range} measure={active.value} onOpenRecord={openFromSheet} /></EditorSheet>
+    <EditorSheet visible={sheet === 'history'} title={t('ai.history_title')} onClose={() => setSheet(null)}>
+      <FinePrint>{t('parity.medication_taken')}: {adherenceLabel(average, t('checkin.not_answered'))}</FinePrint><FinePrint>{t('parity.known_average')}</FinePrint>
+      <View>{[...checkins].reverse().map((record, index, all) => {
+        const taken = checkinAdherence(record, t), symptoms = checkinSymptomSummary(record, t);
+        return <Pressable key={`${record.clientId || record.id || record.dateISO}:${index}`} accessibilityRole="button" accessibilityLabel={`${t('parity.open_checkin', { date: fmtDate(record.dateISO) })}, ${taken}${symptoms ? `, ${symptoms}` : ''}`} onPress={() => openFromSheet(record)} style={({ pressed }) => [{ minHeight: 48, paddingVertical: 10, gap: 4, borderBottomWidth: index === all.length - 1 ? 0 : StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft }, pressed && styles.pressed]}><Text style={refined.rowTitle}>{fmtDate(record.dateISO)}</Text><Text style={refined.meta}>{symptoms ? `${taken} · ${symptoms}` : taken}</Text></Pressable>;
+      })}</View>
+    </EditorSheet>
     <CheckinDetailModal visible={detail !== null} checkin={detail} index={detailIndex ?? 0} onClose={() => setDetailIndex(null)} />
   </View>;
 };
 
 const styles = StyleSheet.create({
+  page: { gap: 16 },
   rangeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  trend: { backgroundColor: colors.glass, borderRadius: 26, padding: 20, gap: 20, borderWidth: 1, borderColor: colors.glassBorder },
-  valueRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-  value: { color: colors.text, fontSize: 45, lineHeight: 54, fontWeight: '500', letterSpacing: -1.6 },
-  unit: { color: colors.textMuted, fontSize: 17 },
-  caption: { color: colors.textMuted, fontSize: 15, lineHeight: 22 },
-  plot: { flexDirection: 'row', gap: 8 },
-  axis: { justifyContent: 'space-between', paddingVertical: 16 },
-  dates: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  dateBadge: { fontSize: 15, lineHeight: 22, color: colors.textMuted, backgroundColor: colors.surfaceAlt, borderRadius: 9, paddingVertical: 4, paddingHorizontal: 8 },
-  changeNote: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  metrics: { flexDirection: 'row', paddingVertical: 4, gap: 12 },
-  metric: { flex: 1, gap: 6, backgroundColor: colors.glass, padding: 16, borderRadius: 24, borderWidth: 1, borderColor: colors.glassBorder },
-  stat: { color: colors.primaryDark, fontSize: 28, lineHeight: 36, fontWeight: '600' },
+  stacked: { flexDirection: 'column', alignItems: 'stretch' },
+  card: { backgroundColor: palette.surface, borderRadius: 24, padding: 18, gap: 12 },
+  measureRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  cardTitle: { color: palette.text, fontSize: 17, lineHeight: 24, fontWeight: '600' },
+  comparison: { color: palette.text, fontSize: 34, lineHeight: 43, fontWeight: '500', letterSpacing: -1 },
+  unit: { color: palette.muted, fontSize: 15, lineHeight: 22, letterSpacing: 0 },
+  caption: { color: palette.muted, fontSize: 14, lineHeight: 21 },
+  body: { color: palette.text, fontSize: 17, lineHeight: 26 },
+  latestLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', minHeight: 48, gap: 9 },
+  linkText: { color: palette.accent, fontSize: 17, lineHeight: 24, fontWeight: '500', flexShrink: 1 },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  summaryLink: { flexDirection: 'row', alignItems: 'center', minHeight: 48, flexShrink: 1, gap: 9 },
+  more: { width: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  emptyAction: { backgroundColor: palette.accent, minHeight: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', padding: 12 },
+  pressed: { opacity: 0.65 },
 });

@@ -4,7 +4,7 @@ import { fmtDate } from './recordFormatting';
 import { checkinsInRange, knownAdherenceAverage, type ReviewRange } from './reviewData';
 import { medicationAdherence } from './medicationTracking';
 import { isoFromCalendarDate } from './calendarDate';
-import type { WizardCheckin, WizardState } from './types';
+import { BODY_SYSTEM_KEYS, type WizardCheckin, type WizardState } from './types';
 
 export type ProgressFact = { id: string; title: string; text: string; records: WizardCheckin[] };
 const valid = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 10;
@@ -16,14 +16,14 @@ export function progressExplanationFacts(state: WizardState, range: ReviewRange,
   const facts: ProgressFact[] = [];
   const symptoms = [...new Set(records.flatMap(record => record.symptoms.items.map(item => item.symptom)))];
   for (const name of symptoms) {
-    if (measure && measure !== name) continue;
+    if (measure && measure !== name && measure !== `symptom:${name}`) continue;
     const rated = records.flatMap(record => { const value = record.symptoms.items.find(item => item.symptom === name)?.severityNow; return valid(value) ? [{ record, value }] : []; });
     if (rated.length < 2) continue;
     const first = rated[0], last = rated.at(-1)!;
     facts.push({ id: `symptom:${name}`, title: name, text: t('easy.explain_rating', { symptom: name, first: first.value, last: last.value, from: fmtDate(first.record.dateISO), to: fmtDate(last.record.dateISO) }), records: [first.record, last.record] });
   }
-  for (const key of ['energy', 'mood', 'sleep', 'focus'] as const) {
-    if (measure && measure !== key) continue;
+  for (const key of BODY_SYSTEM_KEYS) {
+    if (measure && measure !== key && measure !== `wellbeing:${key}`) continue;
     const rated = records.filter(record => valid(record.wellbeing[key]));
     if (rated.length < 2) continue;
     const first = rated[0], last = rated.at(-1)!;

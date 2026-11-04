@@ -65,6 +65,8 @@ export interface ProfileData {
 export interface AccountData {
   email: string;
   consent: boolean;
+  /** Separate opt-in for sending entries to the AI provider (personal answers). */
+  aiConsent?: boolean;
 }
 
 /** Present only when the signed-in account is a registered, active doctor. */

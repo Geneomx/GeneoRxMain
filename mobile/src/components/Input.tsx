@@ -1,9 +1,8 @@
 import { FormFocusContext } from './FormScrollView';
 import React, { useContext, useRef, useState } from 'react';
-import { StyleSheet, TextInput, TextInputProps, View } from 'react-native';
-import { AppText as Text } from '@/components/AppText';
+import { StyleSheet, type TextInputInstance, TextInputProps, View } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from '@/components/AppText';
 import { colors, radius, spacing, touchMin, typography } from '@/theme';
-import { useAppFontsReady } from '@/store/TypographyContext';
 
 interface Props extends TextInputProps {
   label?: string;
@@ -12,9 +11,8 @@ interface Props extends TextInputProps {
 
 export const Input: React.FC<Props> = ({ label, error, style, onFocus, onBlur, ...rest }) => {
   const revealFocus = useContext(FormFocusContext);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [focused, setFocused] = useState(false);
-  const fontsReady = useAppFontsReady();
   return (
     <View style={styles.wrap}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -22,7 +20,9 @@ export const Input: React.FC<Props> = ({ label, error, style, onFocus, onBlur, .
         ref={inputRef}
         accessibilityLabel={label}
         placeholderTextColor={colors.textMuted}
-        style={[styles.input, fontsReady && { fontFamily: 'GeneoRxInter400' }, focused && styles.inputFocused, error && styles.inputError, style]}
+        keyboardAppearance="light"
+        selectionColor={colors.primary}
+        style={[styles.input, focused && styles.inputFocused, error && styles.inputError, style]}
         onFocus={(e) => {
           setFocused(true);
           onFocus?.(e);
@@ -43,11 +43,11 @@ const styles = StyleSheet.create({
   wrap: { gap: spacing.xs },
   label: { ...typography.bodyMuted, color: colors.text, fontWeight: '500', fontSize: 16 },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.controlBorder,
     backgroundColor: colors.inputBg,
-    borderRadius: 14,
-    paddingHorizontal: 14,
+    borderRadius: 20,
+    paddingHorizontal: 16,
     paddingVertical: spacing.sm + 4,
     fontSize: 17,
     color: colors.text,

@@ -1,7 +1,7 @@
 import { useVisualPreferences } from '@/store/VisualPreferencesContext';
 import React, { useState } from 'react';
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
-import { AppText as Text } from '@/components/AppText';
+import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from '@/components/AppText';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -142,7 +142,7 @@ export const SettingsScreen: React.FC = () => {
       <AmbientBackground />
       <ScrollView contentContainerStyle={[ss.content, { paddingBottom: scrollBottom }]} showsVerticalScrollIndicator={false}>
         <View style={page}>
-        <View style={refined.heading}><Text accessibilityRole="header" style={{ flex: 1, fontSize: 24, fontWeight: '600', letterSpacing: -0.3, color: colors.text }}>{t('mobile.profile.settings')}</Text><Button compact variant="ghost" title={t('nav.back')} onPress={() => navigation.goBack()} /></View>
+        <View style={refined.heading}><Text accessibilityRole="header" style={{ flex: 1, fontSize: 33, fontWeight: '700', letterSpacing: -0.8, color: colors.pine }}>{t('mobile.profile.settings')}</Text><Button compact variant="ghost" title={t('nav.back')} onPress={() => navigation.goBack()} /></View>
         {/* ── Preferences ─── */}
         <SectionHeader title={t('mobile.settings.preferences')} />
         <View style={ss.card}>
@@ -154,7 +154,7 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        <View style={ss.card}><View style={[ss.languageRow, { gap: 12 }]}><View style={{ flex: 1 }}><Text style={ss.rowLabel}>{t('easy.brand_motion')}</Text></View><Switch accessibilityHint={t('easy.brand_motion_note')} accessibilityLabel={t('easy.brand_motion')} value={brandMotion} onValueChange={value => { void setBrandMotion(value).catch(() => Alert.alert(t('mobile.alert.try_again'))); }} /></View></View>
+        <View style={ss.card}><View style={[ss.languageRow, { gap: 12 }]}><View style={{ flex: 1 }}><Text style={ss.rowLabel}>{t('easy.brand_motion')}</Text></View><Switch accessibilityHint={t('easy.brand_motion_note')} accessibilityLabel={t('easy.brand_motion')} trackColor={{ false: colors.border, true: colors.primary }} thumbColor={brandMotion ? colors.onPrimary : '#FFFFFF'} value={brandMotion} onValueChange={value => { void setBrandMotion(value).catch(() => Alert.alert(t('mobile.alert.try_again'))); }} /></View></View>
         <Row label={t('mobile.reminders.title')} value={t(reminder.enabled ? 'parity.reminder_on' : 'parity.reminder_off')} chevron onPress={() => setShowReminders(true)} />
         <SectionHeader title={t('mobile.settings.security')} />
         <View style={ss.card}>
@@ -220,7 +220,7 @@ export const SettingsScreen: React.FC = () => {
               />
             </View>
 </EditorSheet>
-      <EditorSheet visible={showReminders} title={t('mobile.reminders.title')} onClose={() => setShowReminders(false)}><View style={ss.toggleRow}><View style={{ flex: 1, gap: 4 }}><Text style={refined.rowTitle}>{t('parity.reminder')}</Text><Text style={refined.meta}>{t('parity.reminder_sub')}</Text></View><Switch accessibilityLabel={t('parity.reminder')} value={reminder.enabled} disabled={reminder.busy} onValueChange={v => { void reminder.toggle(v); }} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFFFFF" /></View></EditorSheet>
+      <EditorSheet visible={showReminders} title={t('mobile.reminders.title')} onClose={() => setShowReminders(false)}><View style={ss.toggleRow}><View style={{ flex: 1, gap: 4 }}><Text style={refined.rowTitle}>{t('parity.reminder')}</Text><Text style={refined.meta}>{t('parity.reminder_sub')}</Text></View><Switch accessibilityLabel={t('parity.reminder')} value={reminder.enabled} disabled={reminder.busy} onValueChange={v => { void reminder.toggle(v); }} trackColor={{ false: colors.border, true: colors.primary }} thumbColor={reminder.enabled ? colors.onPrimary : '#FFFFFF'} /></View></EditorSheet>
       {/* ── Delete confirmation (type DELETE) ─── */}
       <Modal visible={showDeleteModal} transparent animationType="fade" onRequestClose={closeDeleteModal}>
         <View style={ss.modalOverlay}>
@@ -286,12 +286,16 @@ const ss = StyleSheet.create({
   },
 
   sectionHeader: { paddingTop: 16, paddingBottom: 6, paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 17, fontWeight: '500', color: colors.text },
+  sectionTitle: { fontSize: 13, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', color: colors.coral },
   sectionSub: { fontSize: 15, color: colors.textDim, marginTop: 2 },
 
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 0,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingHorizontal: 18,
+    marginBottom: 12,
     overflow: 'hidden',
   },
 
@@ -374,7 +378,7 @@ const ss = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(4, 6, 12, 0.72)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     padding: spacing.lg,
   },

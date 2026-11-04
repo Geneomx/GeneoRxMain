@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Keyboard, Share, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Share, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import * as Clipboard from 'expo-clipboard';
 import { Button } from './Button';
 import { FormScrollView } from './FormScrollView';

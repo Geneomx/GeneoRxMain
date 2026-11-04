@@ -7,7 +7,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import type { AppTabsParamList } from '@/navigation/AppTabs';
 import type { ClinicTabsParamList } from '@/navigation/ClinicTabs';
 import { TAB_BAR_HEIGHT } from '@/hooks/useResponsiveLayout';
-import { colors, touchMin } from '@/theme';
+import { colors, shadow, touchMin } from '@/theme';
 import { useWizard } from '@/store/WizardContext';
 import { dashboardPalette as palette } from '@/theme/dashboard';
 
@@ -46,7 +46,7 @@ export const AppTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, nav
           const { options } = descriptors[route.key];
           const icon = options.tabBarIcon?.({
             focused,
-            color: focused ? colors.primary : palette.muted,
+            color: focused ? colors.onPine : palette.muted,
             size: iconOnly ? ICON_SIZE_COMPACT : ICON_SIZE,
           });
 
@@ -97,19 +97,20 @@ export const AppTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, nav
 const styles = StyleSheet.create({
   wrap: {
     backgroundColor: colors.background,
-    paddingTop: 8,
-    paddingHorizontal: 14,
+    paddingTop: 6,
+    paddingHorizontal: 16,
   },
   row: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'stretch',
-    gap: 3,
-    backgroundColor: colors.glass,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    borderRadius: 25,
-    padding: 4,
+    gap: 4,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 34,
+    padding: 6,
+    ...shadow.raised,
   },
   item: {
     flex: 1,
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   pillOn: {
-    backgroundColor: 'transparent',
+    backgroundColor: colors.pine,
   },
   iconWrap: {
     width: 44,
@@ -143,23 +144,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconWrapFocused: { backgroundColor: colors.primary50 },
+  iconWrapFocused: { backgroundColor: 'transparent' },
   iconWrapLarge: {
     height: ICON_SIZE_COMPACT + 4,
   },
   label: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12.5,
+    lineHeight: 18,
     textAlign: 'center',
     maxWidth: '100%',
     paddingHorizontal: 1,
   },
   labelOff: {
-    fontWeight: '500',
+    fontWeight: '700',
     color: palette.muted,
   },
   labelOn: {
-    fontWeight: '500',
-    color: colors.primary,
+    fontWeight: '700',
+    color: colors.onPine,
   },
 });

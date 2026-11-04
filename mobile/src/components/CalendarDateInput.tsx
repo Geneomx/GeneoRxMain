@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { Input } from './Input';
 import { colors } from '@/theme';
 import { useTranslation } from '@/hooks/useTranslation';

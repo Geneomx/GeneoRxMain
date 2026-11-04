@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { useTranslation } from '@/hooks/useTranslation';
 import { colors, radius, spacing } from '@/theme';
 
@@ -45,9 +46,9 @@ export const FirstRunBanner: React.FC<Props> = ({ position, titleKey, subKey }) 
 const styles = StyleSheet.create({
   wrap: {
     borderWidth: 1,
-    borderColor: 'rgba(40, 225, 255, 0.28)',
+    borderColor: colors.primary100,
     borderRadius: radius.card,
-    backgroundColor: 'rgba(40, 225, 255, 0.06)',
+    backgroundColor: colors.primary50,
     padding: spacing.md,
     gap: 6,
   },

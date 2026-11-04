@@ -1,56 +1,61 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { AppText as Text } from './AppText';
-import { BrandWatermark } from './AmbientBackground';
+import { Sprig } from './WelcomeArt';
 import { AppIcon } from './AppIcon';
 import { useWizard } from '@/store/WizardContext';
-import { useMedCatalog, findMedName } from '@/store/MedCatalogContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { trackingJourney } from '@/wizard/trackingJourney';
-import { dashboardPalette as palette } from '@/theme/dashboard';
-import { shadow } from '@/theme';
+import { colors, shadow } from '@/theme';
+import { CheckinDetailModal } from './CheckinDetailModal';
+import { useCheckinDrafts } from '@/store/CheckinDraftContext';
+import { useEditCheckin } from '@/hooks/useEditCheckin';
+import { hasUnfinishedCheckin } from '@/wizard/checkinEditor';
+import { useSetup } from '@/store/SetupContext';
 
-export const MedicationFocusCard: React.FC<{ onGo: (step: number) => void }> = ({ onGo }) => {
+/** One next action, with setup guidance retained for first-time users. */
+export const MedicationFocusCard: React.FC<{ onGo: (step: number) => void; onSetup: () => void }> = ({ onGo, onSetup }) => {
   const { state } = useWizard();
-  const { catalog } = useMedCatalog();
   const { t } = useTranslation();
-  const { fontScale, width } = useWindowDimensions();
+  const { fontScale } = useWindowDimensions();
+  const { drafts, ready } = useCheckinDrafts();
+  const edit = useEditCheckin();
+  const setup = useSetup();
+  const [showUpdate, setShowUpdate] = useState(false);
   const journey = trackingJourney(state);
-  const med = state.meds[0];
-  const large = fontScale > 1.3 || width < 360;
-  const title = med ? state.meds.length === 1 ? findMedName(catalog, med.medId) : t('glass.medications_count', { count: state.meds.length }) : t(journey.title);
-  const details = med ? state.meds.length === 1 ? [med.strength, med.frequency].filter(Boolean).join(' · ') : state.meds.slice(0, 2).map(row => findMedName(catalog, row.medId)).join(' · ') : journey.stage === 'new' ? '' : t(journey.body);
-  const actionTitle = journey.stage === 'new' ? t(journey.action) : t('glass.check_in');
+  const starting = journey.stage === 'new';
+  const unfinished = ready && hasUnfinishedCheckin(drafts.new);
+  const completed = !setup.pending && journey.stage === 'today' && !unfinished;
+  const action = t(setup.pending ? setup.progress ? 'setup.resume' : 'setup.start' : unfinished ? 'easy_use.continue' : completed ? 'easy_use.view_update' : starting ? journey.action : 'easy_use.record_checkin');
   return <View style={styles.card}>
-    <LinearGradient colors={['#4264B5', '#284A96']} start={{ x: 0, y: 0 }} end={{ x: 1, y: .6 }} style={StyleSheet.absoluteFill} />
-    <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}><BrandWatermark style={styles.art} /></View>
-    <View style={[styles.top, large && styles.topLarge]}>
-      <View style={[styles.copy, large && { flex: 0, alignSelf: 'stretch' }]}>
-        <Text style={styles.caption}>{t(med ? 'calm.daily_care' : 'journey.start_here')}</Text>
-        <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-        {details ? <Text style={styles.detail}>{details}</Text> : null}
-      </View>
-      {!large && med ? <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.capsule}><LinearGradient colors={['#FFFFFF', '#DCE7FC']} style={styles.capsuleHalf} /><LinearGradient colors={['#A7C5FB', '#7099DC']} style={styles.capsuleHalf} /><View style={styles.capsuleShine} /></View> : null}
+    <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
+      <View style={styles.art}><Sprig size={170} color={colors.sage} opacity={0.16} /></View>
     </View>
-    <View style={[styles.actions, large && { flexDirection: 'column' }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={actionTitle} onPress={() => onGo(journey.stage === 'new' ? journey.step : 5)} style={({ pressed }) => [styles.action, styles.primary, large && { alignSelf: 'stretch' }, pressed && { opacity: .8 }]}><Text style={styles.primaryText}>{actionTitle}</Text><AppIcon name="arrow" size={17} color="#2B4E9C" /></Pressable>
-      {med ? <Pressable accessibilityRole="button" accessibilityLabel={t('calm.my_medicines')} onPress={() => onGo(1)} style={({ pressed }) => [styles.action, styles.secondary, large && { alignSelf: 'stretch' }, pressed && { opacity: .8 }]}><Text style={styles.secondaryText}>{t('calm.my_medicines')}</Text></Pressable> : null}
+    <View style={styles.copy}>
+      {completed ? <AppIcon name="check" size={22} color={colors.sage} /> : null}
+      <Text accessibilityRole="header" style={styles.title}>{t(setup.pending ? 'setup.title' : unfinished ? 'easy_use.unfinished' : completed ? 'easy_use.saved_today' : starting ? journey.title : 'easy_use.record_checkin')}</Text>
+      <Text style={styles.detail}>{t(setup.pending ? setup.progress ? 'setup.resume_body' : 'setup.body' : unfinished ? 'easy_use.resume_body' : completed ? 'easy_use.saved_body' : starting ? journey.body : 'airy.checkin_body')}</Text>
     </View>
+    <View style={[styles.actions, fontScale > 1.3 && { flexDirection: 'column', alignItems: 'stretch' }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={action} disabled={!setup.ready || setup.busy} accessibilityState={{ disabled: !setup.ready || setup.busy }} onPress={() => setup.pending ? onSetup() : completed ? setShowUpdate(true) : starting && !unfinished ? onGo(journey.step) : edit(null)} style={({ pressed }) => [styles.action, fontScale > 1.3 && styles.actionLarge, pressed && { opacity: .8 }]}>
+      <Text style={styles.actionText}>{action}</Text><AppIcon name="arrow" size={18} color={colors.onPrimary} />
+    </Pressable>
+    {completed && journey.latest ? <Pressable accessibilityRole="button" onPress={() => edit(journey.latest!)} style={styles.secondary}><Text style={styles.secondaryText}>{t('easy_use.edit_update')}</Text></Pressable> : null}
+    </View>
+    <CheckinDetailModal visible={showUpdate} checkin={journey.latest || null} index={journey.latest ? state.checkins.indexOf(journey.latest) : 0} onClose={() => setShowUpdate(false)} />
   </View>;
 };
+
 const styles = StyleSheet.create({
-  card: { borderRadius: 29, padding: 22, minHeight: 186, overflow: 'hidden', gap: 20, backgroundColor: palette.checkin, ...shadow.raised },
-  art: { position: 'absolute', width: 160, height: 160, right: -18, top: -15, opacity: .11, tintColor: '#FFFFFF' },
-  top: { flexDirection: 'row', alignItems: 'flex-start', gap: 15 }, topLarge: { flexDirection: 'column', alignItems: 'flex-start' },
-  capsule: { width: 50, height: 74, borderRadius: 28, borderWidth: 1, borderColor: '#FFFFFF99', overflow: 'hidden', transform: [{ rotate: '35deg' }], marginHorizontal: 6 },
-  capsuleHalf: { width: '100%', height: '50%' }, capsuleShine: { position: 'absolute', width: 7, height: 24, borderRadius: 8, left: 7, top: 7, backgroundColor: '#FFFFFF99' },
-  copy: { flex: 1, gap: 5 }, caption: { fontSize: 15, lineHeight: 22, color: '#FFFFFF' },
-  title: { fontSize: 25, lineHeight: 32, fontWeight: '500', color: '#FFFFFF', letterSpacing: -.7 },
-  detail: { fontSize: 15, lineHeight: 23, color: '#FFFFFF' },
-  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  action: { minHeight: 48, paddingVertical: 12, borderRadius: 17, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 9 },
-  primary: { backgroundColor: '#FFFFFF', minWidth: 145, paddingHorizontal: 18 }, secondary: { flexShrink: 1 },
-  primaryText: { fontSize: 16, lineHeight: 23, fontWeight: '500', color: '#2B4E9C', textAlign: 'center', flexShrink: 1 },
-  secondaryText: { fontSize: 15, lineHeight: 23, fontWeight: '500', color: '#FFFFFF', textAlign: 'center' },
+  card: { borderRadius: 32, padding: 24, overflow: 'hidden', gap: 20, backgroundColor: colors.pine },
+  art: { position: 'absolute', right: -30, bottom: -36 },
+  copy: { gap: 7 },
+  title: { fontSize: 28, lineHeight: 34, fontWeight: '700', color: '#FFFFFF', letterSpacing: -.7 },
+  detail: { fontSize: 16, lineHeight: 24, color: colors.onPineMuted },
+  action: { alignSelf: 'flex-start', maxWidth: '100%', minWidth: 154, minHeight: 48, paddingVertical: 11, paddingHorizontal: 18, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, backgroundColor: colors.buttonPrimary, ...shadow.cta },
+  actionLarge: { alignSelf: 'stretch' },
+  actionText: { flexShrink: 1, textAlign: 'center', fontSize: 16, lineHeight: 24, fontWeight: '700', color: colors.onPrimary },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center' },
+  secondary: { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', paddingHorizontal: 6 },
+  secondaryText: { color: colors.onPine, fontSize: 16, lineHeight: 24, fontWeight: '700' },
 });

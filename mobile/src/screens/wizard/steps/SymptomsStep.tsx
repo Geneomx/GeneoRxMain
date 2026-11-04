@@ -1,3 +1,4 @@
+import { useSetup } from '@/store/SetupContext';
 import { EntryDraftSheet } from '@/components/EntryDraftSheet';
 import { trackingJourney } from '@/wizard/trackingJourney';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -24,6 +25,7 @@ import { Accordion, FinePrint, Section, Segmented, Tagline } from '@/screens/wiz
 import { colors, radius, spacing } from '@/theme';
 
 export const SymptomsStep: React.FC = () => {
+  const setup = useSetup();
   const { state, update, setStep } = useWizard();
   const { catalog } = useMedCatalog();
   const { t } = useTranslation();
@@ -113,10 +115,10 @@ export const SymptomsStep: React.FC = () => {
       <View style={refined.listGroup}>{[...selected].map((symptom, index) => <ListRow key={symptom} icon="heart" title={symptom} detail={latest.symptomEntries.find(entry => entry.name === symptom)?.status || t('light.not_recorded')} last={index === selected.size - 1} onPress={() => editDetails(symptom)} />)}
         {!selected.size ? <FinePrint>{t('simple.choose_below')}</FinePrint> : null}
       </View>
-      <Button title={t('symptoms.add_btn')} variant={selected.size ? 'ghost' : 'primary'} onPress={openAdd} />
+      <Button title={t('symptoms.add_btn')} variant={selected.size ? 'ghost' : 'secondary'} onPress={openAdd} />
       <Button title={t('easy.describe_symptom')} variant="ghost" onPress={() => setDraftOpen(true)} />
-      {trackingJourney(state).firstUpdate ? <Button title={t('journey.continue_update')} variant="secondary" onPress={() => setStep(5)} /> : null}
-      <EditorSheet visible={addOpen} title={t('symptoms.add_btn')} onClose={() => setAddOpen(false)} footer={<Button title={t('assist.confirm_symptoms', { count: pendingSymptoms.length })} disabled={pendingSymptoms.length === selected.size && pendingSymptoms.every(name => selected.has(name))} onPress={() => { update(draft => { draft.symptoms.selected = [...pendingSymptoms]; }); setAddOpen(false); }} />}>
+      {!setup.active && trackingJourney(state).firstUpdate ? <Button title={t('setup.resume')} variant="secondary" onPress={() => { void setup.begin(2); }} /> : null}
+      <EditorSheet visible={addOpen} title={t('symptoms.add_btn')} onClose={() => setAddOpen(false)} footer={<Button title={t(pendingSymptoms.length === 1 ? 'setup.confirm_symptom' : 'assist.confirm_symptoms', { count: pendingSymptoms.length })} disabled={pendingSymptoms.length === selected.size && pendingSymptoms.every(name => selected.has(name))} onPress={() => { update(draft => { draft.symptoms.selected = [...pendingSymptoms]; }); setAddOpen(false); }} />}>
         <FinePrint>{t('assist.symptom_selection_help')}</FinePrint>
         <Input label={t('simple.find_symptom')} placeholder={t('simple.find_symptom')} value={query} onChangeText={setQuery} />
         <Button title={t('design.add_own')} variant="ghost" compact onPress={() => { setAddOpen(false); setTimeout(() => setCustomOpen(true), 350); }} />

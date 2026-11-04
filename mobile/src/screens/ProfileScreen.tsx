@@ -2,6 +2,7 @@ import { FeedbackModal } from '@/components/FeedbackModal';
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
+import { TopBar } from '@/components/TopBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -56,6 +57,12 @@ export const ProfileScreen: React.FC = () => {
     catch (error) { toast.show(error instanceof Error ? error.message : t('mobile.alert.try_again'), 'error'); }
     finally { setSaving(false); }
   };
+  const setAiConsent = async (aiConsent: boolean) => {
+    setSaving(true);
+    try { const outcome = await savePayload({ account: { aiConsent } }); toast.show(t('tracking.saved.' + outcome)); }
+    catch (error) { toast.show(error instanceof Error ? error.message : t('mobile.alert.try_again'), 'error'); }
+    finally { setSaving(false); }
+  };
   const setConsent = async (consent: boolean) => {
     setSaving(true);
     try { const outcome = await savePayload({ account: { consent } }); toast.show(t('tracking.saved.' + outcome)); }
@@ -64,9 +71,10 @@ export const ProfileScreen: React.FC = () => {
   };
   const name = data?.user?.name || user?.name || t('common.guest');
   return <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}><AmbientBackground /><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 20, paddingBottom: scrollBottom }} refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}><View style={[page, { gap: 20 }]}>
+    <TopBar />
     <Text accessibilityRole="header" style={styles.title}>{t('refined.account_title')}</Text>
     <SaveState />
-    <View style={styles.identity}><View style={styles.avatar} accessible={false}><Text style={{ fontSize: 25, fontWeight: '500', color: colors.primary }}>{name.trim().slice(0, 1).toUpperCase()}</Text></View><View style={{ flex: 1, gap: 5 }}><Text style={{ color: colors.text, fontSize: 21, lineHeight: 28, fontWeight: '500' }}>{name}</Text><Text style={refined.meta}>{isGuest ? t('mobile.profile.guest_mode') : user?.email}</Text></View></View>
+    <View style={styles.identity}><View style={styles.avatar} accessible={false}><Text style={{ fontSize: 26, fontWeight: '700', color: colors.onPine }}>{name.trim().slice(0, 1).toUpperCase()}</Text></View><View style={{ flex: 1, gap: 5 }}><Text style={{ color: colors.text, fontSize: 21, lineHeight: 28, fontWeight: '500' }}>{name}</Text><Text style={refined.meta}>{isGuest ? t('mobile.profile.guest_mode') : user?.email}</Text></View></View>
     <View style={refined.listGroup}>
       <ListRow icon="account" title={t('refined.personal_title')} onPress={() => setEditor('personal')} />
       <ListRow icon="heart" title={t('parity.health')} onPress={() => setEditor('health')} />
@@ -78,9 +86,9 @@ export const ProfileScreen: React.FC = () => {
     <Button title={t('mobile.profile.sign_out')} variant="ghost" onPress={() => { void signOut(); }} />
   </View></ScrollView>
     <EditorSheet visible={editor !== null} title={t(editor === 'privacy' ? 'clean.tracking_privacy' : editor === 'health' ? 'parity.health' : 'refined.personal_title')} onClose={() => { if (!saving) setEditor(null); }} footer={editor === 'privacy' ? undefined : <Button title={t('tracking.save_details')} loading={saving} onPress={() => { void saveDetails(); }} />}>
-      {editor === 'privacy' ? <Toggle label={t('parity.consent')} detail={t('parity.consent_sub')} value={state.account.consent} disabled={saving} onChange={v => { void setConsent(v); }} /> : editor === 'personal' ? <><Input label={t('account.age')} value={age} onChangeText={setAge} keyboardType="number-pad" maxLength={3} /><DropdownSelect label={t('account.gender')} value={gender} onChange={setGender} options={['Female','Male','Non-binary','Prefer not to say'].map((v,i) => ({ value: v, label: t(['gender.female','gender.male','gender.non_binary','gender.prefer_not'][i]) }))} /><Input label={t('mobile.profile.phone_optional')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={30} /></> : <><Toggle label={t('account.pregnant')} detail={t('mobile.profile.pregnant_desc')} value={pregnant} onChange={setPregnant} /><Toggle label={t('account.chip.kidney')} detail={t('mobile.profile.kidney_desc')} value={kidneyDisease} onChange={setKidneyDisease} /><Toggle label={t('account.chip.anticoag')} detail={t('mobile.profile.anticoag_desc')} value={anticoagulants} onChange={setAnticoagulants} /></>}
+      {editor === 'privacy' ? <><Toggle label={t('parity.consent')} detail={t('parity.consent_sub')} value={state.account.consent} disabled={saving} onChange={v => { void setConsent(v); }} /><Toggle label={t('ai.consent_label')} detail={t('ai.consent_sub')} value={state.account.aiConsent} disabled={saving} onChange={v => { void setAiConsent(v); }} /></> : editor === 'personal' ? <><Input label={t('account.age')} value={age} onChangeText={setAge} keyboardType="number-pad" maxLength={3} /><DropdownSelect label={t('account.gender')} value={gender} onChange={setGender} options={['Female','Male','Non-binary','Prefer not to say'].map((v,i) => ({ value: v, label: t(['gender.female','gender.male','gender.non_binary','gender.prefer_not'][i]) }))} /><Input label={t('mobile.profile.phone_optional')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={30} /></> : <><Toggle label={t('account.pregnant')} detail={t('mobile.profile.pregnant_desc')} value={pregnant} onChange={setPregnant} /><Toggle label={t('account.chip.kidney')} detail={t('mobile.profile.kidney_desc')} value={kidneyDisease} onChange={setKidneyDisease} /><Toggle label={t('account.chip.anticoag')} detail={t('mobile.profile.anticoag_desc')} value={anticoagulants} onChange={setAnticoagulants} /></>}
     </EditorSheet>
   </SafeAreaView>;
 };
-const Toggle: React.FC<{ label: string; detail?: string; value: boolean; disabled?: boolean; onChange: (v: boolean) => void }> = ({ label, detail, value, disabled, onChange }) => <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 10 }}><View style={{ flex: 1, gap: 4 }}><Text style={refined.rowTitle}>{label}</Text>{detail ? <Text style={refined.meta}>{detail}</Text> : null}</View><Switch accessibilityLabel={label} value={value} disabled={disabled} onValueChange={onChange} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFFFFF" /></View>;
-const styles = StyleSheet.create({safe:{ flex:1,backgroundColor:colors.background }, title:{flex:1,fontSize:29,lineHeight:35,fontWeight:'600',letterSpacing:-1,color:colors.text},identity:{flexDirection:'row',alignItems:'center',gap:14,padding:22,borderRadius:26,backgroundColor:colors.surface,borderWidth:StyleSheet.hairlineWidth,borderColor:colors.border},avatar:{width:58,height:58,borderRadius:20,alignItems:'center',justifyContent:'center',backgroundColor:colors.primary50}});
+const Toggle: React.FC<{ label: string; detail?: string; value: boolean; disabled?: boolean; onChange: (v: boolean) => void }> = ({ label, detail, value, disabled, onChange }) => <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 10 }}><View style={{ flex: 1, gap: 4 }}><Text style={refined.rowTitle}>{label}</Text>{detail ? <Text style={refined.meta}>{detail}</Text> : null}</View><Switch accessibilityLabel={label} value={value} disabled={disabled} onValueChange={onChange} trackColor={{ false: colors.border, true: colors.primary }} thumbColor={value ? colors.onPrimary : '#FFFFFF'} /></View>;
+const styles = StyleSheet.create({safe:{ flex:1,backgroundColor:colors.background }, title:{flex:1,fontSize:33,lineHeight:39,fontWeight:'700',letterSpacing:-.8,color:colors.pine},identity:{flexDirection:'row',alignItems:'center',gap:14,paddingVertical:20},avatar:{width:64,height:64,borderRadius:32,alignItems:'center',justifyContent:'center',backgroundColor:colors.pine,borderWidth:3,borderColor:colors.coralSoft}});

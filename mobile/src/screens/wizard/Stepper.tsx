@@ -19,7 +19,8 @@
 // one full indent to the right — on top of the label.
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, spacing } from '@/theme';
 import type { StepState } from '@/wizard/stepStatus';

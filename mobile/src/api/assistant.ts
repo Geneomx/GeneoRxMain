@@ -8,6 +8,8 @@ export interface AssistantMessage {
 export interface AssistantContext {
   medications?: string[];
   symptoms?: string[];
+  /** Short lines from the user's recent check-ins (their track record), guests only. */
+  checkins?: string[];
 }
 
 export interface AssistantResult {

@@ -40,9 +40,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-splash-screen',
       {
         image: './assets/splash.png',
-        imageWidth: 200,
+        imageWidth: 240,
         resizeMode: 'contain',
-        backgroundColor: '#F5F5F7',
+        backgroundColor: '#F7F1E6',
       },
     ],
     ['expo-image-picker', { photosPermission: 'Choose a medication label to help fill in its details.', cameraPermission: 'Take a medication-label photo to help fill in its details.', microphonePermission: false }],

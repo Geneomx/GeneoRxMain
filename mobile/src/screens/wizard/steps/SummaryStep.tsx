@@ -22,9 +22,13 @@ import { Section, FinePrint } from '@/screens/wizard/ui';
 import { summaryRows } from '@/wizard/summaryRows';
 import { AppIcon, type AppIconName } from '@/components/AppIcon';
 import { colors } from '@/theme';
+import { useSetup } from '@/store/SetupContext';
+import type { SetupStep } from '@/wizard/setupFlow';
 
 export const SummaryStep: React.FC = () => {
   const { state, setStep, savePayload } = useWizard();
+  const setup = useSetup();
+  const go = (step: SetupStep) => { if (setup.active) void setup.begin(step); else setStep(step); };
   const { catalog } = useMedCatalog();
   const { t, language } = useTranslation();
   const { fontScale } = useWindowDimensions();
@@ -70,8 +74,8 @@ export const SummaryStep: React.FC = () => {
     <View style={[styles.rangeRow, fontScale > 1.3 && { flexDirection: 'column', alignItems: 'flex-start' }]}><View style={{ flexShrink: 1 }}><FinePrint>{periodLabel}</FinePrint></View><ReviewRangeSelect compact value={range} onChange={setRange} /></View>
     <FinePrint>{[t(summary.filtered.checkins.length === 1 ? 'light.checkin_one' : 'light.checkin_many', { count: summary.filtered.checkins.length }), latestDate ? t('light.updated', { date: latestDate }) : ''].filter(Boolean).join(' · ')}</FinePrint>
     <View style={styles.tileGrid}>{rows.map(row => {
-      const title = row.key === 'medications' ? t(row.count === 1 ? 'calm.medicine_one' : 'calm.medicine_many', { count: row.count }) : row.key === 'symptoms' ? t('calm.symptom_count', { count: highlights.symptoms.length }) : row.key === 'notes' ? t(row.count === 1 ? 'calm.note_one' : 'calm.note_many', { count: row.count }) : energyLabel;
-      const detail = row.key === 'medications' ? highlights.medications[0]?.name || t('light.no_medications') : row.key === 'notes' ? t('calm.saved_observations') : row.key === 'symptoms' ? better ? t('dashboard.update.better', { count: better }) : t('calm.recorded_changes') : '';
+      const title = row.key === 'medications' ? t(row.count === 1 ? 'calm.medicine_one' : 'calm.medicine_many', { count: row.count }) : row.key === 'symptoms' ? t(highlights.symptoms.length === 1 ? 'setup.symptom_one' : 'calm.symptom_count', { count: highlights.symptoms.length }) : row.key === 'notes' ? t(row.count === 1 ? 'calm.note_one' : 'calm.note_many', { count: row.count }) : energyLabel;
+      const detail = row.key === 'medications' ? highlights.medications[0]?.name || t('light.no_medications') : row.key === 'notes' ? t('calm.saved_observations') : row.key === 'symptoms' ? better ? t('dashboard.update.better', { count: better }) : t('calm.recorded_changes') : t('setup.latest_checkin');
       const tone = iconTone(rowIcons[row.key]);
       return <Pressable key={row.key} accessibilityRole="button" accessibilityLabel={`${row.label}. ${title}. ${detail}`} onPress={() => setSectionOpen(row.key)} style={({ pressed }) => [styles.tile, { width: fontScale > 1.3 ? '100%' : '48%' }, pressed && { opacity: .65 }]}>
         <View style={styles.tileTop}><View style={[refined.icon, { backgroundColor: tone.backgroundColor }]}><AppIcon name={rowIcons[row.key]} size={21} color={tone.color} /></View><AppIcon name="chevron" size={14} color={colors.textDim} /></View>
@@ -92,11 +96,14 @@ export const SummaryStep: React.FC = () => {
       <Text style={refined.rowTitle}>{symptom.name}</Text><Text style={refined.body}>{[symptom.status, symptom.rating].filter(Boolean).join(' · ')}</Text>
       {symptom.date ? <FinePrint>{symptom.comparison || fmtDate(symptom.date)}</FinePrint> : null}
     </Section>) : <Text style={refined.body}>{t('review.no_symptom_records')}</Text>}
-      <Button title={t('review.view_progress')} compact variant="ghost" onPress={() => { setSectionOpen(null); setStep(6); }} /></> : null}
-      {sectionOpen === 'wellbeing' ? <>{(['energy', 'mood', 'sleep', 'focus'] as const).map(key => {
+      <Button title={t('review.view_progress')} compact variant="ghost" onPress={() => { setSectionOpen(null); go(6); }} /></> : null}
+      {sectionOpen === 'wellbeing' ? <><FinePrint>{t('setup.checkin_ratings')}</FinePrint>{(['energy', 'mood', 'sleep', 'focus'] as const).map(key => {
         const value = highlights.latest?.wellbeing?.[key];
         return <View key={key} style={styles.wellbeingRow}><Text style={refined.rowTitle}>{t('wellbeing.' + key).replace(/\s*\([^)]*\)\s*$/, '')}</Text><Text style={refined.body}>{typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 10 ? `${value}/10` : t('light.not_recorded')}</Text></View>;
-      })}</> : null}
+      })}<FinePrint>{t('calm.starting_ratings')}</FinePrint>{(['energy', 'mood', 'sleep', 'focus'] as const).map(key => {
+        const value = state.wellbeingBaseline[key];
+        return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 10 ? <View key={key} style={styles.wellbeingRow}><Text style={refined.rowTitle}>{t('wellbeing.' + key).replace(/\s*\([^)]*\)\s*$/, '')}</Text><Text style={refined.body}>{value}/10</Text></View> : null;
+      })}<Button title={t('setup.view_starting')} variant="ghost" onPress={() => { setSectionOpen(null); go(3); }} /></> : null}
       {sectionOpen === 'notes' ? <>{highlights.notes.length ? highlights.notes.map((note, index) => <Section key={`${note.date}-${index}`}><FinePrint>{fmtDate(note.date)}</FinePrint><Text style={refined.body}>{note.text}</Text></Section>) : <Text style={refined.body}>{t('polish.no_notes')}</Text>}</> : null}
     </EditorSheet>
     <EditorSheet visible={aiOpen} title={t('review.ai_explanation')} onClose={() => setAiOpen(false)}><TrackingExplanation range={range} /></EditorSheet>
@@ -123,6 +130,6 @@ const styles = StyleSheet.create({
   tileTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 7 },
   tileValue: { fontSize: 20, lineHeight: 27, fontWeight: '500', letterSpacing: -.5, color: colors.text },
   tileDetail: { fontSize: 15, lineHeight: 22, color: colors.textMuted },
-  better: { color: colors.success, backgroundColor: '#EAF4EE', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, alignSelf: 'flex-start', maxWidth: '100%' },
+  better: { color: colors.success, backgroundColor: colors.successBg, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, alignSelf: 'flex-start', maxWidth: '100%' },
   wellbeingRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingVertical: 10 },
 });

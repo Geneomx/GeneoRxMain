@@ -26,7 +26,7 @@ export const SummaryPreviewContent: React.FC<{ fullText: string; checkins: Wizar
   </View>)}</View>;
 };
 const s = StyleSheet.create({
-  document: { gap: 26 }, section: { gap: 12 }, story: { padding: 18, borderRadius: 22, backgroundColor: '#F3F6FC', gap: 16 },
+  document: { gap: 26 }, section: { gap: 12 }, story: { padding: 18, borderRadius: 22, backgroundColor: colors.surfaceAlt, gap: 16 },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 9 }, sectionTitle: { flex: 1, fontSize: 18, lineHeight: 27, fontWeight: '600', color: colors.text },
   storyTitle: { fontSize: 20, lineHeight: 29, color: colors.primaryDark }, body: { color: colors.textSoft, fontSize: 17, lineHeight: 27 },
   dated: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderSoft, paddingTop: 20 }, dateTitle: { fontSize: 17, color: colors.primary },

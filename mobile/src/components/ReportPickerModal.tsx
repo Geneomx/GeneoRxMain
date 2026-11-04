@@ -1,7 +1,8 @@
 import { medicationAdherence } from '@/wizard/medicationTracking';
 import { adherenceLabel } from '@/wizard/medicationTracking';
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { useWizard } from '@/store/WizardContext';
 import { useMedCatalog } from '@/store/MedCatalogContext';
@@ -106,7 +107,7 @@ export const ReportPickerModal: React.FC<Props> = ({ visible, onClose, preferred
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { Appearance } from 'react-native';
 import { VisualPreferencesProvider } from '@/store/VisualPreferencesContext';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { AppStatusOverlays } from '@/components/AppStatusOverlays';
 import { TypographyProvider } from '@/store/TypographyContext';
 
 export default function App() {
+  useEffect(() => { Appearance.setColorScheme('light'); }, []);
   return (
     <SafeAreaProvider><VisualPreferencesProvider><TypographyProvider>
       <AuthProvider>

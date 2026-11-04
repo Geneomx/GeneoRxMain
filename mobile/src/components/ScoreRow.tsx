@@ -9,7 +9,8 @@
 // shows a dash with the reason it is empty — never a zero.
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { colors, spacing, touchMin } from '@/theme';
 
 export const ScoreRow: React.FC<{

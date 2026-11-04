@@ -447,13 +447,13 @@ export const TriStateRow: React.FC<{
 
 const styles = StyleSheet.create({
   plainAccordion: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft },
-  // Shared mobile surface: one border and one consistent reading inset.
+  // Solid reading groups use the same airy surface and inset throughout.
   section: {
-    backgroundColor: colors.card,
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    padding: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 20,
     gap: 12,
   },
   taglineFlat: { gap: 3 },
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(40, 225, 255, 0.22)',
+    borderColor: colors.primary100,
     backgroundColor: colors.primary50,
   },
   taglineTitle: { fontSize: 17, fontWeight: '500', color: colors.text, letterSpacing: -0.2 },
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.06 }],
   },
   scorePillText: { fontSize: 16, fontWeight: '500', color: colors.textSoft },
-  scorePillTextOn: { color: '#FFFFFF' },
+  scorePillTextOn: { color: colors.onPrimary },
   sliderEnds: { flexDirection: 'row', justifyContent: 'space-between' },
   sliderEndText: { fontSize: 16, fontWeight: '500', color: colors.textDim },
 
@@ -583,10 +583,10 @@ const styles = StyleSheet.create({
   toggleTrack: { width: 54, height: 32, borderRadius: 16, backgroundColor: colors.border, padding: 3, justifyContent: 'center' },
   toggleTrackOn: { backgroundColor: colors.primary },
   toggleThumb: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFFFFF' },
-  toggleThumbOn: { alignSelf: 'flex-end' },
+  toggleThumbOn: { alignSelf: 'flex-end', backgroundColor: colors.onPrimary },
 
   /* Reveal animation — mirrors website .revealModal/.revealStep/.revealBar */
-  revealBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(4, 6, 12, 0.72)' },
+  revealBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.overlay },
   revealWrap: { ...StyleSheet.absoluteFill, justifyContent: 'center', padding: spacing.lg },
   revealModal: {
     backgroundColor: colors.surface, borderRadius: radius.lg,

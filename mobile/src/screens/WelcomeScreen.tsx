@@ -13,7 +13,8 @@ import { useAuth } from '@/auth/AuthContext';
 import { useLanguage } from '@/store/LanguageContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { translate } from '@/content/siteTranslations';
-import { colors } from '@/theme';
+import { WelcomeArt } from '@/components/WelcomeArt';
+import { colors, fonts } from '@/theme';
 import { useToast } from '@/components/Toast';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
@@ -30,7 +31,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const { page } = useResponsiveLayout();
   const toast = useToast();
   const [starting, setStarting] = useState(false);
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
   const largeText = fontScale > 1.3;
   const t = (key: string) => translate(key, language.code);
   const start = async () => {
@@ -53,6 +54,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
     <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={largeText ? styles.largeScroll : styles.scroll}>
       {largeText ? header : null}
       <View style={[page, styles.content]}>
+        <View style={styles.art}><WelcomeArt width={Math.min(300, width - 72)} /></View>
         <View style={styles.intro}><Text accessibilityRole="header" style={styles.title}>{t('slide.0.title')}</Text><Text style={styles.body}>{t('slide.0.p0')}</Text></View>
         {largeText ? <View style={styles.actions}>{actions}</View> : null}
         <View style={styles.benefits}>{benefits.map(({ icon, key }, index) => <View key={key} style={[styles.benefit, index === benefits.length - 1 && { borderBottomWidth: 0 }]}><View style={styles.icon}><AppIcon name={icon} size={19} /></View><Text style={styles.benefitText}>{t(key)}</Text></View>)}</View>
@@ -67,14 +69,14 @@ const styles = StyleSheet.create({
   headerStacked: { flexDirection: 'column', alignItems: 'flex-start' },
   scroll: { flexGrow: 1, justifyContent: 'center', paddingVertical: 24 },
   largeScroll: { paddingBottom: 24, gap: 20 },
-  content: { gap: 28 }, intro: { gap: 14 },
-  title: { fontSize: 26, lineHeight: 35, letterSpacing: -0.6, fontWeight: '600', color: colors.text },
+  content: { gap: 24 }, intro: { gap: 12 }, art: { alignItems: 'center' },
+  title: { fontFamily: fonts.serif, fontSize: 31, lineHeight: 37, letterSpacing: -0.8, color: colors.pine },
   body: { fontSize: 17, lineHeight: 24, color: colors.textMuted },
-  benefits: { paddingHorizontal: 16, borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  benefits: { paddingHorizontal: 16, borderRadius: 26, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft },
-  icon: { width: 34, height: 34, borderRadius: 11, backgroundColor: colors.primary50, alignItems: 'center', justifyContent: 'center' },
+  icon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary50, alignItems: 'center', justifyContent: 'center' },
   benefitText: { flex: 1, fontSize: 17, lineHeight: 25, color: colors.text },
-  footer: { backgroundColor: colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  footer: { backgroundColor: colors.background },
   actions: { gap: 8, paddingTop: 16, paddingBottom: 10 },
   secondary: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 12 },
   guest: { minHeight: 44, paddingHorizontal: 8, justifyContent: 'center' },

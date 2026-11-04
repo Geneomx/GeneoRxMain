@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { AppText as Text } from './AppText';
@@ -15,12 +15,13 @@ export type SnapshotAction = { key: string; title: string; icon: AppIconName; on
 export const SnapshotPreview: React.FC<{
   visible: boolean; text: string; title?: string; subtitle?: string; children?: React.ReactNode;
   actions?: SnapshotAction[]; icon?: AppIconName; onClose: () => void; onShare?: () => void;
+  primaryAction?: { title: string; onPress: () => void };
   reading?: { label: string; stopLabel: string; onStop: () => void };
-}> = ({ visible, text, title, subtitle, children, actions = [], icon = 'file', onClose, onShare, reading }) => {
+}> = ({ visible, text, title, subtitle, children, actions = [], icon = 'file', onClose, onShare, primaryAction, reading }) => {
   const { t } = useTranslation();
   const toast = useToast();
   const { fontScale } = useWindowDimensions();
-  const body = useRef<ScrollView>(null);
+  const body = useRef<ScrollViewInstance>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const busy = actions.some(action => action.loading);
   useEffect(() => { if (!visible) setMoreOpen(false); }, [visible]);
@@ -49,8 +50,8 @@ export const SnapshotPreview: React.FC<{
             <AppIcon name={action.icon} size={21} color={colors.primary} /><Text style={s.optionText}>{action.title}</Text>{action.loading ? <ActivityIndicator color={colors.primary} /> : <AppIcon name="chevron" size={15} color={colors.textDim} />}
           </Pressable>)}</ScrollView>
         </View> : null}
-        {onShare || menu.length ? <View style={[s.footer, fontScale > 1.3 && s.footerLarge]}>
-          <View style={[s.share, fontScale > 1.3 && { flex: 0 }]}><Button title={t(onShare ? 'portal.share' : 'common.close')} disabled={busy} onPress={onShare || close} /></View>
+        {onShare || primaryAction || menu.length ? <View style={[s.footer, fontScale > 1.3 && s.footerLarge]}>
+          <View style={[s.share, fontScale > 1.3 && { flex: 0 }]}><Button title={primaryAction?.title || t(onShare ? 'portal.share' : 'common.close')} disabled={busy} onPress={primaryAction?.onPress || onShare || close} /></View>
           {menu.length ? <Pressable accessibilityRole="button" accessibilityLabel={t('calm.more')} accessibilityState={{ expanded: moreOpen, disabled: busy, busy }} disabled={busy} onPress={() => setMoreOpen(open => !open)} style={({ pressed }) => [s.more, pressed && { opacity: .65 }]}>{busy ? <ActivityIndicator color={colors.primary} /> : <Text style={s.moreLabel}>{t('calm.more')}</Text>}</Pressable> : null}
         </View> : null}
       </SafeAreaView>
@@ -58,7 +59,7 @@ export const SnapshotPreview: React.FC<{
   </Modal>;
 };
 const s = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', backgroundColor: 'rgba(24,42,68,.28)' },
+  overlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', backgroundColor: colors.overlay },
   sheet: { width: '100%', maxWidth: 640, height: '94%', backgroundColor: colors.surface, borderTopLeftRadius: 30, borderTopRightRadius: 30, overflow: 'hidden' },
   grip: { width: 32, height: 4, marginTop: 10, marginBottom: 8, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center' },
   header: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 18, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft },

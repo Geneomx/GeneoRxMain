@@ -8,7 +8,8 @@
 // being sent to a clinician.
 
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
 import { useMedCatalog } from '@/store/MedCatalogContext';
 import { useWizard } from '@/store/WizardContext';
 import { useTranslation } from '@/hooks/useTranslation';

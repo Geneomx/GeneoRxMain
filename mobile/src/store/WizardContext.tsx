@@ -29,6 +29,8 @@ import { ApiError, getApiBaseUrl } from '@/api/client';
 import { createSaveQueue, wizardStorageKey } from '@/wizard/session';
 import { reconcileCheckinIds } from '@/wizard/sync';
 import { refreshTrackingRecord } from '@/wizard/refreshTrackingRecord';
+import { CheckinDraftProvider } from './CheckinDraftContext';
+import { SetupProvider } from './SetupContext';
 const TOTAL_STEPS = 10;
 const BACKEND_SAVE_MS = 450;
 
@@ -75,7 +77,7 @@ export const WizardProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const storageKey = wizardStorageKey(getApiBaseUrl(), user?.email, isGuest);
   // Remount the session when the account changes: no previous patient's state,
   // pending timer or response may become visible in the next account.
-  return <WizardSession key={storageKey} storageKey={storageKey}>{children}</WizardSession>;
+  return <CheckinDraftProvider key={storageKey} storageKey={storageKey}><WizardSession storageKey={storageKey}>{children}</WizardSession></CheckinDraftProvider>;
 };
 
 const WizardSession: React.FC<{ storageKey: string; children: React.ReactNode }> = ({ storageKey, children }) => {
@@ -84,6 +86,7 @@ const WizardSession: React.FC<{ storageKey: string; children: React.ReactNode }>
   const [state, setState] = useState<WizardState>(defaultWizardState);
   const [hydrated, setHydrated] = useState(false);
   const [planHubOpen, setPlanHubOpen] = useState(true);
+  const [setupReset, setSetupReset] = useState(0);
   const openPlanHub = useCallback(() => setPlanHubOpen(true), []);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('loading');
   const { online, ready } = useNetworkStatus();
@@ -296,7 +299,7 @@ const WizardSession: React.FC<{ storageKey: string; children: React.ReactNode }>
   }, [isGuest, token, persistLocal]);
   const next = useCallback(() => setStep(stateRef.current.step + 1), [setStep]);
   const prev = useCallback(() => setStep(stateRef.current.step - 1), [setStep]);
-  const reset = useCallback(() => { void commit(defaultWizardState(), false).catch(() => undefined); }, [commit]);
+  const reset = useCallback(() => { void commit(defaultWizardState(), false).then(() => setSetupReset(value => value + 1)).catch(() => undefined); }, [commit]);
   useEffect(() => {
     if (hydrated && ready && online && dirtyRef.current && !isGuest && token) void sync(stateRef.current).catch(() => undefined);
   }, [hydrated, ready, online, isGuest, token, sync]);
@@ -309,7 +312,7 @@ const WizardSession: React.FC<{ storageKey: string; children: React.ReactNode }>
   const value = useMemo<WizardContextValue>(() => ({
     state, hydrated, syncing, saveStatus, retrySave, serverProfile, update, setStep, planHubOpen, openPlanHub, next, prev, reset, refresh, savePayload, focusTarget, setFocusTarget,
   }), [state, hydrated, syncing, saveStatus, retrySave, serverProfile, update, setStep, planHubOpen, openPlanHub, next, prev, reset, refresh, savePayload, focusTarget]);
-  return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>;
+  return <WizardContext.Provider value={value}><SetupProvider storageKey={storageKey} state={state} hydrated={hydrated} isGuest={isGuest} setStep={setStep} planHubOpen={planHubOpen} resetKey={setupReset}>{children}</SetupProvider></WizardContext.Provider>;
 };
 
 export function useWizard(): WizardContextValue {

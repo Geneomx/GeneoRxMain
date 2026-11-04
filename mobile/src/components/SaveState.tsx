@@ -6,8 +6,9 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { colors } from '@/theme';
 import { useAuth } from '@/auth/AuthContext';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { progressPalette } from '@/theme/progress';
 
-export const SaveState: React.FC = () => {
+export const SaveState: React.FC<{ appearance?: 'light' | 'dark' }> = ({ appearance = 'dark' }) => {
   const { saveStatus, retrySave } = useWizard();
   const { t } = useTranslation();
   const { isGuest } = useAuth();
@@ -17,13 +18,14 @@ export const SaveState: React.FC = () => {
   const retry = saveStatus === 'pending' || saveStatus === 'error' || saveStatus === 'unavailable' || (!isGuest && saveStatus === 'device');
   const bad = saveStatus === 'error' || saveStatus === 'unavailable';
   const busy = saveStatus === 'saving' || saveStatus === 'loading';
-  const tone = bad ? { fg: colors.danger } : busy ? { fg: colors.primaryDark } : { fg: colors.warning };
+  const dark = appearance === 'dark' && !bad;
+  const tone = dark ? { fg: progressPalette.muted } : bad ? { fg: colors.danger } : busy ? { fg: colors.primaryDark } : { fg: colors.warning };
   return <View style={[styles.row, bad && styles.alert]} accessibilityLiveRegion={bad ? 'assertive' : 'polite'}>
     <View style={[styles.pill, { backgroundColor: 'transparent' }]}>
       <View style={[styles.dot, { backgroundColor: tone.fg }]} accessible={false} />
       <Text style={[styles.text, { color: tone.fg }]}>{t(`tracking.save.${saveStatus}`)}</Text>
     </View>
-    {retry ? <Pressable accessibilityRole="button" onPress={() => { void retrySave().catch(() => undefined); }} style={styles.retry}><Text style={styles.link}>{t('tracking.retry')}</Text></Pressable> : null}
+    {retry ? <Pressable accessibilityRole="button" onPress={() => { void retrySave().catch(() => undefined); }} style={styles.retry}><Text style={[styles.link, dark && { color: progressPalette.accent }]}>{t('tracking.retry')}</Text></Pressable> : null}
   </View>;
 };
 

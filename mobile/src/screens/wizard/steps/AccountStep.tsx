@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Alert, Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { AppText as Text } from '@/components/AppText';
+import { Alert, Keyboard, Pressable, StyleSheet, type TextInputInstance, View } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { FormFocusContext } from '@/components/FormScrollView';
 import { DropdownSelect } from '@/components/DropdownSelect';
@@ -9,13 +9,16 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { Accordion, Section } from '@/screens/wizard/ui';
 import { colors, spacing, touchMin } from '@/theme';
 import { isValidOptionalAge, normalizeOptionalAge } from '@/wizard/account';
+import { useSetup } from '@/store/SetupContext';
+import { usePinnedWizardAction } from '@/components/WizardDock';
 
 export const AccountStep: React.FC = () => {
   const { state, update, retrySave, setStep } = useWizard();
   const { t } = useTranslation();
+  const setup = useSetup();
   const revealFocus = useContext(FormFocusContext);
-  const ageRef = useRef<TextInput>(null);
-  const emailRef = useRef<TextInput>(null);
+  const ageRef = useRef<TextInputInstance>(null);
+  const emailRef = useRef<TextInputInstance>(null);
   const [ageDraft, setAgeDraft] = useState(state.profile.age);
   const [saving, setSaving] = useState(false);
   useEffect(() => { setAgeDraft(state.profile.age); }, [state.profile.age]);
@@ -25,16 +28,17 @@ export const AccountStep: React.FC = () => {
     if (!ageValid) { Alert.alert(t('mobile.alert.error'), t('parity.age_error')); return; }
     Keyboard.dismiss();
     setSaving(true);
-    try { await retrySave(); setStep(1); }
+    try { await retrySave(); if (setup.active) await setup.advance(); else setStep(1); }
     catch { Alert.alert(t('mobile.profile.save_error_title'), t('mobile.profile.save_error_body')); }
     finally { setSaving(false); }
   };
+  usePinnedWizardAction({ title: t('setup.next', { screen: t('design.step.1.title') }), loading: saving, onPress: () => { void continueToMedications(); } });
 
   return (
     <View style={styles.content}>
       <View style={styles.intro}>
-        <Text accessibilityRole="header" style={styles.title}>{t('clean.account_start_title')}</Text>
-        <Text style={styles.subtitle}>{t('clean.account_start_sub')}</Text>
+        {!setup.active ? <Text accessibilityRole="header" style={styles.title}>{t('clean.account_start_title')}</Text> : null}
+        <Text style={styles.subtitle}>{t(setup.active ? 'setup.optional_details' : 'clean.account_start_sub')}</Text>
       </View>
 
       <Section style={styles.formGroup}>
@@ -106,7 +110,7 @@ export const AccountStep: React.FC = () => {
         />
         <CheckRow label={t('parity.consent')} checked={state.account.consent} onChange={value => update(draft => { draft.account.consent = value; })} />
       </Section>
-      <Button title={t('clean.continue_to_meds')} loading={saving} onPress={() => { void continueToMedications(); }} />
+      {!setup.active ? <Button title={t('clean.continue_to_meds')} loading={saving} onPress={() => { void continueToMedications(); }} /> : null}
     </View>
   );
 };

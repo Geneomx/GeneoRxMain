@@ -15,7 +15,7 @@ export const ReviewChoice: React.FC<{ label: string; detail?: string; checked: b
 const s = StyleSheet.create({
   card: { borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: 'hidden' },
   grouped: { borderRadius: 0, borderWidth: 0, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft },
-  selected: { borderColor: '#9BB5EC', backgroundColor: '#F6F8FF' },
+  selected: { borderColor: colors.primary, backgroundColor: colors.primary50 },
   choice: { minHeight: 64, flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 15 },
   box: { width: 24, height: 24, flexShrink: 0, marginTop: 2, borderRadius: 7, borderWidth: 1.5, borderColor: colors.textMuted, justifyContent: 'center', alignItems: 'center' },
   boxSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, copy: { flex: 1, gap: 5 },
