@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>GeneoRx — A clearer picture of your health</title>
   @include('partials.logo-head')
   @include('partials.brand-logo-styles')
@@ -101,5 +102,6 @@
   <section class="start-section"><div class="eyebrow" data-i18n="clean.next">Your next step</div><h2 data-i18n="clean.cta">Start with you.</h2><p data-i18n="clean.cta_sub">A little more clarity begins with your first step.</p><a class="gx-button gx-button-primary gx-button-large" href="{{ route(auth()->check() ? 'treatments' : 'register') }}" data-i18n="clean.start">Get started</a></section>
 </main>
 <footer class="site-footer"><div class="footer-inner"><span>© {{ date('Y') }} GeneoRx</span><p data-i18n="clean.educational">Educational guidance only. Discuss health decisions with your clinician.</p><div><a href="{{ route('legal.privacy') }}" data-i18n="clean.privacy">Privacy</a><a href="{{ route('legal.terms') }}" data-i18n="clean.terms">Terms</a><a href="mailto:info@geneorx.com" data-i18n="clean.contact">Contact</a></div></div></footer>
+@include('partials.ask-widget')
 </body>
 </html>

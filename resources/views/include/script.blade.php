@@ -3850,13 +3850,20 @@ function mountAskBubble(){
 
   const body = panel.querySelector("#askBody");
   if(IS_GUEST){
-    body.innerHTML = `
-      <div class="askGate">
-        <strong>${escapeHtml(t("ask.gate_title"))}</strong>
-        <div class="fineprint">${escapeHtml(t("ask.gate_body"))}</div>
-        <a class="primary" href="/register" style="text-align:center;text-decoration:none;padding:10px;border-radius:10px">${escapeHtml(t("nav.register"))}</a>
-        <div class="fineprint">${escapeHtml(t("ask.gate_signin"))}</div>
-      </div>`;
+    /* The general questions are open to everyone; only personal answers need an account. */
+    const showGate = () => {
+      body.innerHTML = `
+        <div class="askGate">
+          <strong>${escapeHtml(t("ask.gate_title"))}</strong>
+          <div class="fineprint">${escapeHtml(t("ask.gate_body"))}</div>
+          <a class="primary" href="/register" style="text-align:center;text-decoration:none;padding:10px;border-radius:10px">${escapeHtml(t("nav.register"))}</a>
+          <div class="fineprint">${escapeHtml(t("ask.gate_signin"))}</div>
+        </div>`;
+    };
+    fetch("/api/assistant/options").then(res=>res.ok ? res.json() : Promise.reject()).then(data=>{
+      if(data && data.mode === "catalog_only" && typeof mountAssistantPanel === "function") mountAssistantPanel(body);
+      else showGate();
+    }).catch(showGate);
   } else if(typeof mountAssistantPanel === "function"){
     mountAssistantPanel(body);
   }

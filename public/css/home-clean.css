@@ -93,3 +93,31 @@
 .footer-inner p { margin:0; }.footer-inner>div { display:flex; gap:22px; }.footer-inner a:hover { color:#fff; }
 @media(max-width:1000px) { .site-links { display:none; }.landing-hero { gap:36px; padding:56px 32px; grid-template-columns:1fr; }.hero-copy h1 { font-size:58px; }.benefit-strip { grid-template-columns:1fr; padding:10px 32px 24px; }.benefit-strip>div { border-radius:32px; }.product-scene { max-width:520px; width:100%; justify-self:center; }.journey-grid { gap:18px; } }
 @media(max-width:700px) { .site-nav { padding:12px 18px; gap:12px; flex-wrap:wrap; }.site-actions { gap:10px; width:100%; justify-content:flex-end; }.site-actions .lang-select { margin-right:auto; }.signin-link { font-size:14px; }.site-nav .geneorx-brand-name { font-size:20px; }.site-nav .gx-button { padding:9px 18px; font-size:14px; min-height:42px; }.landing-hero { padding:40px 22px 48px; gap:34px; }.hero-copy h1 { font-size:48px; letter-spacing:-2px; }.hero-description { font-size:17px; }.hero-footnote { font-size:13px; }.product-preview { padding:22px; margin-top:-56px; border-radius:30px; }.benefit-strip { padding:6px 22px 20px; }.content-section,.features-section { padding:60px 22px; }.features-section { padding-top:0; }.journey-grid { grid-template-columns:1fr; }.journey { padding:28px; }.section-heading { margin-bottom:32px; }.feature-grid { grid-template-columns:1fr; }.feature-wide { grid-column:auto; display:block; padding:30px; }.feature-card { padding:28px; }.feature-wide .feature-symbol { width:64px; height:64px; font-size:34px; margin-bottom:28px; }.start-section { padding:64px 22px 72px; }.footer-inner { flex-direction:column; align-items:flex-start; padding:24px; gap:12px; } }
+
+/* Ask GeneoRx on the landing page: the four general questions, open to everyone. */
+.gx-ask-fab { position:fixed; right:22px; bottom:22px; z-index:60; display:inline-flex; align-items:center; gap:10px; min-height:56px; padding:0 22px 0 18px; border:0; border-radius:999px; background:var(--coral); color:#fff; font:700 16px/1 'DM Sans',system-ui,sans-serif; cursor:pointer; box-shadow:var(--sh-cta); transition:transform .15s ease, background .15s ease; }
+.gx-ask-fab:hover { background:var(--coral-d); transform:translateY(-2px); }
+.gx-ask-fab:focus-visible, .gx-ask-chip:focus-visible, .gx-ask-close:focus-visible { outline:3px solid var(--pine); outline-offset:3px; }
+.gx-ask-spark { font-size:20px; line-height:1; }
+.gx-ask-panel { position:fixed; right:22px; bottom:92px; z-index:61; width:min(410px,calc(100vw - 44px)); max-height:min(640px,calc(100vh - 124px)); display:flex; flex-direction:column; gap:12px; padding:22px; background:var(--paper); border:1.5px solid var(--line); border-radius:32px; box-shadow:var(--sh-lift); overflow:auto; }
+.gx-ask-panel[hidden] { display:none; }
+.gx-ask-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.gx-ask-head h2 { margin:0; font-family:var(--serif); font-size:26px; line-height:1.1; letter-spacing:-.6px; color:var(--pine); }
+.gx-ask-close { width:40px; height:40px; border-radius:50%; border:1.5px solid var(--line); background:var(--paper); color:var(--pine); font-size:22px; line-height:1; cursor:pointer; }
+.gx-ask-note { margin:0; font-size:14px; line-height:1.5; color:var(--ink-soft); }
+.gx-ask-log { display:flex; flex-direction:column; gap:10px; }
+.gx-ask-bubble { padding:12px 16px; border-radius:20px; font-size:15px; line-height:1.55; white-space:pre-wrap; }
+.gx-ask-user { align-self:flex-end; background:var(--sage-l); border:1px solid var(--sage); color:var(--pine); max-width:92%; }
+.gx-ask-ai { align-self:flex-start; background:var(--cream); border:1px solid var(--line); color:var(--ink); }
+.gx-ask-notice { background:var(--coral-tint); border-color:#EFC7BD; }
+.gx-ask-chips[hidden] { display:none; }
+.gx-ask-pick { margin:0 0 8px; font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--coral-d); }
+#gxAskChipList { display:flex; flex-direction:column; gap:8px; }
+.gx-ask-chip { display:block; width:100%; text-align:left; padding:12px 16px; border-radius:20px; border:1.5px solid var(--line); background:var(--paper); color:var(--pine); font:600 15px/1.35 'DM Sans',system-ui,sans-serif; cursor:pointer; text-decoration:none; }
+.gx-ask-chip:hover { border-color:var(--pine); background:var(--sage-l); }
+.gx-ask-disc { margin:0; font-size:12.5px; line-height:1.5; color:var(--muted-ink); }
+.gx-ask-account { font-size:14px; font-weight:700; color:var(--coral-d)!important; }
+@media (max-width:560px) {
+  .gx-ask-fab { right:14px; bottom:14px; }
+  .gx-ask-panel { right:14px; bottom:82px; width:calc(100vw - 28px); border-radius:28px; padding:18px; }
+}
