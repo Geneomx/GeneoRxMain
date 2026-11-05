@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>GeneoRx — Trusted Health Companion Portal</title>
+  <title>GeneoRx</title>
   @include('partials.logo-head')
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   @include('include.style')
   @stack('styles')
   <style>
@@ -114,6 +114,7 @@
     .save-account-cta-title { font-weight: 900; font-size: 15px; margin-bottom: 6px; }
   </style>
   <link rel="stylesheet" href="{{ asset('css/clean-ui.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/portal-simple.css') }}?v={{ filemtime(public_path('css/portal-simple.css')) }}">
 </head>
 <body class="gx-clean">
   <a class="skip-link" href="#main-content">Skip to content</a>

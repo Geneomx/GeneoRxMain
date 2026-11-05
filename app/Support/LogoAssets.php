@@ -24,6 +24,12 @@ class LogoAssets
         return self::url(is_file(public_path('logo-mark.png')) ? 'logo-mark.png' : 'logo.svg');
     }
 
+    /** The mark in dark ink and blue, readable on a white page without a circle behind it. */
+    public static function markDark(): string
+    {
+        return self::url(is_file(public_path('logo-mark-dark.png')) ? 'logo-mark-dark.png' : 'logo-mark.png');
+    }
+
     public static function full(): string
     {
         if (is_file(public_path('logo.png'))) {

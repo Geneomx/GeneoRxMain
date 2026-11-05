@@ -8,14 +8,8 @@
 <div class="auth-shell">
   <div class="auth-intro">
     @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 48])
-    <span class="eyebrow">Get started</span>
     <h1>Create your free account.</h1>
     <p class="sub">Save your medications, symptoms, routine, check-ins, and doctor summary across devices.</p>
-    <div class="trust-row">
-      <span>Free to start</span>
-      <span>Email verification</span>
-      <span>Weekly check-ins</span>
-    </div>
   </div>
 
   <div class="auth-card">

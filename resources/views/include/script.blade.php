@@ -1263,7 +1263,7 @@ function computeInsightEngine(){
   const symptomText = (state.symptoms.selected || []).slice(0,4).join(", ") || t('engine.insight.no_symptoms');
   const medNames = state.meds.map(m => {
     const med = MED_DB.find(x=>x.id===m.medId);
-    return med ? med.name : m.medId;
+    return med ? med.name : medLabel(m.medId);
   }).join(", ") || t('engine.insight.no_meds');
 
   let summary = t('engine.insight.summary_empty');
@@ -1323,7 +1323,7 @@ function computePopulationInsights(){
 async function fetchAiVisitSummary(){
   try {
     const insight = computeInsightEngine();
-    const meds = state.meds.map(m=>{ const md = MED_DB.find(x=>x.id===m.medId); return md?md.name:m.medId; });
+    const meds = state.meds.map(m=>{ const md = MED_DB.find(x=>x.id===m.medId); return md?md.name:medLabel(m.medId); });
     const ctrl = new AbortController();
     const timer = setTimeout(()=>ctrl.abort(), 12000);
     const res = await fetch("/api/ai-summary", {
@@ -1683,7 +1683,82 @@ function computeWeeklyCoachMessage(){
    ===== 30-SECOND VISIT SNAPSHOT (LOGIC) =====
    ========================================================= */
 function buildClinicianSnapshotText(checkinIndex){
-  return reviewRecordText("all", Number.isInteger(checkinIndex) && state.checkins[checkinIndex] ? [state.checkins[checkinIndex]] : undefined);
+  let checkin = null;
+  if (state.checkins.length) {
+    if (typeof checkinIndex !== "number" || checkinIndex < 0 || checkinIndex >= state.checkins.length) {
+      checkinIndex = state.checkins.length - 1;
+    }
+    checkin = state.checkins[checkinIndex];
+  }
+  const flags = safetyFlags();
+  const meds = state.meds.map(m=>{
+    const med = MED_DB.find(x=>x.id===m.medId);
+    const nm = med ? med.name : medLabel(m.medId);
+    return `- ${nm} • dose: ${m.dose} • duration: ${m.durationMonths||0} months`;
+  });
+
+  const scores = computeNutrientScores();
+  const top = scores.slice(0,6).map(([n,sc]) => `- ${n}: ${tierLabel(tierFromScore(sc))} signal (${sc}%)`);
+  const interactions = computeDrugInteractions().map(x=>`- ${x.title} (${tierLabel(x.level)})`);
+  const contraindications = computeContraindications().map(x=>`- ${x.title} (${tierLabel(x.level)})`);
+  // Score against the SAME check-in the rest of this report is about, not
+  // always today's — otherwise this line contradicts the adherence figure
+  // printed a few lines below it.
+  const success = computeMedicationSuccessPrediction(checkin);
+  const patterns = detectHealthPatterns();
+
+  const supp = (state.plan.recommendedSupplements||[]);
+  const adh = checkin ? `${checkin.adherencePct}%` : "—";
+  const labs = uniq(scores.slice(0,5).flatMap(([n]) => LAB_SUGGESTIONS[n] || [])).slice(0,8);
+  const symptoms = state.symptoms.selected.length ? state.symptoms.selected.join(", ") : t("report.empty.none_selected");
+  const lastDate = checkin ? fmtDate(checkin.dateISO) : "—";
+  const story = generateDynamicHealthStory(checkin);
+
+  const protocolBlock = [
+    t("report.protocol_title"),
+    supp.length ? supp.map(x=>`- ${x}`).join("\n") : `- ${t("report.empty.no_protocol")}`,
+    // Not "latest check-in" — this may be an older, explicitly-selected one;
+    // the report header already states which check-in and date this is.
+    `${t("report.adherence_label")}: ${adh}`,
+  ].join("\n");
+
+  return [
+    t("report.title"),
+    "===================================",
+    "",
+    `${t("report.patient_label")}: ${state.account.email || t("report.anonymous")} • ${t("report.age_label")}: ${state.profile.age || "—"} • ${t("report.gender_label")}: ${state.profile.gender || "—"}`,
+    `${t("report.safety_flags_label")}: ${flags.length ? flags.join(", ") : t("report.empty.none_reported")}`,
+    `${t("report.success_probability_label")}: ${success.score}% (${successLabel(success.level)})`,
+    "",
+    t("report.medications_label"),
+    meds.length ? meds.join("\n") : `- ${t("report.empty.none_reported")}`,
+    "",
+    `${t("report.symptoms_recent_label")}: ${symptoms}`,
+    "",
+    t("report.detected_patterns_label"),
+    patterns.length ? patterns.map(x=>`- ${x.title} (${tierLabel(x.confidence)})`).join("\n") : `- ${t("report.empty.no_patterns")}`,
+    "",
+    t("report.nutrient_signals_label"),
+    top.length ? top.join("\n") : `- ${t("report.empty.no_signals")}`,
+    "",
+    t("report.drug_interactions_label"),
+    interactions.length ? interactions.join("\n") : `- ${t("report.empty.no_interactions")}`,
+    "",
+    t("report.contraindications_label"),
+    contraindications.length ? contraindications.join("\n") : `- ${t("report.empty.no_contraindications")}`,
+    "",
+    protocolBlock,
+    "",
+    t("report.optional_labs_label"),
+    labs.length ? labs.map(x=>`- ${x}`).join("\n") : "- —",
+    "",
+    t("report.health_story_label"),
+    story,
+    "",
+    `${t("report.checkin_date_label")}: ${lastDate}`,
+    "",
+    t("report.footer_note")
+  ].join("\n");
 }
 
 /* =========================================================
@@ -1901,7 +1976,15 @@ const STEP_COUNT = 10;
 /* 7 was Citations, whose content moved inline into Results; the slot sat dead
    with a renderer nothing called. v3 reclaims it for Insights, which is why
    no step needed renumbering. */
-const HIDDEN_STEPS = new Set([9]);
+/* A readable name for a medicine, also for custom ones the page no longer has in memory after a reload. */
+function medLabel(id){
+  const m = (typeof MED_DB !== "undefined" ? MED_DB : []).find(x => x.id === id);
+  if (m) return m.name;
+  const raw = String(id || "").replace(/^custom_/, "").replace(/_+/g, " ").trim();
+  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) + " (custom)" : String(id || "");
+}
+/* Insights repeated Progress word for word, so it is hidden; 7 (Citations) stays unused. */
+const HIDDEN_STEPS = new Set([7, 9]);
 const stepLabel = (i)=> t(`step.${i}`);
 
 function visibleSteps(){
@@ -1943,7 +2026,26 @@ function setStep(n){
   }
 }
 
+/* A step gets its tick only when you have opened it AND its own data is in. */
+const SEEN_KEY = "geneorx.seenSteps";
+function seenSteps(){ try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]")); } catch(e){ return new Set(); } }
+function markStepSeen(i){ try { const s = seenSteps(); if(!s.has(i)){ s.add(i); localStorage.setItem(SEEN_KEY, JSON.stringify([...s])); } } catch(e){} }
+function stepDone(i){
+  if(!seenSteps().has(i)) return false;
+  const hasCheckins = state.checkins.length > 0;
+  switch(i){
+    case 0: return !profileNeedsCompletion();
+    case 1: return state.meds.length > 0 || !!state.symptomOnlyMode;
+    case 2: return state.symptoms.selected.length > 0;
+    case 3: return true;
+    case 4: return !!(state.plan && state.plan.started);
+    case 5: case 6: return hasCheckins;
+    default: return false;
+  }
+}
+
 function renderSteps(){
+  markStepSeen(state.step);
   const visible = visibleSteps();
   const position = visible.indexOf(state.step) + 1;
   const mobileSelect = document.getElementById("mobileStepSelect");
@@ -1965,7 +2067,9 @@ function renderSteps(){
     const number = document.createElement("span");
     number.className = "step-index";
     number.setAttribute("aria-hidden", "true");
-    number.textContent = String(index + 1).padStart(2, "0");
+    const done = i !== state.step && stepDone(i);
+    number.textContent = done ? "✓" : String(index + 1);
+    if (done) s.classList.add("done");
     const label = document.createElement("span");
     label.textContent = t(`step.${i}.short`);
     s.append(number, label);
@@ -2303,9 +2407,6 @@ function mountAccountForm(parent, options = {}){
       </div>
     ` : ``}
 
-    <div class="fineprint" style="margin-top:10px">
-      ${escapeHtml(t(readOnlyEmail ? "account.saved_note" : "clean.device_note"))}
-    </div>
   `;
 
   function commit(){
@@ -2365,8 +2466,9 @@ function mountAccountForm(parent, options = {}){
 }
 
 function renderAccount(){
-  mountAccountForm(mainEl, { showWelcome: true, readOnlyEmail: false });
+  mountAccountForm(mainEl, { showWelcome: false, readOnlyEmail: false });
   mainEl.appendChild(navButtons(false, true, "nav.continue"));
+  ["consent","aiConsent","preg"].forEach(id => segmentSelect(mainEl.querySelector("#" + id)));
 }
 
 /* ===== TAB 1: MEDICATIONS ===== */
@@ -2533,7 +2635,7 @@ function renderMeds(){
       const div = document.createElement("div");
       div.className="item";
       div.innerHTML = `
-        <div class="k">${escapeHtml(med?med.name:m.medId)}</div>
+        <div class="k">${escapeHtml(med?med.name:medLabel(m.medId))}</div>
         <div class="v">${escapeHtml(t("meds.dose_label"))} <strong>${escapeHtml(doseLabel(m.dose))}</strong> • ${escapeHtml(t("meds.duration_label"))} <strong>${escapeHtml(String(m.durationMonths||0))} ${escapeHtml(t("meds.duration_months"))}</strong></div>
         <div class="btns"><button class="danger" data-del="${idx}">${escapeHtml(t("meds.remove"))}</button></div>
       `;
@@ -2633,6 +2735,65 @@ function renderMeds(){
     setStep(2);
   });
   mainEl.appendChild(nav);
+  tidyMedsStep();
+}
+
+/* Turn a short dropdown (3 options or fewer) into a connected control. The dropdown stays, hidden, and keeps the value. */
+function segmentSelect(sel){
+  if(!sel || sel.dataset.segmented || sel.options.length > 3) return;
+  sel.dataset.segmented = "1";
+  const seg = document.createElement("div");
+  seg.className = "doseSeg"; seg.setAttribute("role", "group");
+  const label = sel.id && document.querySelector(`label[for="${sel.id}"]`);
+  seg.setAttribute("aria-label", (label && label.textContent) || sel.getAttribute("aria-label") || "");
+  const paint = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.value === sel.value)));
+  [...sel.options].forEach(o => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = o.text; b.dataset.value = o.value;
+    b.addEventListener("click", () => { sel.value = o.value; sel.dispatchEvent(new Event("change", { bubbles:true })); paint(); });
+    seg.appendChild(b);
+  });
+  sel.addEventListener("change", paint);
+  sel.style.display = "none";
+  sel.after(seg);
+  paint();
+}
+
+/* A cleaner Medications form: the dose is a three-way control, and the custom
+   medicine fields fold away until someone needs them. Same inputs, same ids. */
+function tidyMedsStep(){
+  const dose = document.getElementById("dosePick");
+  if(dose && !document.getElementById("doseSeg")){
+    const seg = document.createElement("div");
+    seg.id = "doseSeg"; seg.className = "doseSeg"; seg.setAttribute("role","group"); seg.setAttribute("aria-label", dose.getAttribute("aria-label") || "Dose");
+    [...dose.options].forEach(o => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = o.text; b.dataset.value = o.value;
+      b.setAttribute("aria-pressed", String(dose.value === o.value));
+      b.addEventListener("click", () => {
+        dose.value = o.value; dose.dispatchEvent(new Event("change", { bubbles:true }));
+        seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      });
+      seg.appendChild(b);
+    });
+    dose.style.display = "none";
+    dose.after(seg);
+  }
+  const custom = document.getElementById("medCustom");
+  if(custom && !document.getElementById("customMore")){
+    const row = custom.closest(".row");
+    const hint = row && row.previousElementSibling && row.previousElementSibling.classList.contains("hint") ? row.previousElementSibling : null;
+    if(row){
+      const det = document.createElement("details");
+      det.id = "customMore"; det.className = "gxMore";
+      const sum = document.createElement("summary");
+      sum.textContent = t("meds.custom_title") && !/^meds\./.test(t("meds.custom_title")) ? t("meds.custom_title") : "Not on the list? Add your own";
+      row.before(det);
+      det.appendChild(sum);
+      if(hint) det.appendChild(hint);
+      det.appendChild(row);
+    }
+  }
 }
 
 /* ===== TAB 2: SYMPTOMS ===== */
@@ -2817,7 +2978,7 @@ function renderSymptoms(){
   summaryButton.addEventListener("click", async () => {
     state.symptoms.severity = s1.querySelector("#sevSel").value;
     const key = symptomReviewFingerprint();
-    const medications = state.meds.map(m => MED_DB.find(row => row.id === m.medId)?.name || m.medId);
+    const medications = state.meds.map(m => medLabel(m.medId));
     const confirmed = [...state.symptoms.selected];
     const fallback = t("clean.review_facts", {medications:medications.join(", ") || t("summary.none"), symptoms:confirmed.join(", ") || t("clean.none_confirmed")});
     summaryButton.disabled = true;
@@ -2846,6 +3007,7 @@ function renderSymptoms(){
     setStep(3);
   });
   mainEl.appendChild(nav);
+  segmentSelect(s1.querySelector("#sevSel"));
 }
 
 /* ===== TAB 3: WELLBEING ===== */
@@ -2895,7 +3057,7 @@ function reviewPeriodLabel(range,records){
 }
 function reviewRecordText(range, selected){
   const records=selected || reviewRecords(range);
-  const names=state.meds.map(m=>[(MED_DB.find(x=>x.id===m.medId)||{}).name||m.medId,m.strength,m.frequency,m.startDate].filter(Boolean).join(" · "));
+  const names=state.meds.map(m=>[medLabel(m.medId),m.strength,m.frequency,m.startDate].filter(Boolean).join(" · "));
   const lines=[t("parity.record_title"),reviewPeriodLabel(range,records),"",t("review.current_medications"),...names,"",t("review.current_symptoms"),...state.symptoms.selected];
   for(const c of records){
     lines.push("",fmtDate(c.dateISO),`${t("parity.medication_taken")}: ${adherenceLabel(reviewMedicationAdherence(c))}`);
@@ -2909,25 +3071,373 @@ function reviewRecordText(range, selected){
   lines.push("",t("parity.record_note"));return lines.join("\n");
 }
 function renderMedicationAnswers(){
-  return `<div class="col"><h3>${escapeHtml(t("easy.medicines_question"))}</h3>${state.meds.map((m,i)=>`<div class="item"><label for="medStatus_${i}">${escapeHtml((MED_DB.find(x=>x.id===m.medId)||{}).name||m.medId)}</label><select id="medStatus_${i}" onchange="document.getElementById('medCounts_${i}').hidden=this.value!=='some'"><option value="">${escapeHtml(t("common.select"))}</option>${["all","some","unsure","not-scheduled"].map(v=>`<option value="${v}">${escapeHtml(t("tracking.dose."+v))}</option>`).join("")}</select><div id="medCounts_${i}" hidden><label for="medScheduled_${i}">${escapeHtml(t("tracking.scheduled"))}</label><input id="medScheduled_${i}" type="number" min="1"><label for="medMissed_${i}">${escapeHtml(t("tracking.missed"))}</label><input id="medMissed_${i}" type="number" min="0"></div></div>`).join("")}</div>`;
+  return `<div class="col"><h3>${escapeHtml(t("easy.medicines_question"))}</h3>${state.meds.map((m,i)=>`<div class="item"><label for="medStatus_${i}">${escapeHtml(medLabel(m.medId))}</label><select id="medStatus_${i}" onchange="document.getElementById('medCounts_${i}').hidden=this.value!=='some'"><option value="">${escapeHtml(t("common.select"))}</option>${["all","some","unsure","not-scheduled"].map(v=>`<option value="${v}">${escapeHtml(t("tracking.dose."+v))}</option>`).join("")}</select><div id="medCounts_${i}" hidden><label for="medScheduled_${i}">${escapeHtml(t("tracking.scheduled"))}</label><input id="medScheduled_${i}" type="number" min="1"><label for="medMissed_${i}">${escapeHtml(t("tracking.missed"))}</label><input id="medMissed_${i}" type="number" min="0"></div></div>`).join("")}</div>`;
 }
 
 function renderResults(){
-  const claims=claimsForSelectedMeds();
-  const byNutrient=aggregateEvidenceByNutrient(claims);
-  const alerts=[...computeDrugInteractions(),...computeContraindications()];
-  const section=document.createElement("div");section.className="section";
-  section.innerHTML=`<h3>${escapeHtml(t("review.reported_facts"))}</h3><p>${escapeHtml(reviewOverview("all"))}</p>
-    <div class="btns"><button class="primary" id="reviewSummary">${escapeHtml(t("parity.preview_summary"))}</button></div>
-    <details><summary>${escapeHtml(t("review.safety_title"))}</summary><p>${escapeHtml(t("review.limited_checks"))}</p>
-      ${alerts.length ? alerts.map(a=>`<p><strong>${escapeHtml(a.title)}</strong><br>${escapeHtml(a.note)}<br>${escapeHtml(a.action)}</p>`).join("") : `<p>${escapeHtml(t("review.no_rule_alerts"))}</p>`}
-      <p>${escapeHtml(t("review.coverage_note"))}</p></details>
-    <details><summary>${escapeHtml(t("review.evidence_title"))}</summary><p>${escapeHtml(t("review.evidence_general"))}</p>
-      ${Object.entries(byNutrient).map(([name,rows])=>`<h4>${escapeHtml(name)}</h4>${renderEvidencePanel(name,rows)}`).join("") || `<p>${escapeHtml(t("review.no_evidence"))}</p>`}</details>
-    <p class="fineprint">${escapeHtml(t("review.no_cause"))}</p>`;
-  mainEl.appendChild(section);
-  section.querySelector("#reviewSummary").addEventListener("click",()=>setStep(8));
+  { const fr = firstRunBannerHtml(3, "firstrun.s3_title", "firstrun.s3_sub");
+    if(fr){ const frEl = document.createElement("div"); frEl.innerHTML = fr; if(frEl.firstElementChild) mainEl.appendChild(frEl.firstElementChild); } }
+  const scores = computeNutrientScores();
+  const rec = recommendSupplements(scores);
+
+  const claims = claimsForSelectedMeds();
+  const evByNut = aggregateEvidenceByNutrient(claims);
+
+  const cov = evidenceCoverage();
+  const flags = safetyFlags();
+
+  const coach = computeWeeklyCoachMessage();
+
+  const s0 = document.createElement("div");
+  s0.className="section";
+  s0.innerHTML = `
+    <div class="coachBox">
+      <div class="coachTitle">
+        <div class="spark">✦</div>
+        <div>
+          <div style="font-weight:950">${escapeHtml(t("results.coach_title"))}</div>
+          <div class="fineprint">${escapeHtml(t("results.coach_sub"))}</div>
+        </div>
+      </div>
+      <div style="height:10px"></div>
+      <div class="v"><strong>${escapeHtml(coach.headline)}</strong></div>
+      <div class="fineprint" style="margin-top:8px">${coach.bullets.map(x=>`• ${escapeHtml(x)}`).join("<br>")}</div>
+      <div class="divider"></div>
+      <div class="v"><strong>${escapeHtml(t("results.next_best_action"))}</strong> ${escapeHtml(coach.nextBestAction)}</div>
+    </div>
+  `;
+  mainEl.appendChild(s0);
+
+  const s1 = document.createElement("div");
+  s1.className="section";
+  s1.innerHTML = `
+    <div class="tagline">
+      <strong>${escapeHtml(t("results.title"))}</strong><br>
+      ${escapeHtml(t("results.sub"))}
+      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("results.evidence_coverage"))} <strong>${cov.evidenceCount}/${cov.selectedCount}</strong></div>
+    </div>
+
+    ${flags.length ? `
+      <div class="banner">
+        <strong>${escapeHtml(t("results.banner_title"))}</strong> ${escapeHtml(t("results.banner_body", { flags: flags.join(", ") }))}
+      </div>
+    ` : ``}
+  `;
+  mainEl.appendChild(s1);
+
+  const interactions = computeDrugInteractions();
+  const contraindications = computeContraindications();
+  const topSignal = scores.length ? { nutrient: scores[0][0], score: scores[0][1], tier: tierFromScore(scores[0][1]) } : null;
+  const recentSymptoms = state.symptoms.selected.length ? state.symptoms.selected.slice(0,6) : [];
+  const symptomText = recentSymptoms.length ? recentSymptoms.join(', ') : t("results.no_symptoms_yet");
+  const whyReason = topSignal
+    ? `Your current pattern may reflect ${topSignal.nutrient} support needs, especially with ${symptomText}.`
+    : (state.symptomOnlyMode
+        ? `You are in symptom-only mode, so GeneoRx is estimating support needs from ${symptomText}.`
+        : `GeneoRx needs more medication or symptom detail before it can explain likely drivers with confidence.`);
+  const doctorTopics = uniq([
+    ...(topSignal ? [`Ask whether ${topSignal.nutrient} testing or monitoring would be appropriate.`] : []),
+    ...interactions.map(x => `${x.title}: ${x.action}`),
+    ...contraindications.map(x => `${x.title}: ${x.action}`)
+  ]).slice(0,4);
+
+  const sCore = document.createElement("div");
+  sCore.className="section";
+  sCore.innerHTML = `
+    <div class="row">
+      <div class="col">
+        <div class="tagline"><strong>${escapeHtml(t("results.why_title"))}</strong><br>${escapeHtml(t("results.why_sub"))}</div>
+        <div style="height:10px"></div>
+        <div class="item">
+          <div class="k">${escapeHtml(t("results.likely_explanation"))}</div>
+          <div class="v">${escapeHtml(whyReason)}</div>
+        </div>
+        <div class="item">
+          <div class="k">${escapeHtml(t("results.current_inputs"))}</div>
+          <div class="v">${escapeHtml(t("results.symptoms_label"))} <strong>${escapeHtml(symptomText)}</strong>${topSignal ? `<br>${escapeHtml(t("results.top_signal"))} <strong>${escapeHtml(topSignal.nutrient)}</strong> (${topSignal.score}% • ${escapeHtml(tierLabel(topSignal.tier))})` : ''}</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="tagline"><strong>${escapeHtml(t("results.doctor_title"))}</strong><br>${escapeHtml(t("results.doctor_sub"))}</div>
+        <div style="height:10px"></div>
+        <div class="list">${doctorTopics.length ? doctorTopics.map((x,i) => `<div class="item"><div class="k">${escapeHtml(t("results.topic"))} ${i+1}</div><div class="v">${escapeHtml(x)}</div></div>`).join('') : `<div class="fineprint">${escapeHtml(t("results.doctor_empty"))}</div>`}</div>
+      </div>
+    </div>`;
+  mainEl.appendChild(sCore);
+
+  const sAction = document.createElement("div");
+  sAction.className="section";
+  sAction.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("results.action_title"))}</strong><br>${escapeHtml(t("results.action_sub"))}</div>
+    <div style="height:10px"></div>
+    <div class="list">
+      <div class="item"><div class="k">${escapeHtml(t("results.action1_title"))}</div><div class="v">${topSignal ? `Focus on your <strong>${escapeHtml(topSignal.nutrient)}</strong> signal first instead of trying to change everything at once.` : `Log more symptoms or medications so GeneoRx can personalize your plan.`}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.action2_title"))}</div><div class="v">${escapeHtml(t("results.action2_body"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.action3_title"))}</div><div class="v">${escapeHtml(t("results.action3_body"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.action4_title"))}</div><div class="v">${escapeHtml(t("results.action4_body"))}</div></div>
+    </div>`;
+  mainEl.appendChild(sAction);
+
+  const sInsightBtn = document.createElement("div");
+  sInsightBtn.className = "section";
+  sInsightBtn.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("results.insight_title"))}</strong><br>${escapeHtml(t("results.insight_sub"))}</div>
+    <div class="btns"><button class="primary" id="openInsightBtn">${escapeHtml(t("results.insight_btn"))}</button></div>
+  `;
+  mainEl.appendChild(sInsightBtn);
+  sInsightBtn.querySelector("#openInsightBtn").addEventListener("click", openInsightModal);
+
+  const success = computeMedicationSuccessPrediction();
+  const patterns = detectHealthPatterns();
+  const population = computePopulationInsights();
+
+  const sPatterns = document.createElement("div");
+  sPatterns.className = "section";
+  sPatterns.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("results.patterns_title"))}</strong><br>${escapeHtml(t("results.patterns_sub"))}</div>
+    <div style="height:10px"></div>
+    <div class="item">
+      <div class="k">${escapeHtml(t("results.patterns_detected"))}</div>
+      <div class="v">${patterns.length
+        ? `<strong>${escapeHtml(patterns[0].title)}</strong><br>${escapeHtml(patterns[0].note)}`
+        : escapeHtml(t("results.patterns_none"))}</div>
+    </div>
+  `;
+  mainEl.appendChild(sPatterns);
+
+  const improveText = success.score >= 75
+    ? t("results.improve_high")
+    : success.score >= 50
+      ? t("results.improve_mid")
+      : t("results.improve_low");
+  const scoreCls = success.score >= 75 ? 'scoreHigh' : (success.score >= 50 ? 'scoreMod' : 'scoreLow');
+
+  const sAdvanced = document.createElement("div");
+  sAdvanced.className = "section";
+  sAdvanced.innerHTML = `
+    <div class="metricGrid">
+      <div class="metricCard"><div class="k">${escapeHtml(t("results.success_prob"))}</div><div style="display:flex;align-items:center;gap:12px;margin-top:8px"><div class="scoreBadge ${scoreCls}">${success.score}%</div><div><strong>${escapeHtml(success.level)}</strong><br><span class="fineprint">${escapeHtml(success.reason)}</span></div></div></div>
+      <div class="metricCard"><div class="k">${escapeHtml(t("results.population"))}</div><div class="v"><span class="fineprint">${escapeHtml(population.message)}</span><br>${population.trackedSymptoms.length ? `${escapeHtml(t("results.population_tracked"))} <strong>${escapeHtml(population.trackedSymptoms.join(', '))}</strong>` : `<span style="font-size:12px;opacity:.75">${escapeHtml(t("results.population_unlock"))}</span>`}</div></div>
+      <div class="metricCard"><div class="k">${escapeHtml(t("results.improve_success"))}</div><div class="v"><span class="fineprint">${escapeHtml(improveText)}</span></div></div>
+    </div>
+  `;
+  mainEl.appendChild(sAdvanced);
+
+  const sSafety = document.createElement("div");
+  sSafety.className = "section";
+  sSafety.innerHTML = `
+    <div class="row">
+      <div class="col">
+        <div class="tagline"><strong>${escapeHtml(t("results.interactions_title"))}</strong><br>${escapeHtml(t("results.interactions_sub"))}</div>
+        <div style="height:10px"></div>
+        ${interactions.length ? interactions.map(x=>`<div class="alertBox ${levelClass(x.level)}"><div class="k">${escapeHtml(x.level)} ${escapeHtml(t("results.priority"))}</div><div class="v"><strong>${escapeHtml(x.title)}</strong><br>${escapeHtml(x.note)}<br><span class="fineprint">${escapeHtml(x.action)}</span></div></div>`).join('<div style="height:10px"></div>') : `<div class="fineprint">${escapeHtml(t("results.interactions_none"))}</div>`}
+      </div>
+      <div class="col">
+        <div class="tagline"><strong>${escapeHtml(t("results.contraindications_title"))}</strong><br>${escapeHtml(t("results.contraindications_sub"))}</div>
+        <div style="height:10px"></div>
+        ${contraindications.length ? contraindications.map(x=>`<div class="alertBox ${levelClass(x.level)}"><div class="k">${escapeHtml(x.level)} ${escapeHtml(t("results.priority"))}</div><div class="v"><strong>${escapeHtml(x.title)}</strong><br>${escapeHtml(x.note)}<br><span class="fineprint">${escapeHtml(x.action)}</span></div></div>`).join('<div style="height:10px"></div>') : `<div class="fineprint">${escapeHtml(t("results.contraindications_none"))}</div>`}
+      </div>
+    </div>
+  `;
+  mainEl.appendChild(sSafety);
+  const planSupps = state.plan.recommendedSupplements?.length ? state.plan.recommendedSupplements : rec.map(x=>x.supplement);
+  const routine = buildRoutineFromSupplements(planSupps);
+
+  const sRoutine = document.createElement("div");
+  sRoutine.className = "section";
+  sRoutine.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("results.routine_title"))}</strong><br>${escapeHtml(t("results.routine_sub"))}</div>
+    <div style="height:10px"></div>
+
+    <div class="list">
+      <div class="item"><div class="k">${escapeHtml(t("results.routine.morning"))}</div><div class="v">${routine.morning.length ? routine.morning.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.routine.midday"))}</div><div class="v">${routine.midday.length ? routine.midday.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.routine.night"))}</div><div class="v">${routine.night.length ? routine.night.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("results.routine.notes"))}</div><div class="v">${routine.notes.length ? routine.notes.map(x=>`• ${escapeHtml(x)}`).join("<br>") : " "}</div></div>
+    </div>
+  `;
+  mainEl.appendChild(sRoutine);
+
+  const s2 = document.createElement("div");
+  s2.className="section";
+
+  function topInlineCites(nutrient){
+    const claimsForNut = evByNut[nutrient] || [];
+    const seen = new Set();
+    const cites = [];
+    for(const c of claimsForNut){
+      for(const id of (c.citations||[])){
+        const t = String(id||"").trim();
+        if(!t || seen.has(t)) continue;
+        if(!citationToLink(t)) continue;
+        seen.add(t);
+        cites.push(t);
+      }
+    }
+    const top = cites.slice(0,2);
+    if(!top.length) return `<div class="fineprint">${escapeHtml(t("results.citations_not_loaded"))}</div>`;
+    return `<div class="fineprint">${escapeHtml(t("results.citations_label"))}</div><div class="inlineCites">${top.map(x=>renderCitationChip(x)).join("")}</div>`;
+  }
+
+  const tierClass = (tier) => tier==="High" ? "tierHigh" : (tier==="Moderate" ? "tierMod" : "tierLow");
+
+  let nutrientHtml = "";
+  if(!scores.length){
+    nutrientHtml = `<div class="fineprint">${escapeHtml(t("results.nutrient_none"))}</div>`;
+  } else {
+    nutrientHtml = scores.slice(0,10).map(([n,score], idx)=>{
+      const label = tierFromScore(score);
+      const claimsForNut = evByNut[n] || [];
+      const q = claimsForNut.length ? summarizeSourceQuality(claimsForNut) : "Pending";
+      const evId = `ev_${idx}`;
+      const sourceBadge =
+        q==="Pending"
+          ? `<div class="sourceBadge pending"><strong>${escapeHtml(t("results.source_quality"))}</strong> ${escapeHtml(tierLabel(q))}</div>`
+          : `<div class="sourceBadge ${badgeClass(q)}"><strong>${escapeHtml(t("results.source_quality"))}</strong> ${escapeHtml(tierLabel(q))}</div>`;
+
+      return `
+        <div class="item">
+          <div class="k">${escapeHtml(n)}</div>
+          <div class="v"><strong>${escapeHtml(tierLabel(label))}</strong> ${escapeHtml(t("results.signal"))} (${score}%)</div>
+
+          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+            ${sourceBadge}
+          </div>
+
+          ${topInlineCites(n)}
+
+          <div class="evrow">
+            <div class="fineprint">${escapeHtml(t("results.transparent_evidence"))}</div>
+            <div class="evbtn" data-evbtn="${evId}">${escapeHtml(t("results.evidence_toggle"))}</div>
+          </div>
+          <div class="evidence" id="${evId}" style="display:none">
+            ${renderEvidencePanel(n, claimsForNut)}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  const supplementsHtml = rec.length
+    ? `<div class="list">
+        ${rec.map(r => `
+          <div class="item">
+            <div class="k">${escapeHtml(r.supplement)}</div>
+            <div class="v">
+              <span class="tierPill ${tierClass(r.tier)}">${escapeHtml(t("results.tier"))} <strong style="color:var(--txt)">${escapeHtml(tierLabel(r.tier))}</strong></span>
+              <span style="color: var(--muted)"> • ${escapeHtml(t("results.driven_by"))} ${escapeHtml(r.nutrient)} (${r.score}%)</span>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+      <div class="fineprint" style="margin-top:10px">${escapeHtml(t("results.supplements_disclaimer"))}</div>`
+    : `<div class="fineprint">${escapeHtml(t("results.supplements_none"))}</div>`;
+
+  s2.innerHTML = `
+    <div class="row">
+      <div class="col">
+        <div class="tagline"><strong>${escapeHtml(t("results.nutrient_title"))}</strong><br>${escapeHtml(t("results.nutrient_sub"))}</div>
+        <div style="height:10px"></div>
+        <div class="list">${nutrientHtml}</div>
+      </div>
+
+      <div class="col">
+        <div class="tagline"><strong>${escapeHtml(t("results.supplements_title"))}</strong><br>${escapeHtml(t("results.supplements_sub"))}</div>
+        <div style="height:10px"></div>
+        <div class="item">${supplementsHtml}</div>
+
+        <div class="divider"></div>
+
+        <div class="item">
+          <div class="k">${escapeHtml(t("results.start_plan"))}</div>
+          <div class="fineprint">${escapeHtml(t("results.start_plan_hint"))}</div>
+          <div style="height:10px"></div>
+          <input id="startDate" type="date" />
+          <div class="btns">
+            <button class="primary" id="startPlanBtn">${escapeHtml(state.plan.started ? t("results.update_plan_btn") : t("results.start_plan_btn"))}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  mainEl.appendChild(s2);
+
+  /* evidence toggles */
+  s2.querySelectorAll("[data-evbtn]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const id = btn.getAttribute("data-evbtn");
+      const panel = document.getElementById(id);
+      panel.style.display = (panel.style.display==="none") ? "block" : "none";
+    });
+  });
+
+  const sd = s2.querySelector("#startDate");
+  const today = todayLocalISO();
+  sd.value = state.plan.startDate ? (()=>{ const d = new Date(state.plan.startDate); return isNaN(d) ? today : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })() : today;
+
+  s2.querySelector("#startPlanBtn").addEventListener("click", ()=>{
+    const scoresNow = computeNutrientScores();
+    const recNow = recommendSupplements(scoresNow);
+    state.plan.started = true;
+    track("plan_started", { supplements: (state.plan.recommendedSupplements || []).length });
+    state.plan.startDate = new Date((sd.value || today) + "T12:00:00").toISOString(); // noon, so the day does not slip in other time zones
+    state.plan.recommendedSupplements = recNow.map(x => x.supplement);
+    state.plan.routine = buildRoutineFromSupplements(state.plan.recommendedSupplements);
+    save();
+    toastT("toast.plan_saved");
+  });
+
+  compactResults();
   mainEl.appendChild(navButtons(true,true,"nav.continue"));
+}
+
+/* Keep the Results screen short: the coach, the explanation and the insight stay open,
+   everything else folds into small headings you can open. Nothing is removed. */
+function compactResults(){
+  const secs = [...mainEl.children].filter(e => e.classList && e.classList.contains("section"));
+  const fold = (titleEl, nodes, open) => {
+    const det = document.createElement("details");
+    det.className = "gxAcc";
+    if(open) det.open = true;
+    const sum = document.createElement("summary");
+    const bd = document.createElement("div");
+    bd.className = "gxAccBody";
+    nodes.forEach(n => bd.appendChild(n));
+    const firstText = (bd.querySelector(".item .v, .metricCard .v, .alertBox .v, .fineprint, p") || bd).textContent.replace(/\s+/g, " ").trim();
+    const name = document.createElement("span"); name.className = "gxAccName"; name.textContent = titleEl;
+    const peek = document.createElement("span"); peek.className = "gxAccPeek"; peek.textContent = firstText.length > 70 ? firstText.slice(0, 68) + "…" : firstText;
+    sum.appendChild(name); sum.appendChild(peek);
+    det.appendChild(sum); det.appendChild(bd);
+    return det;
+  };
+  const titleOf = (el, fallback) => {
+    const tg = el.querySelector(".tagline");
+    const st = tg && tg.querySelector("strong");
+    const text = st ? st.textContent.trim() : (fallback || "");
+    if(tg){ const sub = tg.cloneNode(true); const sst = sub.querySelector("strong"); if(sst) sst.remove(); const br = sub.querySelector("br"); if(br) br.remove(); tg.replaceChildren(); if(sub.textContent.trim()){ tg.className = "fineprint accSub"; tg.textContent = sub.textContent.trim(); } else { tg.remove(); } }
+    return text;
+  };
+  secs.forEach((sec, idx) => {
+    if([0,1,2,4].includes(idx)) return;               // coach, intro, why + doctor, insight button
+    const cols = [...sec.querySelectorAll(":scope > .row > .col")];
+    if(cols.length > 1){
+      const frag = document.createDocumentFragment();
+      cols.forEach(col => { const title = titleOf(col); frag.appendChild(fold(title, [...col.childNodes], false)); });
+      sec.replaceWith(frag);
+      return;
+    }
+    let title = titleOf(sec);
+    if(!title){ const k = sec.querySelector(".metricCard .k"); title = k ? k.textContent.trim() : t("results.success_prob"); }
+    sec.replaceWith(fold(title, [...sec.childNodes], false));
+  });
+  if(secs[4] && secs[0] && secs[4].isConnected && secs[0].isConnected) secs[0].after(secs[4]);   // the insight button sits right under the coach
+  const folded = [...mainEl.querySelectorAll(":scope > details.gxAcc")];
+  if(folded.length){
+    const grid = document.createElement("div");
+    grid.className = "gxTiles";
+    folded[0].before(grid);
+    folded.forEach(d => grid.appendChild(d));
+  }
 }
 
 /* ===== TAB 5: CHECK-IN ===== */
@@ -3105,7 +3615,7 @@ function renderCheckin(){
     const day = s1.querySelector("#ciDate").value || today;
     if (day > today || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(new Date(day+"T12:00:00").getTime())) return alertT("checkin.date_invalid");
     const dateISO = new Date(day + "T12:00:00").toISOString();
-    const medicationDoses = state.meds.map((med,idx)=>({ medId:med.medId, medicationName:(MED_DB.find(m=>m.id===med.medId)||{}).name || med.medId,
+    const medicationDoses = state.meds.map((med,idx)=>({ medId:med.medId, medicationName:medLabel(med.medId),
       status:document.getElementById(`medStatus_${idx}`).value,
       ...(document.getElementById(`medStatus_${idx}`).value === "some" ? { scheduled:document.getElementById(`medScheduled_${idx}`).value === "" ? null : Number(document.getElementById(`medScheduled_${idx}`).value), missed:document.getElementById(`medMissed_${idx}`).value === "" ? null : Number(document.getElementById(`medMissed_${idx}`).value) } : {}) }));
     if(medicationDoses.some(d=>!d.status || (d.status === "some" && (!Number.isInteger(d.scheduled) || d.scheduled<1 || !Number.isInteger(d.missed) || d.missed<0 || d.missed>d.scheduled)))) return alertT("tracking.dose_error");
@@ -3155,8 +3665,8 @@ function renderCheckin(){
     save();
     toastT(IS_GUEST ? "toast.checkin_guest" : "toast.checkin_saved");
     setStep(6);
-    if (IS_GUEST) pendingSaveAccountAfterFeedback = true;
-    openFeedbackModal();
+    // No feedback pop-up after a check-in; guests go straight to the save-to-account prompt.
+    if (IS_GUEST) window.setTimeout(maybePromptSaveAccount, 350);
   });
 
   sSave.querySelector("#ciDeleteLast").addEventListener("click", ()=>{
@@ -3250,15 +3760,17 @@ function renderProgress(){
     `<span class="chip" aria-pressed="false">${escapeHtml(t("wellbeing." + d.key))} ${d.delta > 0 ? "+" : ""}${d.delta}</span>`
   ).join(" ");
   sWeekly.innerHTML = `
-    <div class="tagline"><strong>${escapeHtml(t("insights.this_week"))}</strong><br>${escapeHtml(t("insights.weekly_basis"))}</div>
-    <div class="row" style="align-items:center">
-      <div class="col" style="flex:0 0 auto">
-        <div class="scoreBadge ${weekly.score === null ? "" : (weekly.score >= 70 ? "scoreHigh" : (weekly.score >= 45 ? "scoreMod" : "scoreLow"))}">${weekly.score === null ? "&mdash;" : weekly.score}</div>
-      </div>
-      <div class="col">
+    <div class="progHero">
+      <div class="scoreBadge ${weekly.score === null ? "" : (weekly.score >= 70 ? "scoreHigh" : (weekly.score >= 45 ? "scoreMod" : "scoreLow"))}">${weekly.score === null ? "&mdash;" : weekly.score}</div>
+      <div class="progHeroText">
+        <div class="progHeroTitle">${escapeHtml(t("insights.this_week"))}</div>
         <div class="fineprint">${wDelta}</div>
-        <div class="chips" style="margin-top:6px">${wDrivers}</div>
+        ${wDrivers ? `<div class="chips" style="margin-top:6px">${wDrivers}</div>` : ``}
       </div>
+    </div>
+    <div class="progStats">
+      <div class="progStat"><div class="n">${state.checkins.length}</div><div class="k">${escapeHtml(String(t("portal.checkins_label")).replace(/:\s*$/, ""))}</div></div>
+      <div class="progStat"><div class="n">${adherenceLabel(reviewMedicationAdherence(last))}</div><div class="k">${escapeHtml(t("progress.adherence"))}</div></div>
     </div>`;
   mainEl.appendChild(sWeekly);
 
@@ -3281,16 +3793,16 @@ function renderProgress(){
   const trends = buildTrendSeries(state.checkins);
   let trendsBlock = "";
   if (trends.window && trends.points.length) {
-    const symColors = ["#16352B","#C84B33","#5E8A6E","#B8860B","#7B5EA7","#3F7F8C"];
+    const symColors = ["#1D1D1F","#0071E3","#5E8A6E","#B8860B","#7B5EA7","#3F7F8C"];
     const clean = (k)=> t(k).replace(/\s*\([^)]*\)\s*$/,"");
     const wellbeing = trendChartSvg([
       {label:clean("wellbeing.energy"),color:"#B8860B",points:trends.points.filter(p=>p.energy !== null).map(p=>[p.t,p.energy])},
-      {label:clean("wellbeing.mood"),color:"#C84B33",points:trends.points.filter(p=>p.mood !== null).map(p=>[p.t,p.mood])},
+      {label:clean("wellbeing.mood"),color:"#0071E3",points:trends.points.filter(p=>p.mood !== null).map(p=>[p.t,p.mood])},
       {label:clean("wellbeing.sleep"),color:"#3F7F8C",points:trends.points.filter(p=>p.sleep !== null).map(p=>[p.t,p.sleep])},
       {label:clean("wellbeing.focus"),color:"#7B5EA7",points:trends.points.filter(p=>p.focus !== null).map(p=>[p.t,p.focus])},
     ], trends.window, 10, "0-10");
     const adherence = trendChartSvg([
-      {label:t("checkin.adherence"),color:"#16352B",points:trends.points.filter(p=>p.adherence !== null).map(p=>[p.t,p.adherence])},
+      {label:t("checkin.adherence"),color:"#1D1D1F",points:trends.points.filter(p=>p.adherence !== null).map(p=>[p.t,p.adherence])},
     ], trends.window, 100, "0-100%");
     const symNames = Object.keys(trends.symptoms).slice(0,6);
     const symptoms = symNames.length ? trendChartSvg(
@@ -3311,60 +3823,7 @@ function renderProgress(){
   }
 
   s1.innerHTML = `
-    <div class="coachBox">
-      <div class="coachTitle">
-        <div class="spark">✦</div>
-        <div>
-          <div style="font-weight:950">${escapeHtml(t("progress.weekly_signal"))}</div>
-          <div class="fineprint">${escapeHtml(t("progress.weekly_sub"))}</div>
-        </div>
-      </div>
-
-      <div style="height:10px"></div>
-      <div class="v"><strong>${escapeHtml(coach.headline)}</strong></div>
-      <div class="fineprint" style="margin-top:8px">
-        ${coach.bullets.map(x=>`• ${escapeHtml(x)}`).join("<br>")}
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="btns">
-        <button class="ghost" id="btnAnother">${escapeHtml(t("progress.add_another"))}</button>
-      </div>
-    </div>
-
-    <div style="height:14px"></div>
-
-    <div class="list">
-      <div class="item">
-        <div class="k">${escapeHtml(t("progress.what_changed"))}</div>
-        <div class="v">
-          ${escapeHtml(t("progress.most_improved"))} <strong>${escapeHtml(best?.symptom || " ")}</strong> (${escapeHtml(impactLabel(best?.change || ""))})<br>
-          ${escapeHtml(t("progress.least_improved"))} <strong>${escapeHtml(worst?.symptom || " ")}</strong> (${escapeHtml(impactLabel(worst?.change || ""))})<br>
-          ${escapeHtml(t("progress.top_driver"))} <strong>${escapeHtml(topDriver)}</strong>
-        </div>
-      </div>
-
-      <div class="item">
-        <div class="k">${escapeHtml(t("progress.wellbeing_change"))}</div>
-        <div class="v">
-          ${escapeHtml(compactMetricLabel("wellbeing.energy"))}: <strong>${fmtDelta(dEnergy)}</strong> •
-          ${escapeHtml(compactMetricLabel("wellbeing.mood"))}: <strong>${fmtDelta(dMood)}</strong> •
-          ${escapeHtml(compactMetricLabel("wellbeing.sleep"))}: <strong>${fmtDelta(dSleep)}</strong> •
-          ${escapeHtml(compactMetricLabel("wellbeing.focus"))}: <strong>${fmtDelta(dFocus)}</strong>
-        </div>
-      </div>
-
-      <div class="item">
-        <div class="k">${escapeHtml(t("progress.symptom_score"))}</div>
-        <div class="v"><strong>${symScore}</strong> ${escapeHtml(t("progress.symptom_score_sub"))}</div>
-      </div>
-
-      <div class="item">
-        <div class="k">${escapeHtml(t("progress.adherence"))}</div>
-        <div class="v"><strong>${adherenceLabel(reviewMedicationAdherence(last))}</strong> ${escapeHtml(t("review.answered_medication"))}</div>
-      </div>
-    </div>
+    <div class="btns"><button class="ghost" id="btnAnother">${escapeHtml(t("progress.add_another"))}</button></div>
     ${trendsBlock}
   `;
   mainEl.appendChild(s1);
@@ -3449,16 +3908,84 @@ function renderInsights(){
 }
 
 function renderSummaryTab(){
-  const range=window.geneorxReviewRange || "7"; const records=reviewRecords(range); const last=records.at(-1);
-  const section=document.createElement("div");section.className="section";
-  const meds=state.meds.map(m=>{const row=last?.medicationDoses?.find(d=>d.medId===m.medId); return `<div class="item"><strong>${escapeHtml((MED_DB.find(x=>x.id===m.medId)||{}).name || m.medId)}</strong><br>${escapeHtml(row ? t("tracking.dose."+row.status) : t("checkin.not_answered"))}</div>`;}).join("");
-  section.innerHTML=`<label for="summaryRange">${escapeHtml(t("review.this_period"))}</label><select id="summaryRange">${["7","30","all"].map(v=>`<option value="${v}" ${range===v?"selected":""}>${escapeHtml(t("parity.range."+v))}</option>`).join("")}</select>
-    <p class="fineprint">${escapeHtml(reviewPeriodLabel(range,records))}</p><p>${escapeHtml(reviewOverview(range))}</p><h3>${escapeHtml(t("review.current_medications"))}</h3>${meds || `<p>${escapeHtml(t("meds.none_yet"))}</p>`}
-    <h3>${escapeHtml(t("review.symptoms_changes"))}</h3>${last?.symptoms?.items?.length ? last.symptoms.items.map(i=>`<p><strong>${escapeHtml(i.symptom)}</strong><br>${escapeHtml(impactLabel(i.change))}${typeof i.severityNow === "number" ? ` · ${i.severityNow}/10` : ""}</p>`).join("") : `<p>${escapeHtml(t("review.no_symptom_records"))}</p>`}
-    <div class="btns"><button class="primary" id="recordPreview">${escapeHtml(t("parity.preview_summary"))}</button></div><p class="fineprint">${escapeHtml(t("parity.record_note"))}</p>`;
-  mainEl.appendChild(section);
-  section.querySelector("#summaryRange").addEventListener("change",e=>{window.geneorxReviewRange=e.target.value;renderAll();});
-  section.querySelector("#recordPreview").addEventListener("click",()=>{openSnapshotModal();snapText.textContent=reviewRecordText(range);});
+  const meds = state.meds.map(m=>{
+    const med = MED_DB.find(x=>x.id===m.medId);
+    return med ? med.name : medLabel(m.medId);
+  });
+  const last = latestCheckin();
+  const flags = safetyFlags();
+  const insight = computeInsightEngine();
+  const success = computeMedicationSuccessPrediction();
+  const patterns = detectHealthPatterns();
+  const interactions = computeDrugInteractions();
+  const contraindications = computeContraindications();
+  const story = generateDynamicHealthStory();
+  const noneLabel = t("summary.none");
+
+  const sStory = document.createElement("div");
+  sStory.className = "section";
+  sStory.innerHTML = `
+    <div class="tagline">
+      <strong>${escapeHtml(t("summary.health_story_title"))}</strong><br>
+      ${escapeHtml(t("summary.health_story_sub"))}
+      <div class="fineprint" style="margin-top:8px">${escapeHtml(t("summary.health_story_lead"))}</div>
+    </div>
+    <div style="height:12px"></div>
+    <div class="v" style="line-height:1.6">${escapeHtml(story)}</div>
+    <div class="btns">
+      <button type="button" class="primary" id="summarySnapshotBtn">${escapeHtml(t("progress.snapshot_btn"))}</button>
+      <button type="button" class="primary" id="summaryInsightBtn">${escapeHtml(t("results.insight_btn"))}</button>
+    </div>
+  `;
+  mainEl.appendChild(sStory);
+  sStory.querySelector("#summarySnapshotBtn").addEventListener("click", openSnapshotModal);
+  sStory.querySelector("#summaryInsightBtn").addEventListener("click", openInsightModal);
+
+  /* The three Home scores and the report row, as the side panel shows them on
+     every other step — that panel is hidden on this one. */
+  const sScores = document.createElement("div");
+  sScores.className = "section";
+  sScores.innerHTML = renderHomeScores();
+  mainEl.appendChild(sScores);
+  wireHomeScores(sScores);
+
+  const s1 = document.createElement("div");
+  s1.className = "section";
+  s1.innerHTML = `
+    <div class="tagline"><strong>${escapeHtml(t("summary.dashboard_title"))}</strong><br>${escapeHtml(t("summary.dashboard_sub"))}</div>
+    <div style="height:10px"></div>
+    <div class="list">
+      <div class="item"><div class="k">${escapeHtml(t("summary.account_label"))}</div><div class="v">${escapeHtml(state.account.email || t("common.guest"))} • Consent: ${state.account.consent ? t("sidebar.consent_yes") : t("sidebar.consent_no")}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.medications"))}</div><div class="v">${meds.length ? escapeHtml(meds.join(", ")) : escapeHtml(t("summary.no_meds_added"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.symptoms_field"))}</div><div class="v">${state.symptoms.selected.length ? escapeHtml(state.symptoms.selected.join(", ")) : escapeHtml(t("summary.no_symptoms_selected"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("sidebar.safety_flags"))}</div><div class="v">${flags.length ? escapeHtml(flags.join(", ")) : escapeHtml(noneLabel)}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.success_prediction_full"))}</div><div class="v"><strong>${success.score}%</strong> • ${escapeHtml(success.level)}<br>${escapeHtml(success.reason)}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.detected_pattern"))}</div><div class="v">${patterns.length ? `<strong>${escapeHtml(patterns[0].title)}</strong><br>${escapeHtml(patterns[0].note)}` : escapeHtml(t("summary.no_pattern_detected"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.drug_interactions"))}</div><div class="v">${interactions.length ? escapeHtml(interactions.map(x=>x.title).join(", ")) : escapeHtml(t("summary.no_interactions"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.contraindications"))}</div><div class="v">${contraindications.length ? escapeHtml(contraindications.map(x=>x.title).join(", ")) : escapeHtml(t("summary.no_contraindications"))}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.insight_summary"))}</div><div class="v"><strong>${escapeHtml(insight.summary)}</strong><br>${escapeHtml(insight.meaning)}</div></div>
+      <div class="item"><div class="k">${escapeHtml(t("summary.latest_checkin"))}</div><div class="v">${last ? `${fmtDate(last.dateISO)} • ${t("sidebar.adherence")} ${last.adherencePct}%` : escapeHtml(t("sidebar.no_checkins"))}</div></div>
+    </div>
+  `;
+
+  if (IS_GUEST && localHasMeaningfulData(state)) {
+    const cta = document.createElement("div");
+    cta.className = "save-account-cta";
+    cta.style.marginTop = "14px";
+    cta.innerHTML = `
+      <div class="save-account-cta-title">${escapeHtml(t("save_account.summary_title"))}</div>
+      <div class="fineprint">${escapeHtml(t("save_account.summary_sub"))}</div>
+      <div class="btns" style="margin-top:12px">
+        <button class="primary" type="button" id="summarySaveAccountBtn">${escapeHtml(t("save_account.summary_btn"))}</button>
+      </div>
+    `;
+    cta.querySelector("#summarySaveAccountBtn").addEventListener("click", ()=> openSaveAccountModal(1));
+    s1.appendChild(cta);
+  }
+
+  mainEl.appendChild(s1);
+  mountAssistantPanel(mainEl);
+  mainEl.appendChild(summaryExitButtons());
 }
 
 /* ===== ASK GENEORX (web assistant panel) ===== */
@@ -3526,7 +4053,7 @@ function mountAssistantPanel(parent){
         body: JSON.stringify({
           messages: options.mode==='catalog_only' ? [{role:'user',content:'General guidance'}] : messages,
           prompt_id: promptId,
-          context: options.mode==='personalized' ? { medications: state.meds.map(m=>{ const md = MED_DB.find(x=>x.id===m.medId); return md?md.name:m.medId; }), symptoms: state.symptoms.selected || [] } : undefined,
+          context: options.mode==='personalized' ? { medications: state.meds.map(m=>{ const md = MED_DB.find(x=>x.id===m.medId); return md?md.name:medLabel(m.medId); }), symptoms: state.symptoms.selected || [] } : undefined,
           language: portalLang(),
         }),
       });
@@ -3787,8 +4314,9 @@ function maybePromptProfile(){
 function renderMain(){
   state.step = normalizeStep(state.step);
   mainEl.innerHTML = "";
+  mainEl.dataset.step = String(state.step);
   mainTitle.textContent = stepLabel(state.step);
-  mainSub.textContent = t(`step.${state.step}.sub`);
+  mainSub.textContent = state.step === 0 ? "" : t(`step.${state.step}.sub`);
 
   if(state.step===0) return renderAccount();
   if(state.step===1) return renderMeds();

@@ -60,7 +60,7 @@
   .field input[type=password], .field input[type=text] {
     height: 50px;
     padding: 0 18px;
-    border: 1.5px solid #A39270;
+    border: 1.5px solid #8E8E93;
     border-radius: 20px;
     font-size: 16px;
     font-family: inherit;
@@ -73,9 +73,9 @@
   .field .hint { font-size: 12.5px; color: var(--text-dim); }
 
   .btn { display: inline-flex; align-items: center; height: 48px; padding: 0 26px; font-size: 15px; font-weight: 700; border-radius: 999px; border: 1px solid transparent; cursor: pointer; font-family: inherit; transition: all 0.15s; }
-  .btn-primary { background: var(--coral); color: #fff; box-shadow: 0 12px 22px -12px rgba(200,75,51,.7); }
+  .btn-primary { background: var(--coral); color: #fff; box-shadow: 0 12px 22px -12px rgba(0,113,227,.7); }
   .btn-primary:hover { background: var(--coral-dark); }
-  .btn-danger { background: #F8DDD6; color: #A63A27; border-color: #EFC7BD; }
+  .btn-danger { background: #FDECEA; color: #A63A27; border-color: #F5C6C0; }
   .btn-danger:hover { background: #B8402C; color: #fff; border-color: #B8402C; }
 
   .alert-success {
@@ -84,7 +84,7 @@
     font-size: 14.5px; color: var(--text-soft); margin-bottom: 20px;
   }
   .alert-error {
-    background: #F8DDD6; border-left: 3px solid #B8402C;
+    background: #FDECEA; border-left: 3px solid #B8402C;
     border-radius: 0 16px 16px 0; padding: 14px 18px;
     font-size: 14.5px; color: #7F2A1B; margin-bottom: 20px;
   }
@@ -92,7 +92,7 @@
   /* Danger zone */
   .danger-zone {
     background: #FBEDE8;
-    border: 1.5px solid #EFC7BD;
+    border: 1.5px solid #F5C6C0;
     border-radius: 28px;
     padding: 28px;
   }

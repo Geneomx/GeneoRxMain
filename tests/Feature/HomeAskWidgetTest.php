@@ -71,4 +71,24 @@ class HomeAskWidgetTest extends TestCase
             'language' => 'en',
         ])->assertOk()->assertJsonPath('source', 'ai');
     }
+
+    public function test_the_top_menu_offers_create_account_and_guest_to_visitors(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('href="'.route('register').'"', false)
+            ->assertSee('href="'.route('guest').'"', false)
+            ->assertSee('href="'.route('login').'"', false)
+            ->assertDontSee('action="'.route('logout').'"', false);
+    }
+
+    public function test_a_signed_in_user_sees_sign_out_in_the_top_menu(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/')
+            ->assertOk()
+            ->assertSee('action="'.route('logout').'"', false)
+            ->assertSee('href="'.route('treatments').'"', false);
+    }
 }

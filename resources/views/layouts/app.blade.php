@@ -8,48 +8,48 @@
   @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   @stack('styles')
 
   <style>
     :root {
-      /* Warm Editorial: cream paper, pine green, one coral action colour */
-      --teal:        #24503F;
-      --teal-dark:   #16352B;
-      --teal-light:  #3C7A63;
-      --teal-50:     #E4EEDF;
-      --teal-100:    #CFE0CF;
+      /* Clean white and grey, near-black type, one blue action colour */
+      --teal:        #0071E3;
+      --teal-dark:   #0066CC;
+      --teal-light:  #2997FF;
+      --teal-50:     #EAF3FF;
+      --teal-100:    #D6E8FD;
 
-      --coral:       #C84B33;
-      --coral-dark:  #B03F29;
-      --pine:        #16352B;
-      --sage:        #CFE0CF;
+      --coral:       #0071E3;
+      --coral-dark:  #0066CC;
+      --pine:        #1D1D1F;
+      --sage:        #D6E8FD;
 
-      --bg:          #FFFBF3;
-      --bg-soft:     #F7F1E6;
-      --bg-muted:    #F2EADB;
+      --bg:          #FFFFFF;
+      --bg-soft:     #FFFFFF;
+      --bg-muted:    #F5F5F7;
 
-      --text:        #1E2B25;
-      --text-soft:   #3B4A42;
-      --text-muted:  #5E6A60;
-      --text-dim:    #7A8478;
+      --text:        #1D1D1F;
+      --text-soft:   #424245;
+      --text-muted:  #6E6E73;
+      --text-dim:    #86868B;
       --danger:      #B8402C;
-      --danger-50:   #F8DDD6;
-      --danger-100:  #EFC7BD;
+      --danger-50:   #FDECEA;
+      --danger-100:  #F5C6C0;
 
-      --border:      #E6D9C0;
-      --border-soft: #EFE5D0;
+      --border:      #D2D2D7;
+      --border-soft: #E5E5EA;
 
-      --shadow-sm: 0 1px 2px rgba(22, 53, 43, 0.05);
-      --shadow:    0 1px 0 rgba(22, 53, 43, 0.03), 0 18px 36px -22px rgba(22, 53, 43, 0.32);
-      --shadow-lg: 0 24px 48px -24px rgba(22, 53, 43, 0.42);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow:    0 1px 0 rgba(0, 0, 0, 0.03), 0 18px 36px -22px rgba(0, 0, 0, 0.32);
+      --shadow-lg: 0 24px 48px -24px rgba(0, 0, 0, 0.42);
 
       --r:           20px;
       --r-lg:        28px;
 
-      --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
-      --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --serif: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+      --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
 
@@ -1147,20 +1147,16 @@
 
     /* =========================================
        WARM EDITORIAL REFINEMENTS
-       Cream ground, paper cards, pine structure, coral for the one action.
+       White and grey ground, white cards, one blue action.
     ========================================= */
     body {
-      background:
-        radial-gradient(circle at 106% -2%, #E4EEDF 0 340px, transparent 341px),
-        radial-gradient(circle at -6% 10%, #F2E3CC 0 190px, transparent 191px),
-        var(--bg-soft);
-      background-attachment: fixed;
+      background: var(--bg-soft);
     }
     h1, h2, h3, .page-head h1, .card > .hd h2, .card-hd h2, .settings-page-title, .settings-card-title, .nav-name {
       font-family: var(--serif);
       color: var(--pine);
     }
-    .nav { background: rgba(247, 241, 230, 0.92); border-bottom: 1.5px solid var(--border); }
+    .nav { background: rgba(255, 255, 255, 0.86); -webkit-backdrop-filter: saturate(160%) blur(12px); backdrop-filter: saturate(160%) blur(12px); border-bottom: 1px solid rgba(0,0,0,.08); }
     .nav-name { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
     .nav-logo { border-radius: 50%; background: var(--pine); padding: 4px; width: 34px; height: 34px; }
     .nav-link { font-weight: 600; }
@@ -1170,11 +1166,11 @@
     .nav-dropdown { border: 1.5px solid var(--border); border-radius: 24px; box-shadow: var(--shadow-lg); }
     .nav-drop-item { border-radius: 14px; }
     .btn, .primary, .ghost, .danger, button.btn { border-radius: 999px; font-weight: 600; }
-    .btn-primary, .primary { background: var(--coral); color: #fff; border-color: var(--coral); box-shadow: 0 12px 22px -12px rgba(200, 75, 51, 0.7); font-weight: 700; }
+    .btn-primary, .primary { background: var(--coral); color: #fff; border-color: var(--coral); box-shadow: 0 12px 22px -12px rgba(0, 113, 227, 0.7); font-weight: 700; }
     .btn-primary:hover, .primary:hover { background: var(--coral-dark); border-color: var(--coral-dark); }
-    .btn-outline, .ghost { background: transparent; border: 1.5px solid #D7C8A8; color: var(--pine); }
+    .btn-outline, .ghost { background: transparent; border: 1.5px solid #D2D2D7; color: var(--pine); }
     .btn-outline:hover, .ghost:hover { border-color: var(--teal); background: var(--bg); color: var(--pine); }
-    .btn-danger { background: #fff; border: 1.5px solid #EFC7BD; color: var(--danger); }
+    .btn-danger { background: #fff; border: 1.5px solid #F5C6C0; color: var(--danger); }
     .btn-danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
     .card, .settings-card, .modal { border: 1.5px solid var(--border); border-radius: 28px; box-shadow: var(--shadow); background: var(--bg); }
     .card > .hd, .settings-card-header { border-bottom-color: var(--border-soft); }
@@ -1183,14 +1179,14 @@
     .settings-card-icon svg { color: var(--pine); }
     .settings-page-title { font-size: 32px; font-weight: 700; letter-spacing: -0.8px; }
     .settings-page-sub { font-size: 16px; }
-    .field input[type=password], .field input[type=text], input, select, textarea { border: 1.5px solid #A39270; border-radius: 20px; background: var(--bg); }
-    .field input:focus, input:focus, select:focus, textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 4px rgba(207, 224, 207, 0.85); outline: none; }
+    .field input[type=password], .field input[type=text], input, select, textarea { border: 1px solid #B4B4BA; border-radius: 12px; background: #fff; }
+    .field input:focus, input:focus, select:focus, textarea:focus { border-color: #0071E3; box-shadow: 0 0 0 4px rgba(0, 113, 227, .16); outline: none; }
     .step, .chip, .badge, .covPill, .sourceBadge, .tierPill { border-radius: 999px; }
-    .step.on, .chip[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: #fff; }
+    .step.on, .chip[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #fff; }
     .toast { background: var(--pine); }
     .guest-bar { background: #FBEFD4; border-bottom-color: #EBD9A8; color: #7A5410; }
     .geneorx-brand { display: inline-flex; align-items: center; gap: 11px; }
-    .geneorx-brandmark { display: inline-flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; background: var(--pine); border-radius: 50% !important; box-shadow: 0 10px 18px -10px rgba(22, 53, 43, 0.6); }
+    .geneorx-brandmark { display: inline-flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; background: var(--pine); border-radius: 50% !important; box-shadow: 0 10px 18px -10px rgba(0, 0, 0, 0.6); }
     .geneorx-brand-name { font-family: var(--serif); font-size: 21px; font-weight: 700; letter-spacing: -0.5px; color: var(--pine); }
   </style>
 </head>

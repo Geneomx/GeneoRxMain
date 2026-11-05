@@ -31,7 +31,9 @@
       @auth
         @if(session('is_web_guest'))
           <div class="badge"><span data-i18n="portal.user_label">User:</span> <strong id="pillUser">Guest</strong></div>
+          <form method="POST" action="{{ route('logout') }}" class="portal-signout">@csrf<button type="submit" class="ghost mini" data-i18n="mobile.profile.sign_out">Sign out</button></form>
         @else
+          <form method="POST" action="{{ route('logout') }}" class="portal-signout">@csrf<button type="submit" class="ghost mini" data-i18n="mobile.profile.sign_out">Sign out</button></form>
           <div class="portal-menu" id="portalProfileMenu">
             <button type="button" class="ghost mini portal-menu-trigger" id="portalProfileTrigger" aria-haspopup="true" aria-expanded="false" data-i18n="portal.profile">Profile</button>
             <div class="portal-menu-panel" id="portalProfilePanel" hidden>
@@ -61,7 +63,6 @@
   <div class="workspace-heading">
     <div>
       <h1 data-i18n="clean.space">Your health space</h1>
-      <p data-i18n="clean.workspace_sub">One step at a time. Everything in one place.</p>
     </div>
     <div class="portal-metrics">
       <div class="badge"><span data-i18n="portal.plan_label">Plan:</span> <strong id="pillPlan">Not started</strong></div>

@@ -6,14 +6,8 @@
 <div class="auth-shell">
   <div class="auth-intro">
     @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 48])
-    <span class="eyebrow">Account recovery</span>
     <h1>Choose a new password.</h1>
     <p class="sub">Pick something secure you have not used before. Your email address will remain the same.</p>
-    <div class="trust-row">
-      <span>8+ characters</span>
-      <span>Stored securely (hashed)</span>
-      <span>Link used only once</span>
-    </div>
   </div>
 
   <div class="auth-card">

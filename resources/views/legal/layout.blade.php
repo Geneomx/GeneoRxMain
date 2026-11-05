@@ -3,29 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{{ $pageTitle }} · GeneoRx</title>
+  <title>GeneoRx</title>
   @include('partials.logo-head')
   @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    .geneorx-brand { display:inline-flex; align-items:center; gap:10px; text-decoration:none; }
+    .geneorx-brandmark { display:grid; place-items:center; overflow:hidden; background:#1D1D1F; border-radius:50% !important; flex-shrink:0; }
+    .geneorx-brandmark img { transform:translateX(8.3%) scale(1.14); }
+    .geneorx-brand-name { font-size:18px; font-weight:600; letter-spacing:-.02em; color:#1D1D1F; }
     :root {
-      --teal: #24503F;
-      --teal-dark: #16352B;
-      --teal-50: #E4EEDF;
-      --teal-100: #CFE0CF;
-      --bg: #F7F1E6;
-      --bg-warm: #FFFBF3;
-      --text: #1E2B25;
-      --text-soft: #3B4A42;
-      --text-muted: #5E6A60;
-      --border: #E6D9C0;
-      --border-soft: #EFE5D0;
+      --teal: #424245;
+      --teal-dark: #1D1D1F;
+      --teal-50: #EAF3FF;
+      --teal-100: #D6E8FD;
+      --bg: #FFFFFF;
+      --bg-warm: #FFFFFF;
+      --text: #1D1D1F;
+      --text-soft: #424245;
+      --text-muted: #6E6E73;
+      --border: #D2D2D7;
+      --border-soft: #E5E5EA;
     }
     html { scroll-behavior: smooth; }
     body {
-      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
       color: var(--text);
       background: var(--bg);
       min-height: 100vh;
@@ -83,7 +87,7 @@
       margin-bottom: 10px;
     }
     .doc-title em {
-      font-family: 'Fraunces', Georgia, serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
       font-style: italic; font-weight: 400;
       color: var(--teal-dark);
     }
@@ -186,7 +190,7 @@
 
 <nav class="nav">
   <a href="{{ url('/') }}" class="nav-brand">
-    @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false, 'href' => url('/')])
+    @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 34, 'showName' => true, 'href' => url('/')])
   </a>
   <a href="{{ url('/') }}" class="nav-back">
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">

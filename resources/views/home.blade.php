@@ -4,20 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>GeneoRx — A clearer picture of your health</title>
+  <title>GeneoRx</title>
   @include('partials.logo-head')
   @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Inter:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ asset('css/clean-ui.css') }}">
   <link rel="stylesheet" href="{{ asset('css/home-clean.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/home-apple.css') }}">
 </head>
 <body class="gx-clean gx-home">
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header">
   <nav class="site-nav" aria-label="Main navigation">
-    @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 34])
+    @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 38, 'showName' => false])
     <div class="site-links">
       <a href="#how-it-works" data-i18n="clean.how">How it works</a>
     </div>
@@ -26,44 +27,30 @@
       @auth
         @include('partials.staff-links')
         <a class="gx-button gx-button-primary" href="{{ route('treatments') }}" data-i18n="nav.dashboard">Open dashboard</a>
+        <form method="POST" action="{{ route('logout') }}" class="nav-logout">@csrf<button type="submit" class="signin-link" data-i18n="mobile.profile.sign_out">Sign out</button></form>
       @else
         <a class="signin-link" href="{{ route('login') }}" data-i18n="nav.signin">Sign in</a>
-        <a class="gx-button gx-button-primary" href="{{ route('register') }}" data-i18n="clean.start">Get started</a>
+        <a class="signin-link" href="{{ route('guest') }}" data-i18n="clean.try">Try as a guest</a>
+        <a class="gx-button gx-button-primary" href="{{ route('register') }}" data-i18n="clean.create">Create your account</a>
       @endauth
     </div>
   </nav>
 </header>
 <main id="main-content">
-  <section class="landing-hero">
-    <div class="hero-copy">
-      <div class="eyebrow" data-i18n="hero.eyebrow">Personal medication intelligence</div>
-      <h1 data-i18n="clean.headline">Your health.<br>A little clearer.</h1>
-      <p class="hero-description" data-i18n="clean.description">Bring your medications, symptoms, and wellbeing together. Understand your patterns and feel more prepared for your next doctor visit.</p>
-      <div class="hero-actions">
-        @auth
-          <a class="gx-button gx-button-primary gx-button-large" href="{{ route('treatments') }}" data-i18n="nav.dashboard">Open dashboard</a>
-        @else
-          <a class="gx-button gx-button-primary gx-button-large" href="{{ route('register') }}" data-i18n="clean.create">Create your account</a>
-          <a class="gx-text-link" href="{{ route('guest') }}"><span data-i18n="clean.try">Try as a guest</span> <span aria-hidden="true">↗</span></a>
-        @endauth
-      </div>
-      <p class="hero-footnote" data-i18n="clean.note">A guided space for better health conversations.</p>
+  <section class="content-section explain-section" id="how-it-works" style="--mark:url('{{ \App\Support\LogoAssets::mark() }}'); --backdrop:url('{{ asset('images/home-backdrop.jpg') }}')">
+    <span class="mark-float mf-1" aria-hidden="true"></span><span class="mark-float mf-2" aria-hidden="true"></span><span class="mark-float mf-3" aria-hidden="true"></span>
+    <div class="section-heading reveal"><h2 class="vh" data-i18n="clean.how_title">A simple start. A clearer path forward.</h2>
     </div>
-    <div class="product-scene">
-      <svg class="hero-art" viewBox="0 0 320 250" aria-hidden="true" focusable="false">
-        <circle cx="160" cy="125" r="118" fill="#E4EEDF"/>
-        <circle cx="160" cy="125" r="108" fill="none" stroke="#E2725B" stroke-width="2" stroke-dasharray="2 9" stroke-linecap="round"/>
-        <circle cx="160" cy="125" r="86" fill="#16352B"/>
-        <g transform="rotate(-35 160 125)"><path d="M160 101h-38a24 24 0 0 0 0 48h38z" fill="#E2725B"/><path d="M160 101h38a24 24 0 0 1 0 48h-38z" fill="#FFFBF3"/><rect x="128" y="108" width="24" height="5" rx="2.5" fill="#fff" opacity=".4"/></g>
-        <circle cx="256" cy="44" r="15" fill="#E2725B"/>
-        <g transform="translate(44 232) scale(.62)"><path d="M0 0C10-70 60-120 130-170" fill="none" stroke="#24503F" stroke-width="4" stroke-linecap="round"/><g fill="#24503F"><path d="M0 0C12-11 30-11 42 0C30 11 12 11 0 0z" transform="translate(8 -44) rotate(-20)"/><path d="M0 0C12-11 30-11 42 0C30 11 12 11 0 0z" transform="translate(10 -48) rotate(-150)"/><path d="M0 0C12-11 30-11 42 0C30 11 12 11 0 0z" transform="translate(40 -92) rotate(-35)"/><path d="M0 0C12-11 30-11 42 0C30 11 12 11 0 0z" transform="translate(42 -96) rotate(-155)"/><path d="M0 0C12-11 30-11 42 0C30 11 12 11 0 0z" transform="translate(84 -134) rotate(-40)"/></g></g>
-      </svg>
-    </div>
-  </section>
-  <section class="content-section explain-section" id="how-it-works">
-    <div class="section-heading"><div class="eyebrow" data-i18n="clean.how">How it works</div><h2 data-i18n="clean.how_title">A simple start.<br>A clearer path forward.</h2></div>
     @php
       $slides = require resource_path('data/intro_slides.php');
+    @endphp
+    @php
+      $icons = [
+        '<path d="M12 8v.01M11 12h1v5h1"/><circle cx="12" cy="12" r="9"/>',
+        '<path d="M4 12h4l2-6 4 12 2-6h4"/>',
+        '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+        '<path d="M5 13l4 4L19 7"/>',
+      ];
     @endphp
     <div class="explain-grid">
       @foreach($slides as $i => $slide)
@@ -71,8 +58,8 @@
           $paragraphs = $slide['paragraphs'] ?? [];
           $bullets = array_map(fn ($b) => is_array($b) ? ($b['strong'].$b['text']) : $b, $slide['bullets'] ?? []);
         @endphp
-        <article class="explain-card{{ !empty($slide['accent']) ? ' explain-accent' : '' }}">
-          <span class="explain-num" aria-hidden="true">{{ $slide['num'] }}</span>
+        <article class="explain-card reveal{{ !empty($slide['accent']) ? ' explain-accent' : '' }}" style="--d:{{ $i * 110 }}ms">
+          <span class="explain-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{!! $icons[$i % 4] !!}</svg></span>
           <span class="eyebrow" data-i18n="slide.{{ $i }}.tag">{{ $slide['tag'] }}</span>
           <h3 data-i18n="slide.{{ $i }}.title">{{ $slide['title'] }}</h3>
           @if(isset($paragraphs[0]))<p data-i18n="slide.{{ $i }}.p0">{{ $paragraphs[0] }}</p>@endif
@@ -86,9 +73,13 @@
       @endforeach
     </div>
   </section>
-  <section class="start-section"><div class="eyebrow" data-i18n="clean.next">Your next step</div><h2 data-i18n="clean.cta">Start with you.</h2><p data-i18n="clean.cta_sub">A little more clarity begins with your first step.</p><a class="gx-button gx-button-primary gx-button-large" href="{{ route(auth()->check() ? 'treatments' : 'register') }}" data-i18n="clean.start">Get started</a></section>
+  <section class="start-section" style="--mark:url('{{ \App\Support\LogoAssets::mark() }}')"><span class="mark-float mf-4" aria-hidden="true"></span><div class="eyebrow" data-i18n="clean.next">Your next step</div><h2 data-i18n="clean.cta">Start with you.</h2><p data-i18n="clean.cta_sub">A little more clarity begins with your first step.</p><div class="hero-actions">@auth<a class="gx-button gx-button-primary gx-button-large" href="{{ route('treatments') }}" data-i18n="nav.dashboard">Open dashboard</a>@else<a class="gx-button gx-button-primary gx-button-large" href="{{ route('register') }}" data-i18n="clean.create">Create your account</a><a class="gx-text-link" href="{{ route('guest') }}"><span data-i18n="clean.try">Try as a guest</span> <span aria-hidden="true">&rsaquo;</span></a>@endauth</div></section>
 </main>
 <footer class="site-footer"><div class="footer-inner"><span>© {{ date('Y') }} GeneoRx</span><p data-i18n="clean.educational">Educational guidance only. Discuss health decisions with your clinician.</p><div><a href="{{ route('legal.privacy') }}" data-i18n="clean.privacy">Privacy</a><a href="{{ route('legal.terms') }}" data-i18n="clean.terms">Terms</a><a href="mailto:info@geneorx.com" data-i18n="clean.contact">Contact</a></div></div></footer>
 @include('partials.ask-widget')
+<script>
+(function(){var els=document.querySelectorAll('.reveal');if(!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion: reduce)').matches){els.forEach(function(e){e.classList.add('in')});return;}
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.15});els.forEach(function(e){io.observe(e)});})();
+</script>
 </body>
 </html>
