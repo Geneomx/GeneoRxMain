@@ -29,10 +29,10 @@ export const MedicationFocusCard: React.FC<{ onGo: (step: number) => void; onSet
   const action = t(setup.pending ? setup.progress ? 'setup.resume' : 'setup.start' : unfinished ? 'easy_use.continue' : completed ? 'easy_use.view_update' : starting ? journey.action : 'easy_use.record_checkin');
   return <View style={styles.card}>
     <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
-      <FloatingMark size={170} opacity={0.11} travel={8} tilt={6} duration={4600} style={{ right: -26, bottom: -52 }} />
+      <FloatingMark size={170} tint="#0071E3" opacity={0.09} travel={8} tilt={6} duration={4600} style={{ right: -26, bottom: -52 }} />
     </View>
     <View style={styles.copy}>
-      {completed ? <AppIcon name="check" size={22} color={colors.sage} /> : null}
+      {completed ? <AppIcon name="check" size={22} color={colors.primary} /> : null}
       <Text accessibilityRole="header" style={styles.title}>{t(setup.pending ? 'setup.title' : unfinished ? 'easy_use.unfinished' : completed ? 'easy_use.saved_today' : starting ? journey.title : 'easy_use.record_checkin')}</Text>
       <Text style={styles.detail}>{t(setup.pending ? setup.progress ? 'setup.resume_body' : 'setup.body' : unfinished ? 'easy_use.resume_body' : completed ? 'easy_use.saved_body' : starting ? journey.body : 'airy.checkin_body')}</Text>
     </View>
@@ -47,15 +47,15 @@ export const MedicationFocusCard: React.FC<{ onGo: (step: number) => void; onSet
 };
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 32, padding: 24, overflow: 'hidden', gap: 20, backgroundColor: colors.pine },
+  card: { borderRadius: 32, padding: 24, overflow: 'hidden', gap: 20, backgroundColor: '#EAF3FF', borderWidth: 1, borderColor: '#D6E8FD' },
   art: { position: 'absolute', right: -30, bottom: -36 },
   copy: { gap: 7 },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: '700', color: '#FFFFFF', letterSpacing: -.7 },
-  detail: { fontSize: 16, lineHeight: 24, color: colors.onPineMuted },
+  title: { fontSize: 28, lineHeight: 34, fontWeight: '700', color: colors.text, letterSpacing: -.7 },
+  detail: { fontSize: 16, lineHeight: 24, color: colors.textSoft },
   action: { alignSelf: 'flex-start', maxWidth: '100%', minWidth: 154, minHeight: 48, paddingVertical: 11, paddingHorizontal: 18, borderRadius: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, backgroundColor: colors.buttonPrimary, ...shadow.cta },
   actionLarge: { alignSelf: 'stretch' },
   actionText: { flexShrink: 1, textAlign: 'center', fontSize: 16, lineHeight: 24, fontWeight: '700', color: colors.onPrimary },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center' },
   secondary: { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', paddingHorizontal: 6 },
-  secondaryText: { color: colors.onPine, fontSize: 16, lineHeight: 24, fontWeight: '700' },
+  secondaryText: { color: colors.primary, fontSize: 16, lineHeight: 24, fontWeight: '700' },
 });

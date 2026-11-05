@@ -19,7 +19,7 @@ export const ListRow: React.FC<{ title: string; detail?: string; icon?: AppIconN
 export const HeroCard: React.FC<{ title: string; body?: string; action: string; onPress: () => void; icon?: AppIconName; meta?: string[] }> = ({ title, body, action, onPress, icon = 'calendar', meta }) => <View style={refined.hero}>
   <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
     <View style={{ flex: 1, gap: 6 }}><Text accessibilityRole="header" style={refined.heroTitle}>{title}</Text>{body ? <Text style={refined.heroBody}>{body}</Text> : null}</View>
-    <View style={refined.heroIcon} accessible={false}><AppIcon name={icon} size={30} color={colors.onPine} /></View>
+    <View style={refined.heroIcon} accessible={false}><AppIcon name={icon} size={30} color={colors.primary} /></View>
   </View>
   {meta?.length ? <View style={refined.heroMetaRow}>{meta.map(item => <View key={item} style={refined.heroMeta}><Text style={refined.heroMetaText}>{item}</Text></View>)}</View> : null}
   <Button title={action} variant="primary" onPress={onPress} />
@@ -76,14 +76,14 @@ export const refined = StyleSheet.create({
   sheetFooter: { flexShrink: 0, gap: 8 },
   body: { fontSize: 17, lineHeight: 23, color: colors.textSoft },
   metricRow: { flexDirection: 'row', gap: 12 },
-  hero: { backgroundColor: colors.pine, borderRadius: 32, padding: 22, gap: 16, ...shadow.raised },
-  heroTitle: { color: '#FFFFFF', fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -0.4 },
-  heroBody: { color: colors.onPineMuted, fontSize: 16, lineHeight: 24 },
-  heroIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
+  hero: { backgroundColor: '#EAF3FF', borderWidth: 1, borderColor: '#D6E8FD', borderRadius: 32, padding: 22, gap: 16 },
+  heroTitle: { color: colors.text, fontSize: 24, lineHeight: 30, fontWeight: '700', letterSpacing: -0.4 },
+  heroBody: { color: colors.textSoft, fontSize: 16, lineHeight: 24 },
+  heroIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,113,227,0.12)', alignItems: 'center', justifyContent: 'center' },
   tile: { backgroundColor: colors.primary50, alignItems: 'center', justifyContent: 'center' },
   heroMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  heroMeta: { backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
-  heroMetaText: { color: colors.onPine, fontSize: 15, lineHeight: 20, fontWeight: '500' },
+  heroMeta: { backgroundColor: 'rgba(0,113,227,0.10)', borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  heroMetaText: { color: colors.text, fontSize: 15, lineHeight: 20, fontWeight: '500' },
   pill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 12 },
   metric: { flex: 1, borderRadius: 24, padding: 16, gap: 5, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border, ...shadow.card },
   metricValue: { fontSize: 28, fontWeight: '700', color: colors.pine, letterSpacing: -0.5 },

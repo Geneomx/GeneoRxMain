@@ -1,6 +1,6 @@
 import { useVisualPreferences } from '@/store/VisualPreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, AppState, Easing, Keyboard, StyleSheet, View, type ImageStyle, type StyleProp } from 'react-native';
+import { AccessibilityInfo, Animated, AppState, Image, Easing, Keyboard, StyleSheet, View, type ImageStyle, type StyleProp } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
@@ -51,10 +51,14 @@ export const BrandWatermark: React.FC<{ style?: StyleProp<ImageStyle> }> = ({ st
 export const AmbientBackground: React.FC<{ backgroundColor?: string; gradientEndColor?: string; markOpacity?: number; markStyle?: StyleProp<ImageStyle> }> = ({ backgroundColor, gradientEndColor, markOpacity, markStyle }) => {
   const insets = useSafeAreaInsets();
   return <View style={[styles.background, { top: insets.top }, backgroundColor ? { backgroundColor } : null]} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <Image source={require('../../assets/home-backdrop.jpg')} resizeMode="cover" style={styles.picture} accessible={false} />
+    <LinearGradient colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.55)', '#FFFFFF']} locations={[0, 0.6, 1]} style={styles.pictureFade} />
     {gradientEndColor ? <LinearGradient colors={[backgroundColor || colors.background, gradientEndColor]} start={{ x: 0.15, y: 0 }} end={{ x: 0.85, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
   </View>;
 };
 
 const styles = StyleSheet.create({
+  picture: { position: 'absolute', top: 0, left: 0, right: 0, height: 340 },
+  pictureFade: { position: 'absolute', top: 0, left: 0, right: 0, height: 340 },
   background: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: colors.background, overflow: 'hidden' },
 });
