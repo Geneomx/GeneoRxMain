@@ -43,10 +43,10 @@ const styles = StyleSheet.create({
   wrap: { gap: spacing.xs },
   label: { ...typography.bodyMuted, color: colors.text, fontWeight: '500', fontSize: 16 },
   input: {
-    borderWidth: 1.5,
-    borderColor: colors.controlBorder,
+    borderWidth: 1,
+    borderColor: '#B4B4BA',
     backgroundColor: colors.inputBg,
-    borderRadius: 20,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: spacing.sm + 4,
     fontSize: 17,

@@ -52,13 +52,9 @@ export const AmbientBackground: React.FC<{ backgroundColor?: string; gradientEnd
   const insets = useSafeAreaInsets();
   return <View style={[styles.background, { top: insets.top }, backgroundColor ? { backgroundColor } : null]} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
     {gradientEndColor ? <LinearGradient colors={[backgroundColor || colors.background, gradientEndColor]} start={{ x: 0.15, y: 0 }} end={{ x: 0.85, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
-    <View style={styles.sage} />
-    <View style={styles.sand} />
   </View>;
 };
 
 const styles = StyleSheet.create({
   background: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: colors.background, overflow: 'hidden' },
-  sage: { position: 'absolute', width: 340, height: 340, borderRadius: 170, right: -140, top: -150, backgroundColor: colors.primary50 },
-  sand: { position: 'absolute', width: 200, height: 200, borderRadius: 100, left: -100, top: 70, backgroundColor: colors.sand, opacity: 0.7 },
 });
