@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { AppText as Text } from './AppText';
-import { Sprig } from './WelcomeArt';
+import { FloatingMark } from './FloatingMark';
 import { AppIcon } from './AppIcon';
 import { useWizard } from '@/store/WizardContext';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -29,7 +29,7 @@ export const MedicationFocusCard: React.FC<{ onGo: (step: number) => void; onSet
   const action = t(setup.pending ? setup.progress ? 'setup.resume' : 'setup.start' : unfinished ? 'easy_use.continue' : completed ? 'easy_use.view_update' : starting ? journey.action : 'easy_use.record_checkin');
   return <View style={styles.card}>
     <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
-      <View style={styles.art}><Sprig size={170} color={colors.sage} opacity={0.16} /></View>
+      <FloatingMark size={170} opacity={0.11} travel={8} tilt={6} duration={4600} style={{ right: -26, bottom: -52 }} />
     </View>
     <View style={styles.copy}>
       {completed ? <AppIcon name="check" size={22} color={colors.sage} /> : null}

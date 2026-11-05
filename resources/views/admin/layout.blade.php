@@ -3,54 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>GeneoRx Admin   @yield('title', 'Dashboard')</title>
+  <title>GeneoRx</title>
   @include('partials.logo-head')
   @include('partials.brand-logo-styles')
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* GeneoRx v2 admin — dark clinical theme, matching the app and website.
+    /* GeneoRx v2 admin — clean light theme, matching the app and website.
        Token names are kept (--teal*) so every existing view keeps working;
        only the values change from the old light/teal palette to navy/cyan. */
     :root {
-      --teal:        #28E1FF;   /* primary accent (cyan) */
-      --teal-dark:   #5EEBFF;   /* lighter on dark bg, for text on tinted chips */
-      --teal-50:     rgba(40, 225, 255, 0.10);
-      --teal-100:    rgba(40, 225, 255, 0.22);
+      --teal:        #0071E3;   /* primary accent (blue) */
+      --teal-dark:   #0066CC;   /* text on tinted chips */
+      --teal-50:     #EAF3FF;
+      --teal-100:    #D6E8FD;
 
-      --bg:          #0F1736;   /* cards, top bar, inputs */
-      --bg-soft:     #070A12;   /* page background */
-      --bg-muted:    rgba(15, 23, 54, 0.55);
-      --sidebar:     #0B1022;
+      --bg:          #FFFFFF;   /* cards, top bar, inputs */
+      --bg-soft:     #FFFFFF;   /* page background */
+      --bg-muted:    #F5F5F7;
+      --sidebar:     #FFFFFF;
 
-      --text:        #EAF0FF;
-      --text-soft:   #A9B4D6;
-      --text-muted:  #7E8AB8;
-      --text-dim:    #5A6490;
+      --text:        #1D1D1F;
+      --text-soft:   #424245;
+      --text-muted:  #6E6E73;
+      --text-dim:    #86868B;
 
-      --border:      rgba(255, 255, 255, 0.12);
-      --border-soft: rgba(255, 255, 255, 0.08);
+      --border:      #D2D2D7;
+      --border-soft: #E5E5EA;
 
-      /* Semantic status colors — dark-friendly alpha tints */
-      --success:     #34D399;
-      --success-bg:  rgba(52, 211, 153, 0.12);
-      --success-bd:  rgba(52, 211, 153, 0.32);
-      --warn:        #FBBF24;
-      --warn-bg:     rgba(251, 191, 36, 0.12);
-      --warn-bd:     rgba(251, 191, 36, 0.32);
-      --danger:      #FB7185;
-      --danger-bg:   rgba(251, 113, 133, 0.12);
-      --danger-bd:   rgba(251, 113, 133, 0.34);
+      /* Semantic status colors */
+      --success:     #1F7A4D;
+      --success-bg:  #E6F4EA;
+      --success-bd:  #B7DEC4;
+      --warn:        #9A6A12;
+      --warn-bg:     #FBF1D9;
+      --warn-bd:     #EBD9A8;
+      --danger:      #C0392B;
+      --danger-bg:   #FDECEA;
+      --danger-bd:   #F5C6C0;
 
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
-      --shadow:    0 4px 16px rgba(0, 0, 0, 0.35);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow:    0 1px 2px rgba(0,0,0,.04), 0 12px 28px -18px rgba(0, 0, 0, 0.22);
 
-      --r:    10px;
-      --r-lg: 14px;
-      --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --r:    12px;
+      --r-lg: 18px;
+      --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    .geneorx-brand { display:inline-flex; align-items:center; gap:10px; text-decoration:none; }
+    .geneorx-brandmark { display:grid; place-items:center; overflow:hidden; background:#1D1D1F; border-radius:50% !important; flex-shrink:0; }
+    .geneorx-brandmark img { transform:translateX(8.3%) scale(1.14); }
+    .geneorx-brand-name { font-size:18px; font-weight:600; letter-spacing:-.02em; color:var(--text); }
     body {
       font-family: var(--sans);
       color: var(--text);
@@ -288,7 +292,7 @@
       text-decoration: none; white-space: nowrap;
     }
     .btn-primary {
-      background: var(--teal); color: #061018;
+      background: var(--teal); color: #fff;
     }
     .btn-primary:hover { background: var(--teal-dark); }
     .btn-ghost {
@@ -400,7 +404,7 @@
     }
     .pagination a:hover { background: var(--bg-muted); color: var(--text); }
     .pagination .active {
-      background: var(--teal); border-color: var(--teal); color: #061018;
+      background: var(--teal); border-color: var(--teal); color: #fff;
     }
     .pagination .disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -417,7 +421,13 @@
 
     /* ========== RESPONSIVE ========== */
     @media (max-width: 800px) {
-      .admin-sidebar { display: none; }
+      .admin-sidebar { width: 60px; padding: 14px 8px; align-items: center; }
+      .admin-sidebar .sidebar-link { font-size: 0; gap: 0; justify-content: center; width: 44px; height: 40px; padding: 0; }
+      .admin-sidebar .sidebar-link .icon { width: 20px; height: 20px; }
+      .admin-sidebar .sidebar-link .icon svg { width: 20px; height: 20px; }
+      .admin-sidebar .sidebar-label { display: none; }
+      .admin-sidebar .sidebar-divider { width: 28px; margin: 6px 0; }
+      .admin-sidebar .sidebar-link[style*="cursor:default"] { display: none; }
       .admin-content { padding: 20px 16px 40px; }
       .stats-grid { grid-template-columns: 1fr 1fr; }
     }
@@ -431,7 +441,7 @@
   <!-- TOP BAR -->
   <header class="admin-topbar">
     <a href="{{ route('home') }}" class="admin-brand">
-      @include('partials.geneorx-brand', ['variant' => 'full', 'logoSize' => 'nav', 'showName' => false, 'href' => route('home')])
+      @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 34, 'showName' => true, 'href' => route('home')])
       <span class="admin-brand-badge">Admin</span>
     </a>
 
@@ -545,5 +555,6 @@
     </main>
   </div>
 
+<script>document.querySelectorAll('.admin-sidebar a.sidebar-link').forEach(function(a){a.title=a.textContent.trim();});</script>
 </body>
 </html>

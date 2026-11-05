@@ -6,14 +6,8 @@
 <div class="auth-shell">
   <div class="auth-intro">
     @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 48])
-    <span class="eyebrow">Welcome back</span>
     <h1>Sign in to your account.</h1>
     <p class="sub">Continue your GeneoRx setup, review insights, log check-ins, and prepare a doctor summary.</p>
-    <div class="trust-row">
-      <span>Private by design</span>
-      <span>Guided setup</span>
-      <span>Doctor-ready summary</span>
-    </div>
   </div>
 
   <div class="auth-card">

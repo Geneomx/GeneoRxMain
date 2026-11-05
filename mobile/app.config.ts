@@ -42,7 +42,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         image: './assets/splash.png',
         imageWidth: 240,
         resizeMode: 'contain',
-        backgroundColor: '#F7F1E6',
+        backgroundColor: '#FFFFFF',
       },
     ],
     ['expo-image-picker', { photosPermission: 'Choose a medication label to help fill in its details.', cameraPermission: 'Take a medication-label photo to help fill in its details.', microphonePermission: false }],

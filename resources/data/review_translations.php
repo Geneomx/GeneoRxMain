@@ -6,6 +6,8 @@ return [
     'tracking.dose.some' => 'Missed some',
     'tracking.dose.unsure' => 'Not sure',
     'tracking.dose.not-scheduled' => 'No doses scheduled',
+    'tracking.scheduled' => 'Doses scheduled',
+    'tracking.missed' => 'Doses missed',
     'tracking.dose_error' => 'Choose an answer for each medication. If you missed doses, enter valid scheduled and missed counts. Choose Not sure if you do not know.',
     'checkin.date_invalid' => 'Enter a real date on or before today.',
     'design.delete_checkin_prompt' => 'Remove your most recent check-in? This will update your progress.',

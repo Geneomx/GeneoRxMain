@@ -6,14 +6,8 @@
 <div class="auth-shell">
   <div class="auth-intro">
     @include('partials.geneorx-brand', ['variant' => 'mark', 'size' => 48])
-    <span class="eyebrow">Account recovery</span>
     <h1>Reset your password.</h1>
     <p class="sub">Enter the email address linked to your GeneoRx account and we will send you a secure reset link.</p>
-    <div class="trust-row">
-      <span>Link expires in 60 min</span>
-      <span>Secure one-time link</span>
-      <span>No account required to request</span>
-    </div>
   </div>
 
   <div class="auth-card">

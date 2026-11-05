@@ -1,28 +1,23 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '@/navigation/AuthStack';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { BrandIdentity } from '@/components/BrandHeader';
-import { AppIcon, type AppIconName } from '@/components/AppIcon';
+import { QuestionSlides } from '@/components/QuestionSlides';
 import { Button } from '@/components/Button';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { useAuth } from '@/auth/AuthContext';
 import { useLanguage } from '@/store/LanguageContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { translate } from '@/content/siteTranslations';
-import { WelcomeArt } from '@/components/WelcomeArt';
+import { FOUR_QUESTIONS } from '@/content/fourQuestions';
 import { colors, fonts } from '@/theme';
 import { useToast } from '@/components/Toast';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
-const benefits: Array<{ icon: AppIconName; key: string }> = [
-  { icon: 'pill', key: 'slide.1.b0' },
-  { icon: 'heart', key: 'slide.1.b2' },
-  { icon: 'chart', key: 'slide.2.b2' },
-];
 
 /** A brief introduction; the tracking screens explain the details. */
 export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
@@ -34,6 +29,14 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const { fontScale, width } = useWindowDimensions();
   const largeText = fontScale > 1.3;
   const t = (key: string) => translate(key, language.code);
+  const slideIcons = ['pill', 'focus', 'heart', 'check'] as const;
+  const slideShape = [{ p: [0], b: 0 }, { p: [0, 1], b: 3 }, { p: [], b: 4 }, { p: [0], b: 0 }];
+  const slides = slideShape.map((shape, i) => language.code === 'en'
+    ? { icon: slideIcons[i], accent: i === 3, ...FOUR_QUESTIONS[i] }
+    : {
+      icon: slideIcons[i], accent: i === 3, tag: t(`slide.${i}.tag`), title: t(`slide.${i}.title`),
+      paragraphs: shape.p.map(k => t(`slide.${i}.p${k}`)), bullets: Array.from({ length: shape.b }, (_, k) => t(`slide.${i}.b${k}`)),
+    });
   const start = async () => {
     if (starting) return;
     setStarting(true);
@@ -45,7 +48,11 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const actions = <>
     <Button title={t('journey.get_started')} loading={starting} onPress={() => { void start(); }} />
     <Text style={styles.legal}>{t('journey.guest_note')}</Text>
-    <View style={styles.secondary}><Button title={t('nav.signin')} variant="ghost" onPress={() => navigation.navigate('Login')} /><Button title={t('cta.register')} variant="ghost" onPress={() => navigation.navigate('Register')} /></View>
+    <View style={styles.links}>
+      <Pressable accessibilityRole="link" onPress={() => navigation.navigate('Login')} style={styles.linkHit}><Text style={styles.link}>{t('nav.signin')}</Text></Pressable>
+      <Text style={styles.linkDot}>·</Text>
+      <Pressable accessibilityRole="link" onPress={() => navigation.navigate('Register')} style={styles.linkHit}><Text style={styles.link}>{t('cta.register')}</Text></Pressable>
+    </View>
     <Text style={styles.legal}>{t('welcome.legal')}</Text>
   </>;
   return <SafeAreaView style={styles.safe} edges={largeText ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']}>
@@ -54,10 +61,7 @@ export const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
     <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={largeText ? styles.largeScroll : styles.scroll}>
       {largeText ? header : null}
       <View style={[page, styles.content]}>
-        <View style={styles.art}><WelcomeArt width={Math.min(300, width - 72)} /></View>
-        <View style={styles.intro}><Text accessibilityRole="header" style={styles.title}>{t('slide.0.title')}</Text><Text style={styles.body}>{t('slide.0.p0')}</Text></View>
-        {largeText ? <View style={styles.actions}>{actions}</View> : null}
-        <View style={styles.benefits}>{benefits.map(({ icon, key }, index) => <View key={key} style={[styles.benefit, index === benefits.length - 1 && { borderBottomWidth: 0 }]}><View style={styles.icon}><AppIcon name={icon} size={19} /></View><Text style={styles.benefitText}>{t(key)}</Text></View>)}</View>
+        <QuestionSlides slides={slides} width={Math.min(width - 40, 560)} />
       </View>
     </ScrollView>
     {!largeText ? <SafeAreaView edges={['bottom']} style={styles.footer}><View style={[page, styles.actions]}>{actions}</View></SafeAreaView> : null}
@@ -78,6 +82,10 @@ const styles = StyleSheet.create({
   benefitText: { flex: 1, fontSize: 17, lineHeight: 25, color: colors.text },
   footer: { backgroundColor: colors.background },
   actions: { gap: 8, paddingTop: 16, paddingBottom: 10 },
+  links: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', columnGap: 8 },
+  linkHit: { minHeight: 44, paddingHorizontal: 6, justifyContent: 'center' },
+  link: { fontSize: 16, lineHeight: 22, fontWeight: '600', color: colors.coral },
+  linkDot: { fontSize: 16, color: colors.textDim },
   secondary: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 12 },
   guest: { minHeight: 44, paddingHorizontal: 8, justifyContent: 'center' },
   guestText: { fontSize: 16, lineHeight: 24, color: colors.textMuted },

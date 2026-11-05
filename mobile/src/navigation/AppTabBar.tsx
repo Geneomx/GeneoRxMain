@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   pillOn: {
-    backgroundColor: colors.pine,
+    backgroundColor: colors.coral,
   },
   iconWrap: {
     width: 44,

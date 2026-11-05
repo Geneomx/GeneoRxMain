@@ -1,23 +1,23 @@
 import { progressPalette as palette, coral, sage, sand } from './progress';
 
-// Warm Editorial across every screen, form, sheet, and navigation surface:
-// cream paper, pine green for structure, a single coral for the one action on a screen.
+// Clean Apple-style look across every screen:
+// white and light grey, near-black for structure, one blue for the action on a screen.
 export const colors = {
-  primary: palette.accent, primaryDark: '#0F2A21', primaryLight: '#24503F',
+  primary: coral.action, primaryDark: '#0066CC', primaryLight: '#2997FF',
   primary50: palette.soft, primary100: sage, buttonPrimary: coral.action, onPrimary: '#FFFFFF',
-  background: palette.background, backgroundAlt: '#F2EADB', surface: palette.surface, surfaceAlt: '#F3EBDC', card: palette.surface, hero: palette.soft,
+  background: palette.background, backgroundAlt: '#EBEBF0', surface: palette.surface, surfaceAlt: '#F5F5F7', card: palette.surface, hero: palette.soft,
   glass: palette.surface, glassBorder: palette.border,
-  border: palette.border, borderStrong: '#B9A98A', controlBorder: '#9C8C6B', borderSoft: '#EFE5D0',
-  text: palette.text, textSoft: '#3B4A42', textMuted: palette.muted, textDim: '#7A8478', textInverse: '#FFFBF3',
+  border: palette.border, borderStrong: '#A1A1A6', controlBorder: '#8E8E93', borderSoft: '#E5E5EA',
+  text: palette.text, textSoft: '#424245', textMuted: palette.muted, textDim: '#86868B', textInverse: '#FFFFFF',
   violet: '#6F5BA8', pink: '#B8527A', amber: '#9A6A12',
   success: '#2F7A53', warning: '#9A6A12', danger: '#B8402C',
   successBg: '#DCEBDD', warningBg: '#F6E7C8', dangerBg: coral.tint,
   buttonText: palette.text, inputBg: palette.surface, ghostBg: palette.soft, buttonBg: palette.soft,
   cardTop: palette.surface, cardBottom: palette.surface, badgeBg: palette.soft,
-  overlay: 'rgba(22, 53, 43, 0.5)',
+  overlay: 'rgba(0, 0, 0, 0.5)',
   // Warm Editorial extras
-  pine: '#16352B', pine2: '#24503F', sage, sand, coral: coral.action, coralSoft: coral.soft,
-  onPine: '#F7F1E6', onPineMuted: '#C5D4C9', onPineEyebrow: '#E9B7A8',
+  pine: '#1D1D1F', pine2: '#424245', sage, sand, coral: coral.action, coralSoft: coral.soft,
+  onPine: '#F5F5F7', onPineMuted: '#C7C7CC', onPineEyebrow: '#C7C7CC',
 };
 export const gradients = {
   primaryCta: [coral.action, coral.action] as const,
@@ -46,7 +46,7 @@ export const radius = {
 /** Minimum comfortable tap height (older adults / accessibility). */
 export const touchMin = 48;
 
-/** Fraunces for headings and big numbers, DM Sans (via AppText) for everything else. */
+/** Inter everywhere (the Fraunces names are kept so existing styles keep working). */
 export const fonts = {
   serif: 'GeneoRxFraunces700',
   serifSemi: 'GeneoRxFraunces600',
@@ -71,14 +71,14 @@ export const layout = {
 
 export const shadow = {
   card: {
-    shadowColor: '#16352B',
+    shadowColor: '#1D1D1F',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.07,
     shadowRadius: 16,
     elevation: 1,
   },
   raised: {
-    shadowColor: '#16352B',
+    shadowColor: '#1D1D1F',
     shadowOffset: { width: 0, height: 14 },
     shadowOpacity: 0.16,
     shadowRadius: 22,
