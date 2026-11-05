@@ -19,7 +19,8 @@ const styles = StyleSheet.create({
   header: { minHeight: 54, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background },
   identity: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   mark: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.pine, alignItems: 'center', justifyContent: 'center' },
-  logo: { width: 28, height: 28 },
+  // brand-mark.png draws the GX left of centre inside its square: nudge it back so it sits centred in the circle.
+  logo: { width: 30, height: 30, transform: [{ translateX: 2.5 }, { scale: 1.1 }] },
   name: { fontFamily: fonts.serif, fontSize: 20, letterSpacing: -.5, color: colors.pine },
   title: { fontSize: 15, color: colors.textMuted },
   avatar: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

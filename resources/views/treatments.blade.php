@@ -26,7 +26,6 @@
     <div class="status portal-status" id="patientTools">
       @include('partials.language-selector')
       @include('partials.staff-links')
-      <a href="{{ route('doctor') }}" class="ghost mini portal-link-btn" data-i18n="doctor.nav">Ask a doctor</a>
       <button class="ghost mini" id="btnMyCheckins" data-i18n="portal.mycheckins">My check-ins</button>
       <button class="ghost mini" id="btnShare" data-i18n="portal.share">Share for review</button>
       @auth

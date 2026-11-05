@@ -240,10 +240,11 @@ class DoctorPortalTest extends TestCase
             ->assertDontSee('name="preferred_time"', false);
     }
 
-    public function test_the_portal_links_to_the_doctor_page(): void
+    public function test_the_portal_does_not_link_to_the_doctor_page_for_now(): void
     {
+        // The "Ask a doctor" entry is hidden from the website navigation for now; the page itself still works by URL.
         $this->actingAs($this->patient())->get('/treatments')
             ->assertOk()
-            ->assertSee(route('doctor'));
+            ->assertDontSee('href="'.route('doctor').'"', false);
     }
 }
