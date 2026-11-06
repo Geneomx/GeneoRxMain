@@ -539,6 +539,7 @@
     .assistant-chip{border:1px solid rgba(167,139,250,.5);background:rgba(167,139,250,.08);color:inherit;border-radius:999px;padding:8px 12px;font-size:13px;cursor:pointer}
     .assistant-disc{margin:6px 0 8px}
     .assistant-inputrow{display:flex;gap:8px;align-items:flex-end}
+    .assistant-inputrow[hidden]{display:none}
     .assistant-inputrow textarea{flex:1;resize:none;min-height:44px;max-height:120px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.15);color:inherit;padding:12px;font:inherit}
     .spark{
       width:28px;height:28px;border-radius:10px;

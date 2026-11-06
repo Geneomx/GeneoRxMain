@@ -3984,7 +3984,7 @@ function renderSummaryTab(){
   }
 
   mainEl.appendChild(s1);
-  mountAssistantPanel(mainEl);
+  /* Ask GeneoRx lives in the floating ✦ button on every step, so it is not repeated here. */
   mainEl.appendChild(summaryExitButtons());
 }
 
@@ -4040,6 +4040,8 @@ function mountAssistantPanel(parent){
   async function send(text,promptId){
     const content = (text || "").trim();
     if(!content || busy || !options || (options.mode==='catalog_only' && !promptId)) return;
+    /* Personal chat only runs once the person has agreed; never send (or show an error bubble) before that. */
+    if(options.mode==='personalized' && !state.account.aiConsent) return;
     busy = true;
     suggestsWrap.style.display = 'none';
     addBubble("user", content);
