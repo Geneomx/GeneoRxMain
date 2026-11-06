@@ -146,10 +146,10 @@ export const defaultWizardState = (): WizardState => ({
   meds: [],
   symptoms: { selected: [], custom: [], severity: 'mild', details: {} },
   symptomOnlyMode: false,
-  // Explicit nulls, not 5: the key must exist so the server's
-  // array_replace_recursive can later write over it, and so a cleared
-  // rating actually persists rather than resurrecting a stale number.
-  wellbeingBaseline: { energy: null, mood: null, sleep: null, focus: null, digestive: null, circulation: null, immunity: null },
+  // Like the website, the four main ratings start at 5. Keys always exist (the
+  // extra body systems stay null) so the server's array_replace_recursive can
+  // write over them, and a cleared rating (null) still persists.
+  wellbeingBaseline: { energy: 5, mood: 5, sleep: 5, focus: 5, digestive: null, circulation: null, immunity: null },
   plan: { started: false, startDate: null, recommendedSupplements: [], routine: { morning: [], midday: [], night: [], notes: [] } },
   checkins: [],
   feedback: [],

@@ -253,8 +253,8 @@ const s = StyleSheet.create({
     flex: 1, minWidth: 0, height: 56,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.backgroundAlt,
+    borderColor: 'transparent',
+    backgroundColor: '#F2F2F7',
     alignItems: 'center', justifyContent: 'center',
   },
   boxActive: {

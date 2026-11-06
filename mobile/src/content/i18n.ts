@@ -1,4 +1,5 @@
 import packs from './i18nPacks.json';
+import { EXTRA_EN } from './extraText';
 
 export type TranslationVars = Record<string, string | number | undefined | null>;
 
@@ -9,7 +10,7 @@ const EN = ALL_PACKS.en ?? {};
 
 export function translate(key: string, lang: string, vars?: TranslationVars): string {
   const pack = ALL_PACKS[lang] ?? EN;
-  let str = pack[key] ?? EN[key] ?? key;
+  let str = pack[key] ?? EN[key] ?? EXTRA_EN[key] ?? key;
   if (vars) {
     Object.entries(vars).forEach(([k, v]) => {
       str = str.replaceAll(`{${k}}`, String(v ?? ''));

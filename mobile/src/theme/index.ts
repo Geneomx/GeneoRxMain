@@ -12,7 +12,7 @@ export const colors = {
   violet: '#6F5BA8', pink: '#B8527A', amber: '#9A6A12',
   success: '#2F7A53', warning: '#9A6A12', danger: '#B8402C',
   successBg: '#DCEBDD', warningBg: '#F6E7C8', dangerBg: coral.tint,
-  buttonText: palette.text, inputBg: palette.surface, ghostBg: palette.soft, buttonBg: palette.soft,
+  buttonText: palette.text, inputBg: '#F2F2F7', ghostBg: palette.soft, buttonBg: palette.soft,
   cardTop: palette.surface, cardBottom: palette.surface, badgeBg: palette.soft,
   overlay: 'rgba(0, 0, 0, 0.5)',
   // Warm Editorial extras

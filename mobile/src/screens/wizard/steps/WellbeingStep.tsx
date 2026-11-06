@@ -39,7 +39,7 @@ export const WellbeingStep: React.FC = () => {
   const icons: Partial<Record<BodySystemKey, AppIconName>> = { energy: 'sun', mood: 'heart', sleep: 'moon', focus: 'focus' };
   const row = (key: BodySystemKey) => <ListRow key={key} icon={icons[key]} title={label(key)} detail={b[key] == null ? t('light.not_recorded') : `${b[key]}/10`} onPress={() => open(key)} />;
   return <View style={{ gap: 16 }}>
-    <FinePrint>{t('calm.starting_ratings')}</FinePrint>
+    <FinePrint>{t('wellbeing.baseline_hint')}</FinePrint>
     <View style={refined.listGroup}>{(['energy', 'mood', 'sleep', 'focus'] as const).map(row)}</View>
     <Accordion plain title={t('design.more_areas')}>
       {(['digestive', 'circulation', 'immunity'] as const).map(row)}

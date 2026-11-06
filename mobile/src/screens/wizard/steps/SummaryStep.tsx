@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, Share, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
+import { AskBubble } from '@/components/AskBubble';
 import { Button } from '@/components/Button';
+import { ScoreRow } from '@/components/ScoreRow';
 import { Input } from '@/components/Input';
 import { ReviewRangeSelect } from '@/components/ReviewRangeSelect';
 import { EditorSheet, iconTone, refined } from '@/components/RefinedUI';
@@ -16,12 +18,16 @@ import { useMedCatalog } from '@/store/MedCatalogContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { reviewHighlights, summaryBasis, type ReviewRange } from '@/wizard/reviewData';
 import { trackingSummaryForRange } from '@/wizard/trackingReport';
-import { fmtDate } from '@/wizard/engine';
+import { computeBodySystemsView, computeContraindications, computeDrugInteractions, computeMedicationCompletion, computeWeeklyHealthScore, detectHealthPatterns, fmtDate, safetyFlags } from '@/wizard/engine';
+import { adherenceLabel, medicationAdherence } from '@/wizard/medicationTracking';
+import { localHasMeaningfulData } from '@/wizard/sync';
+import { useAuth } from '@/auth/AuthContext';
 import { downloadSummaryReport } from '@/wizard/reports';
 import { Section, FinePrint } from '@/screens/wizard/ui';
 import { summaryRows } from '@/wizard/summaryRows';
 import { AppIcon, type AppIconName } from '@/components/AppIcon';
 import { colors } from '@/theme';
+import { progressPalette as palette } from '@/theme/progress';
 import { useSetup } from '@/store/SetupContext';
 import type { SetupStep } from '@/wizard/setupFlow';
 
@@ -33,6 +39,7 @@ export const SummaryStep: React.FC = () => {
   const { t, language } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const toast = useToast();
+  const { isGuest, signOut } = useAuth();
   const [range, setRange] = useState<ReviewRange>('7');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -46,6 +53,14 @@ export const SummaryStep: React.FC = () => {
   const speech = useReportSpeech(summary.text, language, previewOpen, () => toast.show(t('assist.speech_error'), 'error'));
   const highlights = useMemo(() => reviewHighlights(summary.filtered, t, catalog), [summary.filtered, t, catalog]);
   const rows = useMemo(() => summaryRows(summary.filtered, t, catalog), [summary.filtered, t, catalog]);
+  const weekly = useMemo(() => computeWeeklyHealthScore(state), [state]);
+  const completion = useMemo(() => computeMedicationCompletion(state), [state]);
+  const systems = useMemo(() => computeBodySystemsView(state), [state]);
+  const flags = safetyFlags(state, t);
+  const patterns = detectHealthPatterns(state, t);
+  const interactions = computeDrugInteractions(state, t);
+  const cautions = computeContraindications(state, t);
+  const newest = summary.filtered.checkins.at(-1);
   const openEditor = () => { setDraft(summary.edited || summary.overview); setEditing(true); };
   const latestDate = highlights.latest ? new Date(highlights.latest.dateISO).toLocaleDateString(language, { month: 'short', day: 'numeric', ...(new Date(highlights.latest.dateISO).getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) }) : '';
   const energy = highlights.latest?.wellbeing?.energy;
@@ -71,21 +86,53 @@ export const SummaryStep: React.FC = () => {
     finally { setSaving(false); }
   };
   return <View style={{ gap: 16 }}>
-    <View style={[styles.rangeRow, fontScale > 1.3 && { flexDirection: 'column', alignItems: 'flex-start' }]}><View style={{ flexShrink: 1 }}><FinePrint>{periodLabel}</FinePrint></View><ReviewRangeSelect compact value={range} onChange={setRange} /></View>
-    <FinePrint>{[t(summary.filtered.checkins.length === 1 ? 'light.checkin_one' : 'light.checkin_many', { count: summary.filtered.checkins.length }), latestDate ? t('light.updated', { date: latestDate }) : ''].filter(Boolean).join(' · ')}</FinePrint>
-    <View style={styles.tileGrid}>{rows.map(row => {
-      const title = row.key === 'medications' ? t(row.count === 1 ? 'calm.medicine_one' : 'calm.medicine_many', { count: row.count }) : row.key === 'symptoms' ? t(highlights.symptoms.length === 1 ? 'setup.symptom_one' : 'calm.symptom_count', { count: highlights.symptoms.length }) : row.key === 'notes' ? t(row.count === 1 ? 'calm.note_one' : 'calm.note_many', { count: row.count }) : energyLabel;
+    <View style={[styles.panel, styles.story]}>
+      <Text accessibilityRole="header" style={styles.panelTitle}>{t('summary.health_story_title')}</Text>
+      <FinePrint>{t('summary.health_story_lead')}</FinePrint>
+      <Text style={styles.storyText} numberOfLines={6}>{summary.edited || summary.overview}</Text>
+      <Button title={t('progress.snapshot_btn')} onPress={() => setPreviewOpen(true)} />
+      <Button title={t('results.insight_btn')} variant="secondary" onPress={() => setAiOpen(true)} />
+    </View>
+    <View style={styles.panel}>
+      {/* The three scores come from the person's own answers; an empty one shows a dash and why, never a zero. */}
+      <ScoreRow title={t('home.score.week')} description={t('home.score.week_desc')} value={weekly.score} unit={t('home.score.out_of_100')} tint={colors.primary} emptyReason={t('home.score.week_empty')} delta={typeof weekly.delta === 'number' && weekly.delta > 0 ? `▲ ${weekly.delta}` : null} onPress={() => go(6)} />
+      <ScoreRow title={t('home.score.completion')} description={t('home.score.completion_desc')} value={completion.score} unit={t('home.score.out_of_100')} tint={colors.violet} answered={t('home.score.answered', { n: completion.answered, total: completion.total })} emptyReason={t('home.score.completion_empty')} onPress={() => go(6)} />
+      <ScoreRow title={t('home.score.systems')} description={t('home.score.systems_desc')} value={systems.average} unit={t('home.score.out_of_10')} tint={colors.amber} answered={t('home.score.answered', { n: systems.answered, total: systems.total })} emptyReason={t('home.score.systems_empty')} onPress={() => go(6)} />
+      <FinePrint>{t('home.score.self_reported')}</FinePrint>
+    </View>
+    <View style={[styles.rangeRow, fontScale > 1.3 && { flexDirection: 'column', alignItems: 'flex-start' }]}><View style={{ flexShrink: 1, gap: 2 }}><Text style={styles.dashLabel}>{periodLabel}</Text><FinePrint>{[t(summary.filtered.checkins.length === 1 ? 'light.checkin_one' : 'light.checkin_many', { count: summary.filtered.checkins.length }), latestDate ? t('light.updated', { date: latestDate }) : ''].filter(Boolean).join(' · ')}</FinePrint></View><ReviewRangeSelect compact value={range} onChange={setRange} /></View>
+    <View style={styles.panel}>{rows.map(row => {
+      const title = row.key === 'medications' ? t(row.count === 1 ? 'calm.medicine_one' : 'calm.medicine_many', { count: row.count }) : row.key === 'symptoms' ? t(highlights.symptoms.length === 1 ? 'setup.symptom_one' : 'calm.symptom_count', { count: highlights.symptoms.length }) : row.key === 'notes' ? t(row.count === 1 ? 'calm.note_one' : 'calm.note_many', { count: row.count }) : `${t('wellbeing.energy').replace(/\s*\([^)]*\)\s*$/, '')} ${energyLabel}`;
       const detail = row.key === 'medications' ? highlights.medications[0]?.name || t('light.no_medications') : row.key === 'notes' ? t('calm.saved_observations') : row.key === 'symptoms' ? better ? t('dashboard.update.better', { count: better }) : t('calm.recorded_changes') : t('setup.latest_checkin');
       const tone = iconTone(rowIcons[row.key]);
-      return <Pressable key={row.key} accessibilityRole="button" accessibilityLabel={`${row.label}. ${title}. ${detail}`} onPress={() => setSectionOpen(row.key)} style={({ pressed }) => [styles.tile, { width: fontScale > 1.3 ? '100%' : '48%' }, pressed && { opacity: .65 }]}>
-        <View style={styles.tileTop}><View style={[refined.icon, { backgroundColor: tone.backgroundColor }]}><AppIcon name={rowIcons[row.key]} size={21} color={tone.color} /></View><AppIcon name="chevron" size={14} color={colors.textDim} /></View>
-        {row.key === 'wellbeing' ? <Text style={styles.tileDetail}>{t('wellbeing.energy').replace(/\s*\([^)]*\)\s*$/, '')}</Text> : null}
-        <Text style={styles.tileValue}>{title}</Text>
-        {detail ? <Text style={[styles.tileDetail, row.key === 'symptoms' && better > 0 && styles.better]}>{detail}</Text> : null}
+      return <Pressable key={row.key} accessibilityRole="button" accessibilityLabel={`${row.label}. ${title}. ${detail}`} onPress={() => setSectionOpen(row.key)} style={({ pressed }) => [styles.listRow, pressed && { opacity: .65 }]}>
+        <View style={[refined.icon, { backgroundColor: tone.backgroundColor }]}><AppIcon name={rowIcons[row.key]} size={20} color={tone.color} /></View>
+        <View style={{ flex: 1 }}><Text style={styles.listTitle}>{title}</Text><Text style={styles.listDetail} numberOfLines={1}>{detail}</Text></View>
+        <AppIcon name="chevron" size={14} color={colors.textDim} />
       </Pressable>;
     })}</View>
-    <Button title={t('parity.preview_summary')} onPress={() => setPreviewOpen(true)} />
-    <Button title={t('review.ai_explanation')} variant="ghost" onPress={() => setAiOpen(true)} />
+    <View style={styles.panel}>
+      <Text accessibilityRole="header" style={styles.panelTitle}>{t('summary.dashboard_title')}</Text>
+      <FinePrint>{t('summary.dashboard_sub')}</FinePrint>
+      {[
+        { key: 'flags', label: t('sidebar.safety_flags'), value: flags.length ? flags.join(', ') : t('summary.none') },
+        { key: 'pattern', label: t('summary.detected_pattern'), value: patterns.length ? patterns.map(pattern => pattern.title).join(', ') : t('summary.no_pattern_detected') },
+        { key: 'interactions', label: t('summary.drug_interactions'), value: interactions.length ? interactions.map(item => item.title).join(', ') : t('summary.no_interactions') },
+        { key: 'cautions', label: t('summary.contraindications'), value: cautions.length ? cautions.map(item => item.title).join(', ') : t('summary.no_contraindications') },
+        { key: 'latest', label: t('summary.latest_checkin'), value: newest ? `${fmtDate(newest.dateISO)} · ${t('sidebar.adherence')} ${adherenceLabel(medicationAdherence(newest), t('checkin.not_answered'))}` : t('sidebar.no_checkins') },
+      ].map(row => <View key={row.key} style={styles.dashRow}><Text style={styles.dashLabel}>{row.label}</Text><Text style={styles.dashValue}>{row.value}</Text></View>)}
+    </View>
+    {isGuest && localHasMeaningfulData(state) ? <View style={[styles.panel, styles.soft]}>
+      <Text accessibilityRole="header" style={styles.panelTitle}>{t('save_account.summary_title')}</Text>
+      <FinePrint>{t('save_account.summary_sub')}</FinePrint>
+      {/* For a guest, signOut() clears the placeholder token and returns to the sign-in / create-account screen. */}
+      <Button title={t('save_account.summary_btn')} onPress={() => { void signOut(); }} />
+    </View> : null}
+    <View style={[styles.panel, styles.soft]}>
+      <Text accessibilityRole="header" style={styles.panelTitle}>{t('assistant.title')}</Text>
+      <FinePrint>{t('assistant.subtitle')}</FinePrint>
+      <AskBubble onReviewSymptoms={() => go(2)} trigger={open => <Pressable accessibilityRole="button" accessibilityLabel={t('ai.general_title')} onPress={open} style={({ pressed }) => [styles.assistantLink, pressed && { opacity: 0.65 }]}><AppIcon name="spark" size={20} color={palette.accent} /><Text style={styles.assistantText}>{t('ai.general_title')}</Text><AppIcon name="arrow" size={18} color={palette.accent} /></Pressable>} />
+    </View>
     <EditorSheet visible={sectionOpen !== null} title={rows.find(row => row.key === sectionOpen)?.label || ''} onClose={() => setSectionOpen(null)}>
       {highlights.latest ? <FinePrint>{t('review.last_update', { date: fmtDate(highlights.latest.dateISO) })}</FinePrint> : null}
       {sectionOpen === 'medications' ? <>{highlights.medications.length ? highlights.medications.map(med => <Section key={med.id}>
@@ -114,12 +161,12 @@ export const SummaryStep: React.FC = () => {
       <Input label={t('polish.summary_text')} value={draft} onChangeText={setDraft} multiline scrollEnabled style={{ height: 180, textAlignVertical: 'top' }} maxLength={2000} />
       <Button title={t('parity.use_generated')} disabled={saving} variant="ghost" onPress={() => { void saveOverview(true); }} />
     </EditorSheet>
-    <SnapshotPreview visible={previewOpen} text={summary.text} title={t('calm.summary_title')} subtitle={`${periodLabel} · ${t(summary.filtered.checkins.length === 1 ? 'light.checkin_one' : 'light.checkin_many', { count: summary.filtered.checkins.length })}`} onClose={() => setPreviewOpen(false)} onShare={() => { void Share.share({ title: t('parity.record_title'), message: summary.text }).catch(() => toast.show(t('mobile.alert.try_again'), 'error')); }} actions={[
+    <SnapshotPreview visible={previewOpen} text={summary.text} title={t('app.snapshot_title')} quickActions={{ copy: true, print: { title: t('app.snapshot_print'), loading: exporting, onPress: () => { if (exporting) return; setExporting(true); void downloadSummaryReport(summary.text, summary.period.label, t, language).then(ok => { if (!ok) toast.show(t('toast.report_failed'), 'error'); }).finally(() => setExporting(false)); } } }} subtitle={`${periodLabel} · ${t(summary.filtered.checkins.length === 1 ? 'light.checkin_one' : 'light.checkin_many', { count: summary.filtered.checkins.length })}`} onClose={() => setPreviewOpen(false)} onShare={() => { void Share.share({ title: t('parity.record_title'), message: summary.text }).catch(() => toast.show(t('mobile.alert.try_again'), 'error')); }} actions={[
       { key: 'speech', title: t(speech.active ? 'assist.stop_reading' : 'assist.read_aloud'), icon: speech.active ? 'stop' : 'speaker', onPress: () => { void speech.start(); } },
       { key: 'terms', title: t('assist.explain_terms'), icon: 'file', onPress: () => { setPreviewOpen(false); setTimeout(() => setReadingHelp(true), 350); } },
       { key: 'edit', title: t('polish.edit_text'), icon: 'edit', onPress: () => { setPreviewOpen(false); setTimeout(openEditor, 350); } },
       { key: 'pdf', title: t('ai.pdf_create'), icon: 'download', loading: exporting, onPress: () => { if (exporting) return; setExporting(true); void downloadSummaryReport(summary.text, summary.period.label, t, language).then(ok => { if (!ok) toast.show(t('toast.report_failed'), 'error'); }).finally(() => setExporting(false)); } },
-    ]} reading={speech.active ? { label: t(speech.preparing ? 'assist.preparing_voice' : 'assist.reading_summary'), stopLabel: t('assist.stop_reading'), onStop: speech.stop } : undefined}><SummaryPreviewContent key={`${range}:${previewOpen}`} fullText={summary.text} checkins={summary.filtered.checkins} /></SnapshotPreview>
+    ]} reading={speech.active ? { label: t(speech.preparing ? 'assist.preparing_voice' : 'assist.reading_summary'), stopLabel: t('assist.stop_reading'), onStop: speech.stop } : undefined}><SummaryPreviewContent key={`${range}:${previewOpen}`} fullText={summary.text} checkins={summary.filtered.checkins} hideStory /></SnapshotPreview>
   </View>;
 };
 const rowIcons: Record<string, AppIconName> = { medications: 'pill', symptoms: 'heart', wellbeing: 'sun', notes: 'file' };
@@ -131,5 +178,18 @@ const styles = StyleSheet.create({
   tileValue: { fontSize: 20, lineHeight: 27, fontWeight: '500', letterSpacing: -.5, color: colors.text },
   tileDetail: { fontSize: 15, lineHeight: 22, color: colors.textMuted },
   better: { color: colors.success, backgroundColor: colors.successBg, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, alignSelf: 'flex-start', maxWidth: '100%' },
+  panel: { backgroundColor: '#F5F5F7', borderRadius: 24, padding: 18, gap: 10 },
+  soft: { backgroundColor: colors.primary50 },
+  panelTitle: { color: colors.text, fontSize: 18, lineHeight: 25, fontWeight: '600', letterSpacing: -0.2 },
+  dashRow: { gap: 2, paddingVertical: 6 },
+  dashLabel: { color: colors.textMuted, fontSize: 14, lineHeight: 20, fontWeight: '600' },
+  dashValue: { color: colors.text, fontSize: 17, lineHeight: 24 },
+  assistantLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 22, paddingVertical: 6, paddingHorizontal: 18, backgroundColor: colors.surface },
+  assistantText: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontWeight: '500', color: palette.accent },
+  story: { backgroundColor: '#EAF3FF' },
+  storyText: { color: colors.text, fontSize: 16, lineHeight: 24 },
+  listRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
+  listTitle: { color: colors.text, fontSize: 16, lineHeight: 22, fontWeight: '600' },
+  listDetail: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
   wellbeingRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingVertical: 10 },
 });

@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     minHeight: 76,
     textAlignVertical: 'top',
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: 'transparent',
     backgroundColor: colors.inputBg,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,

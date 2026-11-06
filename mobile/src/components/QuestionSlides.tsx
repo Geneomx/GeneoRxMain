@@ -28,11 +28,11 @@ export const QuestionSlides: React.FC<{ slides: Slide[]; width: number }> = ({ s
       ItemSeparatorComponent={() => <View style={{ width: GAP }} />}
       onMomentumScrollEnd={onEnd}
       renderItem={({ item }) => <View style={[styles.card, { width: cardWidth }, item.accent && styles.cardDark]}>
-        <View style={[styles.iconTile, item.accent && styles.iconTileDark]}><AppIcon name={item.icon} size={24} color={item.accent ? '#FFFFFF' : colors.primary} /></View>
+        <View style={[styles.iconTile, item.accent && styles.iconTileDark]}><AppIcon name={item.icon} size={24} color={colors.primary} /></View>
         <Text style={[styles.tag, item.accent && styles.tagDark]}>{item.tag}</Text>
         <Text accessibilityRole="header" style={[styles.title, item.accent && styles.titleDark]}>{item.title}</Text>
         {item.paragraphs[0] ? <Text style={[styles.body, item.accent && styles.bodyDark]}>{item.paragraphs[0]}</Text> : null}
-        {item.bullets.map((b, i) => <View key={i} style={styles.bullet}><View style={[styles.dot, item.accent && { backgroundColor: '#FFFFFF' }]} /><Text style={[styles.bulletText, item.accent && styles.bodyDark]}>{b}</Text></View>)}
+        {item.bullets.map((b, i) => <View key={i} style={styles.bullet}><View style={[styles.dot, item.accent && { backgroundColor: colors.primary }]} /><Text style={[styles.bulletText, item.accent && styles.bodyDark]}>{b}</Text></View>)}
         {item.paragraphs[1] ? <Text style={[styles.body, item.accent && styles.bodyDark]}>{item.paragraphs[1]}</Text> : null}
       </View>}
     />
@@ -42,15 +42,15 @@ export const QuestionSlides: React.FC<{ slides: Slide[]; width: number }> = ({ s
 const GAP = 14;
 const styles = StyleSheet.create({
   card: { alignSelf: 'flex-start', borderRadius: 32, padding: 22, gap: 8, backgroundColor: 'rgba(255,255,255,0.86)', borderWidth: 1, borderColor: colors.border },
-  cardDark: { backgroundColor: 'rgba(0,0,0,0.94)', borderColor: '#000000' },
+  cardDark: { backgroundColor: 'rgba(234,243,255,0.92)', borderColor: '#D6E8FD' },
   iconTile: { width: 50, height: 50, borderRadius: 15, backgroundColor: colors.primary50, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  iconTileDark: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  iconTileDark: { backgroundColor: 'rgba(0,113,227,0.14)' },
   tag: { fontSize: 13, fontWeight: '600', letterSpacing: 0.3, textTransform: 'uppercase', color: colors.textMuted },
-  tagDark: { color: '#C7C7CC' },
+  tagDark: { color: colors.textMuted },
   title: { fontSize: 26, lineHeight: 31, fontWeight: '700', letterSpacing: -0.8, color: colors.pine },
-  titleDark: { color: '#FFFFFF' },
+  titleDark: { color: colors.text },
   body: { fontSize: 16, lineHeight: 23, color: colors.textSoft },
-  bodyDark: { color: '#FFFFFF' },
+  bodyDark: { color: colors.textSoft },
   bullet: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   dot: { width: 7, height: 7, borderRadius: 4, marginTop: 9, backgroundColor: colors.textDim },
   bulletText: { flex: 1, fontSize: 16, lineHeight: 23, color: colors.textSoft },

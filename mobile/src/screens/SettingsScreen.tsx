@@ -344,11 +344,11 @@ const ss = StyleSheet.create({
     height: 44,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'transparent',
+    backgroundColor: '#F2F2F7',
     borderRadius: 9,
     fontSize: 17,
     color: colors.text,
-    backgroundColor: colors.surfaceAlt,
   },
 
   actionBtn: {
@@ -397,7 +397,7 @@ const ss = StyleSheet.create({
     backgroundColor: colors.inputBg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'transparent',
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 17,

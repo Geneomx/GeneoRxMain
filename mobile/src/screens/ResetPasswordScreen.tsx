@@ -178,8 +178,8 @@ const s = StyleSheet.create({
   label: { fontSize: 13.5, fontWeight: '500', color: colors.textSoft },
   input: {
     height: 50, paddingHorizontal: 14,
-    borderWidth: 1, borderColor: colors.border, borderRadius: 12,
-    fontSize: 15.5, color: colors.text, backgroundColor: colors.surfaceAlt,
+    borderWidth: 1, borderColor: 'transparent', borderRadius: 12,
+    fontSize: 15.5, color: colors.text, backgroundColor: '#F2F2F7',
   },
 
   backBtn: { padding: 8, marginBottom: 24 },

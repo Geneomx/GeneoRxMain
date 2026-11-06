@@ -150,3 +150,10 @@ body.gx-home {
 .gx-home .nav-logout button { background:none; border:0; padding:0; min-height:0; cursor:pointer; font:inherit; font-weight:500; font-size:14px; color:var(--pine); box-shadow:none; }
 .gx-home .nav-logout button:hover, .gx-home .signin-link:hover { color:#0066CC; }
 @media (max-width:700px) { .gx-home .site-actions { flex-wrap:wrap; row-gap:8px; } }
+
+/* "In short": soft blue instead of black. */
+.gx-home .explain-card.explain-accent { background:rgba(234,243,255,.9); -webkit-backdrop-filter:blur(22px) saturate(160%); backdrop-filter:blur(22px) saturate(160%); border:1px solid #D6E8FD; box-shadow:none; }
+.gx-home .explain-card.explain-accent h3 { color:var(--ink); }
+.gx-home .explain-card.explain-accent p, .gx-home .explain-card.explain-accent li { color:#424245; font-size:19px; font-weight:400; line-height:1.55; }
+.gx-home .explain-card.explain-accent .eyebrow { color:var(--muted-ink); }
+.gx-home .explain-card.explain-accent .explain-icon { background:rgba(0,113,227,.14); color:#0071E3; }

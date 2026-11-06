@@ -13,7 +13,8 @@ const entry = (dateISO: string, patch: Partial<WizardCheckin> = {}): WizardCheck
 
 test('empty and symptoms-only records do not generate nutrient deficiency or supplement signals', () => {
   const state = defaultWizardState();
-  expect(Object.values(state.wellbeingBaseline).every(v => v === null)).toBe(true);
+  expect([state.wellbeingBaseline.energy, state.wellbeingBaseline.mood, state.wellbeingBaseline.sleep, state.wellbeingBaseline.focus]).toEqual([5, 5, 5, 5]);
+  expect([state.wellbeingBaseline.digestive, state.wellbeingBaseline.circulation, state.wellbeingBaseline.immunity]).toEqual([null, null, null]);
   state.symptoms.selected = ['Custom symptom']; state.symptomOnlyMode = true;
   expect(computeNutrientScores(state)).toEqual([]);
   expect(buildClinicianSnapshotText(state, t)).not.toMatch(/probability|\d+%|Magnesium|B vitamins/);

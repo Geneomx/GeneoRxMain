@@ -1,6 +1,7 @@
 import { EntryDraftSheet } from '@/components/EntryDraftSheet';
 import { EditorSheet, refined } from '@/components/RefinedUI';
-import { adherenceLabel, combinedAdherence, doseEntryValid, mergeDoseEntry } from '@/wizard/medicationTracking';
+import { adherenceLabel, combinedAdherence, doseEntryValid, medicationAdherence, mergeDoseEntry } from '@/wizard/medicationTracking';
+import { checkinsInRange } from '@/wizard/reviewData';
 import * as Crypto from 'expo-crypto';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Keyboard, Modal, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -124,6 +125,7 @@ const CheckinForm: React.FC<{ initial: CheckinFormDraft; draftKey: string }> = (
     { text: t('easy_use.keep_editing'), style: 'cancel' },
     { text: t(original ? 'easy_use.discard' : 'easy_use.start_over'), style: 'destructive', onPress: () => { finished.current = true; editor.finish(); if (original) openPlanHub(); } },
   ]);
+  const lastCheckin = checkinsInRange(state.checkins, 'all').at(-1);
   const closeSaved = () => { setSavedOpen(false); editor.finish(); };
 
   // Suggestions are only tracked after the user confirms them.
@@ -265,6 +267,11 @@ const CheckinForm: React.FC<{ initial: CheckinFormDraft; draftKey: string }> = (
 
   return (
     <View style={{ gap: spacing.md }} pointerEvents={saving ? 'none' : 'auto'} accessibilityState={{ busy: saving }}>
+      {lastCheckin && !original && !setup.active ? <View style={styles.lastCard}>
+        <Text style={styles.symName}>{t('checkin.last_title')}</Text>
+        <FinePrint>{readableCheckinDate(lastCheckin.dateISO, language)} · {t('common.adherence')} {adherenceLabel(medicationAdherence(lastCheckin), t('checkin.unsure'))}</FinePrint>
+        <View style={{ alignItems: 'flex-start' }}><Button compact variant="ghost" title={t('checkin.view_progress')} onPress={() => setStep(6)} /></View>
+      </View> : null}
       <View style={{ gap: 4 }}>
         {resumed.current ? <FinePrint>{t('easy_use.draft_restored')}</FinePrint> : null}
         {editor.error ? <Text accessibilityRole="alert" style={styles.error}>{t('easy_use.draft_error')}</Text> : null}
@@ -502,6 +509,7 @@ const CheckinForm: React.FC<{ initial: CheckinFormDraft; draftKey: string }> = (
 };
 
 const styles = StyleSheet.create({
+  lastCard: { gap: 6, padding: 16, borderRadius: 20, backgroundColor: colors.inputBg },
   dateControl: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingVertical: 8 },
   smallAction: { minHeight: 48, minWidth: 48, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
   assistanceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingVertical: 8 },

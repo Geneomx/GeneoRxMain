@@ -15,6 +15,7 @@
  */
 
 import type { CheckinSymptomItem, WizardCheckin } from '@/wizard/types';
+import { medicationAdherence } from '@/wizard/medicationTracking';
 
 /** Report a direction only when the patient recorded a change in that direction. */
 export function symptomHighlights(items: readonly CheckinSymptomItem[]) {
@@ -104,7 +105,8 @@ export function buildTrendSeries(checkins: WizardCheckin[], days = 42): TrendSer
     .map(([t, c]) => ({
       date: dayString(t),
       t,
-      adherence: typeof c.adherencePct === 'number' ? clampScore(c.adherencePct, 100) : null,
+      // Dose answers only: an older percentage may describe supplements, and unknown is never zero.
+      adherence: medicationAdherence(c) === null ? null : clampScore(medicationAdherence(c), 100),
       energy: typeof c.wellbeing?.energy === 'number' ? clampScore(c.wellbeing.energy, 10) : null,
       mood: typeof c.wellbeing?.mood === 'number' ? clampScore(c.wellbeing.mood, 10) : null,
       sleep: typeof c.wellbeing?.sleep === 'number' ? clampScore(c.wellbeing.sleep, 10) : null,

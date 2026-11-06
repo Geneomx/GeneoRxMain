@@ -113,7 +113,7 @@
     }
     .save-account-cta-title { font-weight: 900; font-size: 15px; margin-bottom: 6px; }
   </style>
-  <link rel="stylesheet" href="{{ asset('css/clean-ui.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/clean-ui.css') }}?v={{ filemtime(public_path('css/clean-ui.css')) }}">
   <link rel="stylesheet" href="{{ asset('css/portal-simple.css') }}?v={{ filemtime(public_path('css/portal-simple.css')) }}">
 </head>
 <body class="gx-clean">

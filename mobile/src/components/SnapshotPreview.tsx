@@ -16,8 +16,10 @@ export const SnapshotPreview: React.FC<{
   visible: boolean; text: string; title?: string; subtitle?: string; children?: React.ReactNode;
   actions?: SnapshotAction[]; icon?: AppIconName; onClose: () => void; onShare?: () => void;
   primaryAction?: { title: string; onPress: () => void };
+  /** Visible Copy and Print buttons under the text, like the website's popup. */
+  quickActions?: { copy?: boolean; print?: { title: string; onPress: () => void; loading?: boolean } };
   reading?: { label: string; stopLabel: string; onStop: () => void };
-}> = ({ visible, text, title, subtitle, children, actions = [], icon = 'file', onClose, onShare, primaryAction, reading }) => {
+}> = ({ visible, text, title, subtitle, children, actions = [], icon = 'file', onClose, onShare, primaryAction, reading, quickActions }) => {
   const { t } = useTranslation();
   const toast = useToast();
   const { fontScale } = useWindowDimensions();
@@ -44,6 +46,10 @@ export const SnapshotPreview: React.FC<{
         </View>
         {reading ? <View style={[s.readingStatus, fontScale > 1.3 && { flexDirection: 'column', alignItems: 'flex-start', paddingTop: 8 }]}><Text accessibilityLiveRegion="polite" style={[s.subtitle, { flex: fontScale > 1.3 ? 0 : 1 }]}>{reading.label}</Text><Pressable accessibilityRole="button" accessibilityLabel={reading.stopLabel} onPress={reading.onStop} style={s.stopReading}><AppIcon name="stop" size={18} /><Text style={s.moreLabel}>{reading.stopLabel}</Text></Pressable></View> : null}
         <ScrollView ref={body} style={s.reading} contentContainerStyle={s.content} showsVerticalScrollIndicator>{children || <Text selectable style={s.body}>{text}</Text>}</ScrollView>
+        {quickActions ? <View style={s.quickRow}>
+          {quickActions.copy ? <Pressable accessibilityRole="button" accessibilityLabel={t('modal.snapshot.copy')} onPress={() => { void copy(); }} style={({ pressed }) => [s.quick, pressed && { opacity: .65 }]}><AppIcon name="copy" size={18} color={colors.text} /><Text style={s.quickText}>{t('modal.snapshot.copy')}</Text></Pressable> : null}
+          {quickActions.print ? <Pressable accessibilityRole="button" accessibilityLabel={quickActions.print.title} disabled={busy || quickActions.print.loading} onPress={quickActions.print.onPress} style={({ pressed }) => [s.quick, pressed && { opacity: .65 }]}>{quickActions.print.loading ? <ActivityIndicator color={colors.text} /> : <AppIcon name="download" size={18} color={colors.text} />}<Text style={s.quickText}>{quickActions.print.title}</Text></Pressable> : null}
+        </View> : null}
         {moreOpen ? <View style={s.options}>
           <Text accessibilityRole="header" style={s.optionsTitle}>{t('calm.summary_options')}</Text>
           <ScrollView showsVerticalScrollIndicator contentContainerStyle={s.optionRows}>{menu.map((action, index) => <Pressable key={action.key} accessibilityRole="button" accessibilityLabel={action.title} accessibilityState={{ disabled: busy, busy: !!action.loading }} disabled={busy} onPress={() => { setMoreOpen(false); action.onPress(); }} style={({ pressed }) => [s.option, index < menu.length - 1 && s.optionDivider, pressed && { opacity: .6 }]}>
@@ -69,6 +75,9 @@ const s = StyleSheet.create({
   reading: { flex: 1, minHeight: 0 }, content: { padding: 22, paddingBottom: 30 }, body: { fontSize: 17, lineHeight: 26, color: colors.textSoft },
   footer: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.borderSoft },
   footerLarge: { flexDirection: 'column', alignItems: 'stretch', gap: 4 }, share: { flex: 1 }, more: { minWidth: 84, minHeight: 48, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18, backgroundColor: colors.primary50, alignSelf: 'center', alignItems: 'center', justifyContent: 'center' }, moreLabel: { fontSize: 16, lineHeight: 24, fontWeight: '500', color: colors.primary },
+  quickRow: { flexShrink: 0, flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingTop: 10 },
+  quick: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 22, backgroundColor: '#F2F2F7' },
+  quickText: { fontSize: 15, lineHeight: 20, fontWeight: '600', color: colors.text },
   options: { flexShrink: 1, maxHeight: '48%', marginHorizontal: 20, marginBottom: 12, paddingHorizontal: 16, paddingTop: 14, borderRadius: 20, backgroundColor: colors.surfaceAlt },
   optionsTitle: { color: colors.textMuted, fontSize: 15, lineHeight: 22, fontWeight: '500' }, optionRows: { paddingVertical: 6 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 14 }, optionDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },

@@ -22,7 +22,7 @@ describe('check-in adherence entry', () => {
   });
 });
 
-const emptyUpdate = (): WizardCheckin => ({ dateISO: '2026-10-28', adherencePct: null, supplementsTaken: [], symptoms: { items: [] }, wellbeing: defaultWizardState().wellbeingBaseline, notes: '', sideEffects: [] });
+const emptyUpdate = (): WizardCheckin => ({ dateISO: '2026-10-28', adherencePct: null, supplementsTaken: [], symptoms: { items: [] }, wellbeing: { energy: null, mood: null, sleep: null, focus: null, digestive: null, circulation: null, immunity: null }, notes: '', sideEffects: [] });
 test('a blank check-in does not create a misleading saved update', () => {
   expect(hasCheckinAnswers(emptyUpdate())).toBe(false);
   expect(hasCheckinAnswers({ ...emptyUpdate(), notes: '  ' })).toBe(false);

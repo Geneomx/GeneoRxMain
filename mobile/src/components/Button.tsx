@@ -12,15 +12,17 @@ interface Props {
   disabled?: boolean;
   style?: ViewStyle;
   compact?: boolean;
+  /** Stretch a quiet (ghost) button to the full width, so stacked actions line up. */
+  full?: boolean;
 }
 
 /** The visible shape is 44dp; the outer press target stays at least 48dp. */
-export const Button: React.FC<Props> = ({ title, onPress, variant = 'primary', loading = false, disabled = false, style, compact = false }) => {
+export const Button: React.FC<Props> = ({ title, onPress, variant = 'primary', loading = false, disabled = false, style, compact = false, full = false }) => {
   const isDisabled = disabled || loading;
   const filled = variant === 'primary' || variant === 'inverse' || variant === 'danger';
-  const stretch = !compact && variant !== 'ghost';
-  const backgroundColor = variant === 'primary' ? colors.buttonPrimary : variant === 'inverse' ? colors.surface : variant === 'danger' ? colors.dangerBg : variant === 'secondary' ? colors.primary50 : 'transparent';
-  const color = variant === 'primary' ? colors.onPrimary : variant === 'danger' ? colors.danger : colors.pine;
+  const stretch = !compact && (variant !== 'ghost' || full);
+  const backgroundColor = variant === 'primary' ? colors.buttonPrimary : variant === 'inverse' ? colors.surface : variant === 'danger' ? colors.dangerBg : variant === 'secondary' ? colors.primary50 : '#F2F2F7';
+  const color = variant === 'primary' ? colors.onPrimary : variant === 'danger' ? colors.danger : variant === 'secondary' ? colors.buttonPrimary : colors.pine;
   return <Pressable
     accessible
     accessibilityRole="button"
@@ -39,11 +41,12 @@ export const Button: React.FC<Props> = ({ title, onPress, variant = 'primary', l
 
 const styles = StyleSheet.create({
   target: { alignSelf: 'center', maxWidth: '100%', minHeight: 48, minWidth: 48, paddingVertical: 2, justifyContent: 'center', alignItems: 'center' },
-  shape: { maxWidth: '100%', minHeight: 52, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  shape: { maxWidth: '100%', minHeight: 44, paddingVertical: 8, paddingHorizontal: 18, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   filled: { paddingHorizontal: 24, minWidth: 96 },
-  ghostShape: { borderWidth: 1.5, borderColor: colors.controlBorder },
-  softShape: { borderWidth: 1.5, borderColor: colors.sage },
+  // Soft fills, no outlines: grey for quiet actions, blue tint for secondary ones.
+  ghostShape: {},
+  softShape: {},
   compact: { paddingHorizontal: 12 },
-  label: { textAlign: 'center', fontSize: 17, lineHeight: 24, fontWeight: '700', letterSpacing: -0.1 },
+  label: { textAlign: 'center', fontSize: 15, lineHeight: 20, fontWeight: '600', letterSpacing: -0.1 },
   disabled: { opacity: 0.45 },
 });

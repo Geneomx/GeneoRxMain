@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
     minHeight: 96,
     textAlignVertical: 'top',
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: 'transparent',
     backgroundColor: colors.inputBg,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   turnRight: { alignSelf: 'flex-end', alignItems: 'flex-end' },
   bubble: {
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: 'transparent',
     backgroundColor: colors.buttonBg,
     borderRadius: radius.md,
     borderBottomLeftRadius: 4,

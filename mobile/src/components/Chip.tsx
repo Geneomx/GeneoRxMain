@@ -48,14 +48,14 @@ const styles = StyleSheet.create({
   },
   selected: {
     backgroundColor: colors.primary50,
-    borderColor: colors.primary,
+    borderColor: 'transparent',
   },
   unselected: {
-    backgroundColor: colors.surface,
-    borderColor: colors.controlBorder,
+    backgroundColor: '#F2F2F7',
+    borderColor: 'transparent',
   },
   text: { flexShrink: 1, fontSize: 17, fontWeight: '500' },
-  textSelected: { color: colors.primary, fontWeight: '500' },
+  textSelected: { color: colors.primary, fontWeight: '600' },
   textUnselected: { color: colors.text },
 
   removeIcon: {

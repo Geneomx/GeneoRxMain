@@ -1,184 +1,80 @@
-// The vertical step list that replaced the horizontal pill tray.
+// The vertical step list, one step open at a time.
 //
-// Ten labelled steps cannot fit across a 375px screen, so the tray had to wrap
-// into rows, scroll most steps out of view, or shrink into unlabelled dots.
-// Vertically they fit, keep their names, and can each carry what is in them.
+// Every step stays on screen with its real name, down a rail of numbers on the left.
+// The open step shows its content right under its name; a finished step folds up to one
+// line with a tick and a short value, and the next step opens below it.
 //
-// Every row here is pressable, including the ones drawn as 'locked'. That state
-// is styling, not a gate — see stepStatus.ts.
+// Every row is pressable, including the ones drawn as 'locked'. That state is styling,
+// not a gate — see stepStatus.ts.
 //
-// A row is deliberately just a number and a name. It briefly carried a value
-// ("3 medicines"), a chevron and a subtitle as well, and with eight rows on
-// screen that was four pieces of information per row and read as clutter. All
-// steps must stay visible, so the way to make the screen simple is to put less
-// on each one, not to show fewer of them.
-//
-// Layout note: the node sits in a fixed-width flex column, NOT absolutely
-// positioned. Yoga places an absolute child from its parent's CONTENT box,
-// where CSS uses the padding box, so an absolute node inside a padded row lands
-// one full indent to the right — on top of the label.
+// Layout note: the node sits in a fixed-width flex column, NOT absolutely positioned.
+// Yoga places an absolute child from its parent's CONTENT box, where CSS uses the
+// padding box, so an absolute node inside a padded row lands one indent to the right.
 
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients, spacing } from '@/theme';
+import { colors } from '@/theme';
 import type { StepState } from '@/wizard/stepStatus';
 
-/** Rail geometry. The spine and every node centre on RAIL_X.
- *  Sized for the older adults who are most of this app's users: the node holds
- *  a 12px numeral legibly, and the row clears theme `touchMin` (52) on its own
- *  rather than leaning on hitSlop to make an invisible target big enough. */
-const RAIL_X = 13;
-const NODE = 26;
-const NODE_ON = 32;
-const INDENT = 42;
-
-/** Small extra margin only — the visible row already meets touchMin. */
-const ROW_SLOP = { top: 6, bottom: 6, left: 8, right: 8 };
-
-export const StepSpine: React.FC<{ progress: number }> = ({ progress }) => (
-  <View style={styles.spine} pointerEvents="none">
-    <View style={[styles.spineFill, { height: `${Math.round(Math.max(0, Math.min(1, progress)) * 100)}%` }]} />
-  </View>
-);
-
-/** Centres a node of `size` on the rail, inside the fixed-width rail column. */
-const railOffset = (size: number) => ({ marginLeft: RAIL_X - size / 2 });
-
-const Node: React.FC<{ state: StepState; label: string }> = ({ state, label }) => {
-  if (state === 'current') {
-    return (
-      <View style={[styles.node, styles.nodeOn, railOffset(NODE_ON)]}>
-        <LinearGradient
-          colors={gradients.stepActive}
-          start={gradients.start}
-          end={gradients.end}
-          style={StyleSheet.absoluteFill}
-        />
-        <Text style={styles.nodeTextOn}>{label}</Text>
-      </View>
-    );
-  }
-  if (state === 'done') {
-    return (
-      <View style={[styles.node, styles.nodeBase, styles.nodeDone, railOffset(NODE)]}>
-        <Text style={styles.nodeTextDone}>✓</Text>
-      </View>
-    );
-  }
-  return (
-    <View
-      style={[
-        styles.node,
-        styles.nodeBase,
-        state === 'locked' ? styles.nodeLocked : styles.nodeAvailable,
-        railOffset(NODE),
-      ]}
-    >
-      <Text style={[styles.nodeText, state === 'locked' && styles.nodeTextLocked]}>{label}</Text>
-    </View>
-  );
-};
+const NODE = 32;
 
 export const StepRow: React.FC<{
   index: number;
   title: string;
   state: StepState;
+  /** A short value shown on a finished row, for example "2 medicines". */
+  value?: string | null;
+  /** The last row draws no line below its number. */
+  last?: boolean;
+  /** True for rows above the open step: the line below them is drawn in blue, like a progress bar. */
+  passed?: boolean;
   onPress: () => void;
+  /** Reports the row's top edge inside the list so the screen can scroll to it. */
+  onRow?: (y: number) => void;
   /** The open step's content. */
   children?: React.ReactNode;
-}> = ({ index, title, state, onPress, children }) => {
-  const isCurrent = state === 'current';
-
+}> = ({ index, title, state, value, last, passed, onPress, onRow, children }) => {
+  const current = state === 'current';
+  const done = state === 'done';
   return (
-    <View style={styles.step}>
-      <Pressable
-        onPress={onPress}
-        hitSlop={ROW_SLOP}
-        style={styles.head}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: isCurrent }}
-        accessibilityLabel={title}
-      >
-        <View style={[styles.rail, isCurrent && styles.railOn]}>
-          <Node state={state} label={String(index)} />
+    <View style={styles.row} onLayout={event => onRow?.(event.nativeEvent.layout.y)}>
+      <View style={styles.rail}>
+        <View style={[styles.node, done && styles.nodeDone, current && styles.nodeOn]}>
+          <Text style={[styles.nodeText, state === 'locked' && styles.nodeTextLocked, done && styles.nodeTextDone, current && styles.nodeTextOn]}>{done ? '✓' : index}</Text>
         </View>
-
-        <View style={styles.headBody}>
-          <View style={styles.row}>
-            <Text
-              style={[
-                styles.name,
-                isCurrent && styles.nameOn,
-                state === 'locked' && styles.nameLocked,
-              ]}
-              numberOfLines={1}
-            >
-              {title}
-            </Text>
-          </View>
-        </View>
-      </Pressable>
-
-      {/* The open step's content. Deliberately NOT wrapped in a card: every step
-          already renders its own `Section` cards, so a wrapper would double the
-          borders. Full width, because `step` carries no padding of its own. */}
-      {isCurrent && children ? <View style={styles.panel}>{children}</View> : null}
+        {last ? null : <View style={[styles.line, passed && styles.lineDone]} />}
+      </View>
+      <View style={styles.body}>
+        <Pressable accessibilityRole="tab" accessibilityState={{ selected: current }} accessibilityLabel={title} onPress={onPress} hitSlop={{ top: 4, bottom: 4, left: 8, right: 8 }} style={styles.head}>
+          <Text numberOfLines={1} style={[styles.name, current && styles.nameOn, done && styles.nameDone, state === 'locked' && styles.nameLocked]}>{title}</Text>
+          {done && value ? <Text numberOfLines={1} style={styles.value}>{value}</Text> : null}
+        </Pressable>
+        {current && children ? <View style={styles.panel}>{children}</View> : null}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  spine: {
-    position: 'absolute',
-    left: RAIL_X,
-    top: 14,
-    bottom: 10,
-    width: 2,
-    backgroundColor: colors.borderSoft,
-  },
-  spineFill: { width: '100%', backgroundColor: colors.primary, opacity: 0.55 },
-
-  step: { paddingBottom: 16 },
-  head: { flexDirection: 'row', alignItems: 'flex-start' },
-
-  /** Fixed-width column holding the node. Never padded — see the header note. */
-  rail: { width: INDENT, paddingTop: 2 },
-  railOn: { paddingTop: 0 },
-
-  headBody: { flex: 1, minWidth: 0 },
-
-  node: {
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  nodeBase: {
-    width: NODE,
-    height: NODE,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  nodeOn: { width: NODE_ON, height: NODE_ON },
-  nodeDone: { backgroundColor: 'rgba(52, 211, 153, 0.14)', borderColor: 'rgba(52, 211, 153, 0.45)' },
-  nodeAvailable: { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-  nodeLocked: { backgroundColor: colors.background, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.14)' },
-
-  nodeText: { fontSize: 15, fontWeight: '500', color: colors.textSoft },
+  row: { flexDirection: 'row', gap: 14 },
+  rail: { width: NODE, alignItems: 'center', paddingTop: 6 },
+  node: { width: NODE, height: NODE, borderRadius: NODE / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0F0F3' },
+  nodeDone: { backgroundColor: colors.primary50 },
+  nodeOn: { backgroundColor: colors.buttonPrimary, boxShadow: '0 0 0 5px rgba(0,113,227,0.16)' },
+  nodeText: { fontSize: 14, lineHeight: 18, fontWeight: '600', color: colors.textMuted },
   nodeTextLocked: { color: colors.textDim },
-  nodeTextDone: { fontSize: 17, fontWeight: '500', color: colors.success },
-  nodeTextOn: { fontSize: 17, fontWeight: '500', color: colors.onPrimary },
-
-  row: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, minHeight: 30 },
-
-  name: { fontSize: 17, fontWeight: '500', color: colors.text, letterSpacing: -0.1 },
-  nameOn: { fontSize: 22, fontWeight: '500', color: colors.text, letterSpacing: -0.5 },
-  nameLocked: { color: colors.textDim, fontWeight: '500' },
-
-
-  panel: { marginTop: spacing.md, gap: spacing.md },
-
+  nodeTextDone: { color: colors.buttonPrimary, fontSize: 16, fontWeight: '700' },
+  nodeTextOn: { color: colors.onPrimary },
+  // The line runs from just under this number to just above the next one, so the rail reads as one unbroken track.
+  line: { flex: 1, width: 3, minHeight: 10, marginTop: 4, marginBottom: -2, borderRadius: 2, backgroundColor: '#E3E3E8' },
+  lineDone: { backgroundColor: colors.buttonPrimary },
+  body: { flex: 1, minWidth: 0, paddingBottom: 12 },
+  head: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  name: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: '500', color: colors.pine },
+  nameOn: { fontSize: 24, lineHeight: 30, fontWeight: '600', letterSpacing: -0.6 },
+  nameDone: { color: colors.text },
+  nameLocked: { color: colors.textMuted },
+  value: { flex: 1, textAlign: 'right', fontSize: 14, lineHeight: 18, color: colors.textMuted },
+  panel: { paddingTop: 4, paddingBottom: 12, gap: 14 },
 });

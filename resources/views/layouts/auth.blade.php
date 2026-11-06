@@ -292,7 +292,7 @@
       .auth-top { padding: 14px 16px; }
     }
   </style>
-  <link rel="stylesheet" href="{{ asset('css/clean-ui.css') }}">
+  <link rel="stylesheet" href="{{ asset('css/clean-ui.css') }}?v={{ filemtime(public_path('css/clean-ui.css')) }}">
 </head>
 <body class="gx-clean">
   <a class="skip-link" href="#main-content">Skip to content</a>

@@ -286,8 +286,8 @@ const styles = StyleSheet.create({
   socialBtnPressed: { opacity: 0.85 },
 
   googleBtn: {
-    backgroundColor: colors.surfaceAlt,
-    borderColor: colors.border,
+    backgroundColor: '#F2F2F7',
+    borderColor: 'transparent',
   },
   googleIcon: {
     fontSize: 17,

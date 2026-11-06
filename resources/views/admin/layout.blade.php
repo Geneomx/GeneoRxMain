@@ -296,10 +296,10 @@
     }
     .btn-primary:hover { background: var(--teal-dark); }
     .btn-ghost {
-      background: var(--bg); color: var(--text);
-      border-color: var(--border);
+      background: #F2F2F7; color: var(--text);
+      border-color: transparent;
     }
-    .btn-ghost:hover { background: var(--bg-muted); border-color: var(--text-muted); }
+    .btn-ghost:hover { background: #E8E8ED; }
     .btn-danger {
       background: var(--danger-bg); color: var(--danger); border-color: var(--danger-bd);
     }
@@ -315,9 +315,9 @@
     select {
       height: 38px;
       padding: 0 12px;
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      background: var(--bg);
+      border: 2px solid transparent;
+      border-radius: 9px;
+      background: #F2F2F7;
       color: var(--text);
       font-size: 13.5px;
       font-family: var(--sans);
@@ -327,9 +327,9 @@
     }
     textarea {
       padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      background: var(--bg);
+      border: 2px solid transparent;
+      border-radius: 9px;
+      background: #F2F2F7;
       color: var(--text);
       font-size: 13.5px;
       font-family: var(--sans);
@@ -340,8 +340,9 @@
       box-sizing: border-box;
     }
     input:focus, select:focus, textarea:focus {
+      background: #fff;
       border-color: var(--teal);
-      box-shadow: 0 0 0 3px rgba(14,124,102,0.10);
+      box-shadow: none;
     }
     input::placeholder, textarea::placeholder { color: var(--text-muted); }
 

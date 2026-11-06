@@ -19,11 +19,16 @@ export function trackingSummaryForRange(state: WizardState, range: ReviewRange, 
 
 /** A tracking record contains the selected entries, without inferred diagnoses or probabilities. */
 export function trackingRecordText(state: WizardState, overview: string, rangeLabel: string, t: TranslateFn, catalog: MedEntry[]) {
-  const lines = [t('parity.record_title'), rangeLabel, '', t('report.health_story_title'), overview, '', t('report.summary_heading'), '', t('review.current_medications')];
+  // Same patient line as the website snapshot. A guest's placeholder address is not a real email.
+  const email = state.account?.email?.trim();
+  const patient = email && !/@geneorx\.local$/i.test(email) ? email : t('report.anonymous');
+  const lines = [t('parity.record_title'), rangeLabel, '', `${t('report.patient_label')}: ${patient} • ${t('report.age_label')}: ${state.profile?.age || '—'} • ${t('report.gender_label')}: ${state.profile?.gender || '—'}`, '', t('report.health_story_title'), overview, '', t('report.summary_heading'), '', t('review.current_medications')];
   for (const med of state.meds) lines.push([catalog.find(m => m.id === med.medId)?.name || med.medId, medicationDetail({ ...med, startDate: med.startDate ? fmtDate(isoFromCalendarDate(med.startDate) || med.startDate) : '' })].filter(Boolean).join(' · '));
   if (!state.meds.length) lines.push(t('meds.none_yet'));
   const flags = safetyFlags(state, t);
   lines.push('', t('summary.safety_flags_line'), flags.length ? flags.join(', ') : t('report.no_flags_reported'));
+  const latest = checkinsInRange(state.checkins, 'all').at(-1);
+  lines.push(`${t('report.adherence_label')}: ${latest ? adherenceLabel(medicationAdherence(latest), t('checkin.not_answered')) : '—'}`);
   lines.push('', t('review.current_symptoms'));
   for (const name of state.symptoms.selected) { const detail = state.symptoms.details?.[name]; lines.push([name, detail?.onsetDate, detail?.severity ? t('symptoms.severity.' + detail.severity) : '', detail?.notes].filter(Boolean).join(' · ')); }
   const patterns = detectHealthPatterns(state, t);
@@ -75,7 +80,7 @@ export function trackingRecordText(state: WizardState, overview: string, rangeLa
     if (c.notes) lines.push(`${t('checkin.notes')}: ${c.notes}`);
     lines.push('');
   }
-  lines.push(t('parity.record_note'));
+  lines.push(`${t('report.checkin_date_label')}: ${latest ? fmtDate(latest.dateISO) : '—'}`, '', t('parity.record_note'));
   return lines.join('\n');
 }
 
