@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use Anthropic\Client;
+use Illuminate\Support\Facades\Log;
+
 /**
  * "Ask GeneoRx" conversational assistant. Multi-turn, grounded ONLY in the
  * user's own state and the cited catalog — never open-domain. Distinct from
@@ -22,6 +25,11 @@ class GeminiAssistantService
      */
     public function reply(array $messages, array $context, string $language = 'en'): ?string
     {
+        // Claude answers when its key is set; Gemini stays as the fallback.
+        if (self::claudeConfigured()) {
+            return $this->replyWithClaude($messages, $context, $language);
+        }
+
         $key = config('services.gemini.key');
         $model = config('services.gemini.model') ?: 'gemini-2.5-flash-lite';
 
@@ -37,6 +45,75 @@ class GeminiAssistantService
         $text = data_get($result, 'candidates.0.content.parts.0.text');
 
         return is_string($text) && trim($text) !== '' ? $this->withDisclaimer(trim($text), $language) : null;
+    }
+
+    public static function claudeConfigured(): bool
+    {
+        $key = config('services.anthropic.key');
+
+        return is_string($key) && $key !== '' && $key !== '0';
+    }
+
+    /** True when either provider has a usable key. */
+    public static function configured(): bool
+    {
+        $gemini = config('services.gemini.key');
+
+        return self::claudeConfigured() || (is_string($gemini) && $gemini !== '' && $gemini !== '0');
+    }
+
+    /**
+     * Same prompt and guardrails as the Gemini path, sent to the Claude Messages API.
+     * Returns null on any failure so the caller shows the "unavailable" state.
+     *
+     * @param  array<int, array{role: string, content: string}>  $messages
+     * @param  array<string, mixed>  $context
+     */
+    private function replyWithClaude(array $messages, array $context, string $language): ?string
+    {
+        // The Messages API needs the first turn to come from the user.
+        while ($messages !== [] && ($messages[array_key_first($messages)]['role'] ?? 'user') !== 'user') {
+            array_shift($messages);
+        }
+        if ($messages === []) {
+            return null;
+        }
+
+        try {
+            // 30 s ceiling and one retry: the phone is waiting on this request.
+            $client = new Client(
+                apiKey: (string) config('services.anthropic.key'),
+                requestOptions: ['timeout' => 30.0, 'maxRetries' => 1],
+            );
+            $response = $client->messages->create(
+                model: (string) config('services.anthropic.model'),
+                maxTokens: 2000,
+                system: $this->systemInstruction($context, $language),
+                messages: array_map(fn ($m) => [
+                    'role' => ($m['role'] ?? 'user') === 'user' ? 'user' : 'assistant',
+                    'content' => (string) ($m['content'] ?? ''),
+                ], array_values($messages)),
+                outputConfig: ['effort' => (string) config('services.anthropic.effort', 'low')],
+            );
+        } catch (\Throwable $e) {
+            // Class name only: exception text can carry credentials or the user's own words.
+            Log::notice('Claude request unavailable', ['error' => $e::class]);
+
+            return null;
+        }
+
+        if ($response->stopReason === 'refusal') {
+            return null;
+        }
+
+        $text = '';
+        foreach ($response->content as $block) {
+            if ($block->type === 'text') {
+                $text .= $block->text;
+            }
+        }
+
+        return trim($text) !== '' ? $this->withDisclaimer(trim($text), $language) : null;
     }
 
     /**

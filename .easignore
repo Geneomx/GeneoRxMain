@@ -42,3 +42,12 @@ store-assets/
 .env.*
 **/.env
 **/.env.*
+
+# Website-only folders and local emulators: never part of the app binary.
+# storage/framework/testing holds a ~22 GB Android emulator (AVD) whose lock
+# files also make the upload copy fail with EBUSY.
+storage/
+**/storage/framework/
+**/*.avd/
+.agents/
+.claude/

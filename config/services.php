@@ -110,6 +110,14 @@ return [
 
     'label_reader' => ['node' => env('LABEL_READER_NODE', 'node')],
 
+    // Claude powers "Ask GeneoRx" when a key is set; otherwise Gemini is used.
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-opus-5-5'),
+        // Short chat replies: low effort keeps answers fast and cheap.
+        'effort' => env('ANTHROPIC_EFFORT', 'low'),
+    ],
+
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
         'model' => env('GEMINI_MODEL', 'gemini-3.5-flash-lite'),

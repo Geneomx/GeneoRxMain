@@ -6,6 +6,7 @@ use App\Models\Medication;
 use App\Models\Symptom;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Services\GeminiAssistantService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -30,6 +31,23 @@ class AssistantTest extends TestCase
                 'candidates' => [['content' => ['parts' => [['text' => $text]]]]],
             ], 200),
         ]);
+    }
+
+    public function test_either_a_claude_or_a_gemini_key_counts_as_configured(): void
+    {
+        config(['services.anthropic.key' => null, 'services.gemini.key' => null]);
+        $this->assertFalse(GeminiAssistantService::configured());
+
+        config(['services.gemini.key' => '0']);
+        $this->assertFalse(GeminiAssistantService::configured());
+
+        config(['services.gemini.key' => 'g-key']);
+        $this->assertTrue(GeminiAssistantService::configured());
+        $this->assertFalse(GeminiAssistantService::claudeConfigured());
+
+        config(['services.gemini.key' => null, 'services.anthropic.key' => 'a-key']);
+        $this->assertTrue(GeminiAssistantService::configured());
+        $this->assertTrue(GeminiAssistantService::claudeConfigured());
     }
 
     public function test_it_returns_a_reply_with_the_disclaimer(): void
