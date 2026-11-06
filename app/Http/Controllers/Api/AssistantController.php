@@ -72,7 +72,7 @@ class AssistantController extends Controller
             return response()->json(['message' => 'The last message must be from the user.'], 422);
         }
 
-        if (! config('services.gemini.key') || config('services.gemini.key') === '0') {
+        if (! GeminiAssistantService::configured()) {
             return response()->json(['reply' => null, 'source' => 'unavailable']);
         }
 
