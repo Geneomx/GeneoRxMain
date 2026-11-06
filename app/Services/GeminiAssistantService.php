@@ -2,9 +2,6 @@
 
 namespace App\Services;
 
-use Anthropic\Client;
-use Illuminate\Support\Facades\Log;
-
 /**
  * "Ask GeneoRx" conversational assistant. Multi-turn, grounded ONLY in the
  * user's own state and the cited catalog — never open-domain. Distinct from
@@ -49,9 +46,7 @@ class GeminiAssistantService
 
     public static function claudeConfigured(): bool
     {
-        $key = config('services.anthropic.key');
-
-        return is_string($key) && $key !== '' && $key !== '0';
+        return ClaudeClient::configured();
     }
 
     /** True when either provider has a usable key. */
@@ -71,49 +66,9 @@ class GeminiAssistantService
      */
     private function replyWithClaude(array $messages, array $context, string $language): ?string
     {
-        // The Messages API needs the first turn to come from the user.
-        while ($messages !== [] && ($messages[array_key_first($messages)]['role'] ?? 'user') !== 'user') {
-            array_shift($messages);
-        }
-        if ($messages === []) {
-            return null;
-        }
+        $text = app(ClaudeClient::class)->text($this->systemInstruction($context, $language), $messages);
 
-        try {
-            // 30 s ceiling and one retry: the phone is waiting on this request.
-            $client = new Client(
-                apiKey: (string) config('services.anthropic.key'),
-                requestOptions: ['timeout' => 30.0, 'maxRetries' => 1],
-            );
-            $response = $client->messages->create(
-                model: (string) config('services.anthropic.model'),
-                maxTokens: 2000,
-                system: $this->systemInstruction($context, $language),
-                messages: array_map(fn ($m) => [
-                    'role' => ($m['role'] ?? 'user') === 'user' ? 'user' : 'assistant',
-                    'content' => (string) ($m['content'] ?? ''),
-                ], array_values($messages)),
-                outputConfig: ['effort' => (string) config('services.anthropic.effort', 'low')],
-            );
-        } catch (\Throwable $e) {
-            // Class name only: exception text can carry credentials or the user's own words.
-            Log::notice('Claude request unavailable', ['error' => $e::class]);
-
-            return null;
-        }
-
-        if ($response->stopReason === 'refusal') {
-            return null;
-        }
-
-        $text = '';
-        foreach ($response->content as $block) {
-            if ($block->type === 'text') {
-                $text .= $block->text;
-            }
-        }
-
-        return trim($text) !== '' ? $this->withDisclaimer(trim($text), $language) : null;
+        return $text !== null ? $this->withDisclaimer($text, $language) : null;
     }
 
     /**
