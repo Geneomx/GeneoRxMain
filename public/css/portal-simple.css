@@ -289,3 +289,21 @@ body.gx-clean .step:not(.on):hover { background:#F5F5F7; }
   body.gx-clean .step { min-height:34px; padding:4px 10px 4px 5px; gap:6px; font-size:12.5px; letter-spacing:-.01em; }
   body.gx-clean .step .step-index { width:19px; height:19px; font-size:11px; }
 }
+
+/* Wide screens: the steps become a vertical rail on the left, like the app. All steps stay visible, the open one in blue. */
+@media (min-width:1000px) {
+  body.gx-clean .wrap { max-width:1120px; }
+  body.gx-clean .portal-workspace { display:grid; grid-template-columns:240px minmax(0,1fr); align-items:start; column-gap:36px; row-gap:16px; }
+  body.gx-clean .workspace-nav { position:sticky; top:24px; order:0; grid-column:1; grid-row:1; }
+  body.gx-clean .portal-workspace > .grid { order:0; grid-column:2; grid-row:1; }
+  body.gx-clean .workspace-note { grid-column:1 / -1; grid-row:2; }
+  body.gx-clean .workspace-nav .steps { flex-direction:column; flex-wrap:nowrap; gap:0; padding:4px 0; }
+  body.gx-clean .step { position:relative; width:100%; justify-content:flex-start; min-height:52px; padding:0 8px 0 0; gap:14px; border-radius:14px; background:transparent; font-size:16px; font-weight:500; color:var(--ink); text-align:left; }
+  body.gx-clean .step:not(:last-child)::before { content:""; position:absolute; left:15px; top:42px; bottom:-8px; width:3px; border-radius:2px; background:#E3E3E8; }
+  body.gx-clean .step:has(~ .step.on)::before { background:#0071E3; }
+  body.gx-clean .step .step-index { width:32px; height:32px; font-size:14px; background:#F0F0F3; color:var(--muted-ink); z-index:1; }
+  body.gx-clean .step.done .step-index { background:#EAF3FF; color:#0071E3; }
+  body.gx-clean .step.on { background:transparent; border-color:transparent; color:var(--ink); font-size:19px; font-weight:600; letter-spacing:-.3px; }
+  body.gx-clean .step.on .step-index { background:#0071E3; color:#fff; box-shadow:0 0 0 5px rgba(0,113,227,.16); }
+  body.gx-clean .step:not(.on):hover { background:#F5F5F7; }
+}

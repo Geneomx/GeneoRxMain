@@ -479,12 +479,22 @@ const CheckinForm: React.FC<{ initial: CheckinFormDraft; draftKey: string }> = (
           {state.checkins
             .slice()
             .reverse()
-            .map((c, i) => (
-              <Pressable key={c.clientId || c.id || i} accessibilityRole="button" accessibilityLabel={t('parity.open_checkin', { date: readableCheckinDate(c.dateISO, language) })} onPress={() => setDetailIndex(i)} style={{ minHeight: 48, justifyContent: 'center' }}>
-                <Text style={styles.savedRow}>{readableCheckinDate(c.dateISO, language)} • {t('common.adherence')} {adherenceLabel(c.adherencePct, t('checkin.unsure'))}</Text>
-                {i < state.checkins.length - 1 ? <Divider /> : null}
-              </Pressable>
-            ))}
+            .map((c, i) => {
+              // How the person felt that day, so the list reads as a log, not just dates.
+              const feel = (['energy', 'mood', 'sleep', 'focus'] as const)
+                .filter(key => typeof c.wellbeing?.[key] === 'number')
+                .map(key => `${t('wellbeing.' + key)} ${c.wellbeing![key]}`)
+                .join(' · ');
+              const symptomCount = c.symptoms?.items?.length || 0;
+              return (
+                <Pressable key={c.clientId || c.id || i} accessibilityRole="button" accessibilityLabel={t('parity.open_checkin', { date: readableCheckinDate(c.dateISO, language) })} onPress={() => setDetailIndex(i)} style={{ minHeight: 48, justifyContent: 'center' }}>
+                  <Text style={styles.savedRow}>{readableCheckinDate(c.dateISO, language)} • {t('common.adherence')} {adherenceLabel(medicationAdherence(c), t('checkin.unsure'))}</Text>
+                  {feel ? <Text style={styles.savedFeel}>{feel}</Text> : null}
+                  {symptomCount ? <Text style={styles.savedFeel}>{t('checkin.detail.symptoms')}: {symptomCount}</Text> : null}
+                  {i < state.checkins.length - 1 ? <Divider /> : null}
+                </Pressable>
+              );
+            })}
           <Button title={t('checkin.delete_last')} variant="danger" onPress={deleteLast} />
         </Accordion>
       ) : null}
@@ -549,4 +559,5 @@ const styles = StyleSheet.create({
   unsureButton: { minHeight: 48, paddingVertical: 9, paddingHorizontal: 4, borderRadius: radius.button, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' },
   unsureText: { textAlign: 'center', fontSize: 15, lineHeight: 23, color: colors.primary },
   savedRow: { fontSize: 16, color: colors.textSoft, paddingVertical: 6 },
+  savedFeel: { fontSize: 14, color: colors.textDim, paddingBottom: 6 },
 });
