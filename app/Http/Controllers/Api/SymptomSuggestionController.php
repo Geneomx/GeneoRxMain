@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Medication;
+use App\Services\ClaudeClient;
 use App\Services\MedicationSymptomService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,7 +40,7 @@ class SymptomSuggestionController extends Controller
         $pool = Medication::catalog()->active()->get()->flatMap(fn ($med) => $med->symptom_chips ?? [])
             ->filter(fn ($name) => is_string($name) && trim($name) !== '')->map(fn ($name) => trim($name))
             ->unique()->sort()->take(200)->map(fn ($name) => ['symptom' => $name])->values()->all();
-        $cacheKey = 'symptom-order:'.hash('sha256', json_encode([$pool, config('services.gemini.model'), (bool) config('services.gemini.key')]));
+        $cacheKey = 'symptom-order:'.hash('sha256', json_encode([$pool, config('services.gemini.model'), (bool) config('services.gemini.key'), ClaudeClient::configured() ? config('services.anthropic.model') : null]));
         $ordered = Cache::get($cacheKey);
         if (! is_array($ordered)) {
             $ordered = $service->order($pool);

@@ -116,6 +116,8 @@ return [
         'model' => env('ANTHROPIC_MODEL', 'claude-opus-5-5'),
         // Short chat replies: low effort keeps answers fast and cheap.
         'effort' => env('ANTHROPIC_EFFORT', 'low'),
+        // Quick catalog tasks (symptom ordering) run on a smaller, faster model.
+        'fast_model' => env('ANTHROPIC_FAST_MODEL', 'claude-haiku-5-5'),
     ],
 
     'gemini' => [

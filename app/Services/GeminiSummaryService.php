@@ -6,28 +6,32 @@ class GeminiSummaryService
 {
     public function summarize(array $facts): ?string
     {
-        $key = config('services.gemini.key');
-        // Fall back to the same default as config/services.php so the model is
-        // consistent whether or not GEMINI_MODEL is set.
-        $model = config('services.gemini.model') ?: 'gemini-2.5-flash-lite';
+        $language = $facts['language'] ?? 'en';
 
+        // The summary carries the user's entries, so it only runs in personalized mode.
+        if (config('services.gemini.data_mode') !== 'personalized') {
+            return null;
+        }
+
+        // Claude writes the summary when its key is set; Gemini stays as the fallback.
+        if (ClaudeClient::configured()) {
+            $text = app(ClaudeClient::class)->text($this->buildPrompt($facts), [['role' => 'user', 'content' => 'Write the summary now.']], 1500);
+
+            return $text !== null ? $this->withDisclaimer($text, $language) : null;
+        }
+
+        $key = config('services.gemini.key');
         if (! $key) {
             return null;
         }
 
-        $prompt = $this->buildPrompt($facts);
-
-        // The free tier is not a destination for medication records, notes or chat history.
-        if (config('services.gemini.data_mode') !== 'personalized') {
-            return null;
-        }
         $result = app(GeminiClient::class)->generate([
-            'contents' => [['parts' => [['text' => $prompt]]]],
+            'contents' => [['parts' => [['text' => $this->buildPrompt($facts)]]]],
             'generationConfig' => ['temperature' => 0.4, 'maxOutputTokens' => 450],
         ], 20);
         $text = data_get($result, 'candidates.0.content.parts.0.text');
 
-        return is_string($text) && trim($text) !== '' ? $this->withDisclaimer(trim($text), $facts['language'] ?? 'en') : null;
+        return is_string($text) && trim($text) !== '' ? $this->withDisclaimer(trim($text), $language) : null;
     }
 
     /** The exact footer every summary must end with, per language. */
