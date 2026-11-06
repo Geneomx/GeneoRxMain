@@ -3,6 +3,7 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Polyline, Stop, Text as SvgText } from 'react-native-svg';
 import { colors } from '@/theme';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export interface TrendLine {
   label: string;
@@ -37,6 +38,7 @@ const V_PAD = 10;
 export const TrendChart: React.FC<Props> = ({ lines, fromT, toT, yMax, height = 140, yCaption, compact = false, emphasize = false }) => {
   // Measured lazily from layout so the chart fills its container width.
   const [width, setWidth] = React.useState(0);
+  const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const gradientId = React.useId().replace(/[^a-zA-Z0-9]/g, '');
   const labelSize = 15 * fontScale;
@@ -104,13 +106,13 @@ export const TrendChart: React.FC<Props> = ({ lines, fromT, toT, yMax, height = 
               );
             })}
             {yCaption ? (
-              <SvgText x={H_PAD} y={V_PAD + 2} fontSize={9} fill={colors.textDim}>
+              <SvgText x={H_PAD} y={V_PAD + 2} fontSize={12} fill={colors.textDim}>
                 {yCaption}
               </SvgText>
             ) : null}
           </Svg>
         )}
-        {!hasData && <Text style={styles.empty}>Not enough check-ins yet</Text>}
+        {!hasData && <Text style={styles.empty}>{t('app.trend_empty')}</Text>}
       </View>
       {!compact ? <View style={styles.legend}>
         {lines.map((line) => (
@@ -131,6 +133,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     color: colors.textDim,
     fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
   },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },

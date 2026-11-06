@@ -18,7 +18,7 @@ body.gx-clean .workspace-nav { position:static; order:1; }
 body.gx-clean .workspace-nav-label, body.gx-clean .mobile-workflow-nav, body.gx-clean .mobile-workflow-track { display:none !important; }
 body.gx-clean .workspace-nav .steps { display:flex !important; flex-direction:row; flex-wrap:wrap; gap:8px; overflow:visible; padding:2px 0 8px; }
 body.gx-clean .workspace-nav .steps::-webkit-scrollbar { display:none; }
-body.gx-clean .step { width:auto; flex:0 0 auto; min-height:40px; padding:8px 16px; gap:8px; font-size:14px; font-weight:500; background:#fff; border:1px solid var(--line); border-radius:999px; color:var(--ink-soft); box-shadow:none; }
+body.gx-clean .step { width:auto; flex:0 0 auto; min-height:40px; padding:8px 16px; gap:8px; font-size:14px; font-weight:500; background:transparent; border:0; border-radius:999px; color:var(--ink-soft); box-shadow:none; }
 body.gx-clean .step .step-index { display:inline-grid; place-items:center; width:22px; height:22px; border-radius:50%; background:#F0F0F3; color:var(--muted-ink); font-size:12px; font-weight:700; flex-shrink:0; }
 body.gx-clean .step.on { background:var(--coral); border-color:var(--coral); color:#fff; box-shadow:none; font-weight:600; }
 body.gx-clean .portal-workspace > .grid { order:2; }
@@ -104,7 +104,7 @@ body.gx-clean #main .alertBox { border-radius:16px; padding:14px 16px; border:1p
 body.gx-clean #main .evbtn { display:inline-block; padding:4px 12px; border-radius:999px; border:1px solid #D6E8FD; background:#EAF3FF; color:#0066CC; font-size:13px; font-weight:600; cursor:pointer; }
 body.gx-clean #main .evrow { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; }
 body.gx-clean #main .btns { gap:10px; }
-body.gx-clean #main .btns .primary { min-height:46px; padding:10px 22px; font-size:15px; }
+body.gx-clean #main .btns .primary { min-height:40px; padding:8px 20px; font-size:14px; }
 body.gx-clean #main .cite { display:inline-block; padding:3px 10px; border-radius:999px; background:#F5F5F7; color:var(--ink-soft); font-size:12.5px; text-decoration:none; margin:2px 4px 2px 0; }
 body.gx-clean #main .fineprint { color:var(--muted-ink); font-size:13px; line-height:1.5; }
 body.gx-clean #main .divider { height:1px; background:var(--line-soft); margin:14px 0; border:0; }
@@ -278,9 +278,9 @@ body.gx-clean #main[data-step="2"] .symptom-review-summary { background:#F5F5F7;
 
 /* Steps: every step on screen, a number or a tick on each, the current one in blue. */
 body.gx-clean .step { padding:6px 14px 6px 8px; }
-body.gx-clean .step.done .step-index { background:#E6F4EA; color:#1F7A4D; }
+body.gx-clean .step.done .step-index { background:#EAF3FF; color:#0071E3; }
 body.gx-clean .step.on .step-index { background:rgba(255,255,255,.28); color:#fff; }
-body.gx-clean .step.done { border-color:#CFE8D7; }
+body.gx-clean .step:not(.on):hover { background:#F5F5F7; }
 @media (max-width:560px) { body.gx-clean .step { min-height:38px; padding:5px 12px 5px 6px; font-size:13px; } }
 
 /* Phone: two lines of steps at most. */

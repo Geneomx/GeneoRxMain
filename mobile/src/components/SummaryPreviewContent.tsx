@@ -8,7 +8,7 @@ import type { WizardCheckin } from '@/wizard/types';
 import { colors } from '@/theme';
 
 /** Keep every report paragraph visible; headings give the long text a clear rhythm. */
-export const SummaryPreviewContent: React.FC<{ fullText: string; checkins: WizardCheckin[] }> = ({ fullText, checkins }) => {
+export const SummaryPreviewContent: React.FC<{ fullText: string; checkins: WizardCheckin[]; hideStory?: boolean }> = ({ fullText, checkins, hideStory }) => {
   const { t } = useTranslation();
   const headings = new Map<string, AppIconName>([[t('report.health_story_title'), 'spark'], [t('report.summary_heading'), 'file'], [t('review.current_medications'), 'pill'], [t('review.current_symptoms'), 'heart'], [t('summary.safety_flags_line'), 'plan'], [t('summary.detected_pattern'), 'spark'], [t('report.nutrient_information'), 'sun'], [t('summary.drug_interactions'), 'plan'], [t('summary.contraindications'), 'plan'], [t('report.recorded_protocol'), 'pill'], [t('report.lab_topics'), 'file'], [t('summary.insight_summary'), 'spark'], [t('parity.recent_checkins'), 'calendar']]);
   const dates = new Set(checkins.map(c => fmtDate(c.dateISO)));
@@ -19,8 +19,10 @@ export const SummaryPreviewContent: React.FC<{ fullText: string; checkins: Wizar
     else if (dates.has(line)) sections.push({ title: line, icon: 'calendar', kind: 'date', lines: [] });
     else if (line === t('parity.record_note')) sections.push({ title: '', kind: 'note', lines: [line] });
     else if (sections.length) sections[sections.length - 1].lines.push(line);
+    else if (line.trim()) sections.push({ title: '', kind: 'section', lines: [line] });
   }
-  return <View style={s.document}>{sections.map((section, index) => <View key={index} style={[s.section, section.kind === 'story' && s.story, section.kind === 'date' && s.dated]}>
+  const shown = hideStory ? sections.filter(section => section.kind !== 'story') : sections;
+  return <View style={s.document}>{shown.map((section, index) => <View key={index} style={[s.section, section.kind === 'story' && s.story, section.kind === 'date' && s.dated]}>
     {section.title ? <View style={s.heading}>{section.icon ? <AppIcon name={section.icon} size={20} /> : null}<Text accessibilityRole="header" style={[s.sectionTitle, section.kind === 'story' && s.storyTitle, section.kind === 'date' && s.dateTitle]}>{section.title}</Text></View> : null}
     {section.lines.join('\n').trim() ? <Text selectable style={[s.body, section.kind === 'note' && s.note]}>{section.lines.join('\n').trim()}</Text> : null}
   </View>)}</View>;

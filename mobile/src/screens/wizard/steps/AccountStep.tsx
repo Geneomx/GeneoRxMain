@@ -6,9 +6,9 @@ import { FormFocusContext } from '@/components/FormScrollView';
 import { DropdownSelect } from '@/components/DropdownSelect';
 import { useWizard } from '@/store/WizardContext';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Accordion, Section } from '@/screens/wizard/ui';
+import { Accordion, FinePrint, NoteBox, Section } from '@/screens/wizard/ui';
 import { colors, spacing, touchMin } from '@/theme';
-import { isValidOptionalAge, normalizeOptionalAge } from '@/wizard/account';
+import { safetyFlags } from '@/wizard/engine';
 import { useSetup } from '@/store/SetupContext';
 import { usePinnedWizardAction } from '@/components/WizardDock';
 
@@ -22,11 +22,12 @@ export const AccountStep: React.FC = () => {
   const [ageDraft, setAgeDraft] = useState(state.profile.age);
   const [saving, setSaving] = useState(false);
   useEffect(() => { setAgeDraft(state.profile.age); }, [state.profile.age]);
-  const ageValid = isValidOptionalAge(ageDraft);
   const conditionCount = [state.profile.pregnant, state.profile.kidneyDisease, state.profile.anticoagulants].filter(Boolean).length;
+  const flags = safetyFlags(state, t);
   const continueToMedications = async () => {
-    if (!ageValid) { Alert.alert(t('mobile.alert.error'), t('parity.age_error')); return; }
     Keyboard.dismiss();
+    // Like the website, never save stray spaces around the email.
+    if (state.account.email !== state.account.email.trim()) update(draft => { draft.account.email = draft.account.email.trim(); });
     setSaving(true);
     try { await retrySave(); if (setup.active) await setup.advance(); else setStep(1); }
     catch { Alert.alert(t('mobile.profile.save_error_title'), t('mobile.profile.save_error_body')); }
@@ -54,14 +55,15 @@ export const AccountStep: React.FC = () => {
             value={ageDraft}
             onFocus={() => revealFocus(ageRef.current)}
             onChangeText={text => {
-              const value = text.replace(/[^0-9]/g, '');
+              // Whole years from 0 to 120, as on the website; larger numbers stop at 120.
+              const digits = text.replace(/[^0-9]/g, '');
+              const value = digits === '' ? '' : String(Math.min(120, Number(digits)));
               setAgeDraft(value);
-              if (isValidOptionalAge(value)) update(draft => { draft.profile.age = normalizeOptionalAge(value); });
+              update(draft => { draft.profile.age = value; });
             }}
             style={styles.ageInput}
           />
         </View>
-        {!ageValid ? <Text style={styles.error} accessibilityRole="alert">{t('parity.age_error')}</Text> : null}
         <View style={[styles.formRow, styles.genderRow]}>
           <Text style={styles.rowLabel}>{t('account.gender')}</Text>
           <View style={styles.genderSelect}>
@@ -83,7 +85,8 @@ export const AccountStep: React.FC = () => {
       </Section>
 
       <Accordion
-        title={t('clean.account_health')}
+        title={t('account.safety_flags')}
+        subtitle={t('account.safety_flags_hint')}
         badge={conditionCount || undefined}
         defaultOpen={conditionCount > 0}
       >
@@ -91,6 +94,7 @@ export const AccountStep: React.FC = () => {
         <CheckRow label={t('account.chip.kidney')} checked={state.profile.kidneyDisease} onChange={value => update(draft => { draft.profile.kidneyDisease = value; })} />
         <CheckRow label={t('account.chip.anticoag')} checked={state.profile.anticoagulants} onChange={value => update(draft => { draft.profile.anticoagulants = value; })} />
       </Accordion>
+      {flags.length ? <NoteBox><Text style={styles.bannerTitle}>{t('account.banner_title')}</Text> {t('account.banner_body', { flags: flags.join(', ') })}</NoteBox> : null}
 
       <Section style={styles.formGroup}>
         <Text style={styles.contactLabel}>{t('account.email')} ({t('design.optional')})</Text>
@@ -106,9 +110,12 @@ export const AccountStep: React.FC = () => {
           value={state.account.email}
           onFocus={() => revealFocus(emailRef.current)}
           onChangeText={text => update(draft => { draft.account.email = text; })}
+          onBlur={() => { if (state.account.email !== state.account.email.trim()) update(draft => { draft.account.email = draft.account.email.trim(); }); }}
           style={styles.emailInput}
         />
         <CheckRow label={t('parity.consent')} checked={state.account.consent} onChange={value => update(draft => { draft.account.consent = value; })} />
+        <CheckRow label={t('account.ai_consent')} checked={state.account.aiConsent} onChange={value => update(draft => { draft.account.aiConsent = value; })} />
+        <FinePrint>{t('account.ai_consent_help')}</FinePrint>
       </Section>
       {!setup.active ? <Button title={t('clean.continue_to_meds')} loading={saving} onPress={() => { void continueToMedications(); }} /> : null}
     </View>
@@ -142,12 +149,12 @@ const styles = StyleSheet.create({
   ageInput: { flex: 1, minHeight: touchMin, textAlign: 'right', fontSize: 17, color: colors.text, paddingHorizontal: spacing.sm },
   genderSelect: { flex: 1, maxWidth: 190 },
   contactLabel: { fontSize: 16, fontWeight: '500', color: colors.textMuted, marginBottom: spacing.sm },
-  emailInput: { minHeight: touchMin, borderBottomWidth: 1, borderColor: colors.controlBorder, backgroundColor: colors.surface, paddingHorizontal: 0, fontSize: 17, color: colors.text },
-  error: { color: colors.danger, fontSize: 16, lineHeight: 23, paddingVertical: 8 },
+  emailInput: { minHeight: touchMin, borderRadius: 14, backgroundColor: '#F2F2F7', paddingHorizontal: 14, fontSize: 17, color: colors.text },
+  bannerTitle: { fontWeight: '600' },
   checkRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, borderTopWidth: 1, borderTopColor: colors.borderSoft },
   checkRowFirst: { borderTopWidth: 0 },
   checkLabel: { flex: 1, fontSize: 17, color: colors.text },
-  checkbox: { width: 21, height: 21, borderRadius: 5, borderWidth: 1.5, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  checkbox: { width: 21, height: 21, borderRadius: 5, borderWidth: 1.5, borderColor: colors.textMuted, alignItems: 'center', justifyContent: 'center' },
   checkboxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   checkmark: { fontSize: 17, lineHeight: 21, fontWeight: '500', color: colors.onPrimary },
 });

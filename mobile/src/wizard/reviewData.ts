@@ -1,5 +1,5 @@
 import type { MedEntry } from '@/content/wizardData';
-import type { TranslateFn } from './engine';
+import { computeWeeklyCoachMessage, type TranslateFn } from './engine';
 import { fmtDate, impactLabel, sideEffectList } from './recordFormatting';
 import { medicationAdherence, medicationDetail } from './medicationTracking';
 import { type WizardCheckin, type WizardState } from './types';
@@ -105,4 +105,16 @@ export function reviewHighlights(state: WizardState, t: TranslateFn, catalog: Me
 /** Unknown wellbeing is omitted from charts instead of becoming a zero. */
 export function wellbeingRatingSeries(checkins: WizardCheckin[], key: 'energy' | 'mood' | 'sleep' | 'focus'): Array<[number, number]> {
   return checkins.flatMap(c => typeof c.wellbeing?.[key] === 'number' && Number.isFinite(c.wellbeing[key]) ? [[new Date(c.dateISO).getTime(), c.wellbeing[key]] as [number, number]] : []);
+}
+
+/**
+ * The website's weekly coach box. The engine's version also names a top nutrient with a percentage and,
+ * before a first check-in, points to "Start plan" — neither belongs in the app, so the nutrient inputs are
+ * removed before it runs and those lines are dropped.
+ */
+export function weeklyCoach(state: WizardState, t: TranslateFn, catalog: MedEntry[]) {
+  const plain: WizardState = { ...state, meds: [], symptoms: { ...state.symptoms, selected: [] } };
+  const coach = computeWeeklyCoachMessage(plain, t, catalog);
+  if (!state.checkins.length) return { headline: coach.headline, bullets: coach.bullets.filter((_, index) => index !== 1), nextBestAction: t('app.coach_action_checkin') };
+  return { ...coach, bullets: coach.bullets.slice(0, 3) };
 }

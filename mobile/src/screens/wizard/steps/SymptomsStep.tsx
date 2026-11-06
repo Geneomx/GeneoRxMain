@@ -102,6 +102,8 @@ export const SymptomsStep: React.FC = () => {
     });
     setCustom(''); setCustomOpen(false);
   };
+  // Same as the website's Clear: drops every selected symptom, keeps the ones the user typed in as options.
+  const clearSelected = () => { setPendingSymptoms([]); update(draft => { draft.symptoms.selected = []; }); };
   useWizardHeaderAction({ title: t('symptoms.add_btn'), onPress: openAdd });
 
   return (
@@ -115,8 +117,9 @@ export const SymptomsStep: React.FC = () => {
       <View style={refined.listGroup}>{[...selected].map((symptom, index) => <ListRow key={symptom} icon="heart" title={symptom} detail={latest.symptomEntries.find(entry => entry.name === symptom)?.status || t('light.not_recorded')} last={index === selected.size - 1} onPress={() => editDetails(symptom)} />)}
         {!selected.size ? <FinePrint>{t('simple.choose_below')}</FinePrint> : null}
       </View>
-      <Button title={t('symptoms.add_btn')} variant={selected.size ? 'ghost' : 'secondary'} onPress={openAdd} />
-      <Button title={t('easy.describe_symptom')} variant="ghost" onPress={() => setDraftOpen(true)} />
+      <Button title={t('symptoms.add_btn')} variant={selected.size ? 'ghost' : 'secondary'} full onPress={openAdd} />
+      <Button title={t('easy.describe_symptom')} variant="ghost" full onPress={() => setDraftOpen(true)} />
+      {selected.size ? <View style={styles.clearWrap}><Button title={t('symptoms.clear')} variant="ghost" compact onPress={clearSelected} /></View> : null}
       {!setup.active && trackingJourney(state).firstUpdate ? <Button title={t('setup.resume')} variant="secondary" onPress={() => { void setup.begin(2); }} /> : null}
       <EditorSheet visible={addOpen} title={t('symptoms.add_btn')} onClose={() => setAddOpen(false)} footer={<Button title={t(pendingSymptoms.length === 1 ? 'setup.confirm_symptom' : 'assist.confirm_symptoms', { count: pendingSymptoms.length })} disabled={pendingSymptoms.length === selected.size && pendingSymptoms.every(name => selected.has(name))} onPress={() => { update(draft => { draft.symptoms.selected = [...pendingSymptoms]; }); setAddOpen(false); }} />}>
         <FinePrint>{t('assist.symptom_selection_help')}</FinePrint>
@@ -124,6 +127,7 @@ export const SymptomsStep: React.FC = () => {
         <Button title={t('design.add_own')} variant="ghost" compact onPress={() => { setAddOpen(false); setTimeout(() => setCustomOpen(true), 350); }} />
 
       {recommended.length && !query.trim() ? <Accordion plain defaultOpen title={t(result?.source === 'ai' ? 'clean.ai_suggestions' : 'design.suggested_for')}>
+        <FinePrint>{t('clean.suggestion_note')}</FinePrint>
         <FinePrint>{t(suggestionsLoading ? 'ai.suggestions_loading' : result?.source === 'ai' ? 'ai.ai_order' : 'ai.catalog_order')}</FinePrint>
         <View style={styles.suggestions}>
           {(allSuggestions ? recommended : recommended.slice(0, 4)).map(item => {
@@ -164,6 +168,7 @@ export const SymptomsStep: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  clearWrap: { alignSelf: 'flex-start' },
   catalogRow: { minHeight: 56, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.borderSoft },
   trackedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

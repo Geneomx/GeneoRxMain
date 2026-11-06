@@ -111,11 +111,11 @@
     .btn-primary { background: var(--teal); color: #fff; }
     .btn-primary:hover { background: var(--teal-dark); transform: translateY(-1px); }
     .btn-outline {
-      background: transparent;
+      background: #F2F2F7;
       color: var(--text);
-      border-color: var(--border);
+      border-color: transparent;
     }
-    .btn-outline:hover { border-color: var(--teal); color: var(--teal-dark); }
+    .btn-outline:hover { background: #E8E8ED; }
 
     .footer {
       padding: 24px;

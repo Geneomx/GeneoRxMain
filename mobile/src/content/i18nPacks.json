@@ -1,5 +1,7 @@
 {
   "en": {
+    "account.ai_consent": "Personal answers (AI)",
+    "account.ai_consent_help": "Agree to send my medicines, symptoms and recent check-ins to the AI provider to answer my questions. You can change this at any time.",
     "setup.keep_title": "Keep your saved check-in?",
     "setup.keep_body": "Your saved check-in stays unchanged. Any unfinished edits stay on this device for later.",
     "setup.keep_saved": "Keep saved check-in",
@@ -1837,7 +1839,7 @@
     "easy.medicines_question": "Did you take your medicines?",
     "easy.feeling_question": "How have you felt?",
     "easy.skip_rating": "Choose what you can. You can leave a rating unanswered.",
-    "easy.describe_symptom": "Help me describe a symptom",
+    "easy.describe_symptom": "Describe it in your own words",
     "easy.describe_week": "Describe your week",
     "easy.entry_private": "Prepared on your phone. Review the details before saving.",
     "easy.your_words": "Tell us in your own words",

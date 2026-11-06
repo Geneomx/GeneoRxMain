@@ -698,11 +698,12 @@ const styles = StyleSheet.create({
     minHeight: 46,
     borderRadius: radius.button,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'transparent',
+    backgroundColor: '#F2F2F7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  segOn: { backgroundColor: colors.primary50, borderColor: colors.primary },
+  segOn: { backgroundColor: colors.primary50, borderColor: 'transparent' },
   segText: { fontSize: 17, fontWeight: '500', color: colors.textSoft },
   segTextOn: { color: colors.primary },
 
@@ -738,7 +739,7 @@ const styles = StyleSheet.create({
   input: {
     minHeight: touchMin,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: 'transparent',
     backgroundColor: colors.inputBg,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
@@ -757,8 +758,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.ghostBg,
+    borderColor: 'transparent',
+    backgroundColor: '#F2F2F7',
   },
   chipOn: { backgroundColor: colors.primary100, borderColor: colors.primary },
   /** A closed day, or a time somebody already holds: shown, not hidden. */
@@ -792,7 +793,7 @@ const styles = StyleSheet.create({
   turnRight: { alignSelf: 'flex-end', alignItems: 'flex-end' },
   bubble: {
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: 'transparent',
     backgroundColor: colors.buttonBg,
     borderRadius: radius.md,
     borderBottomLeftRadius: 4,

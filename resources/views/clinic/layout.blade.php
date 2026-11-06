@@ -72,14 +72,14 @@
       font-weight:600;border-radius:9px;border:1px solid transparent;cursor:pointer;font-family:inherit;text-decoration:none}
     .btn-primary{background:var(--teal);color:#fff;font-weight:700}
     .btn-primary:hover{filter:brightness(1.06)}
-    .btn-ghost{background:transparent;color:var(--text-soft);border-color:var(--border)}
-    .btn-ghost:hover{background:var(--bg-muted);border-color:var(--text-muted)}
+    .btn-ghost{background:#F2F2F7;color:var(--text);border-color:transparent}
+    .btn-ghost:hover{background:#E8E8ED}
     .btn-sm{height:32px;padding:0 12px;font-size:13px}
 
     input[type=text],input[type=time],select,textarea{
       width:100%;padding:9px 12px;font-size:14px;font-family:inherit;color:var(--text);
-      background:var(--bg-soft);border:1px solid var(--border);border-radius:9px;outline:none}
-    input:focus,select:focus,textarea:focus{border-color:var(--teal)}
+      background:#F2F2F7;border:2px solid transparent;border-radius:9px;outline:none}
+    input:focus,select:focus,textarea:focus{background:#fff;border-color:var(--teal)}
     textarea{min-height:84px;resize:vertical;line-height:1.5}
     label{display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:5px}
 

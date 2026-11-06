@@ -93,7 +93,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: palette.canvas },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: -8 },
+  topBar: { marginBottom: -8 },
   askPill: { minHeight: 44, flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, borderRadius: 22, backgroundColor: colors.primary50, borderWidth: 1.5, borderColor: colors.sage },
   askPillText: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontWeight: '700', color: colors.pine },
   pageHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
@@ -103,11 +103,11 @@ const styles = StyleSheet.create({
   date: { fontSize: 15, lineHeight: 23, color: palette.muted },
   navigationArea: { gap: 8 },
   navigationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  navigationItem: { minHeight: 72, paddingVertical: 12, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 28, backgroundColor: palette.surface, borderWidth: 1.5, borderColor: palette.border },
+  navigationItem: { minHeight: 44, paddingVertical: 6, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 22, backgroundColor: '#F2F2F7' },
   navigationItemStacked: { flexDirection: 'row', justifyContent: 'flex-start', gap: 12, paddingHorizontal: 6 },
-  navigationText: { flexShrink: 1, fontSize: 16, lineHeight: 24, fontWeight: '500', color: palette.ink, textAlign: 'center' },
+  navigationText: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontWeight: '500', color: palette.ink, textAlign: 'center' },
   navigationTextStacked: { fontSize: 16, lineHeight: 23, textAlign: 'left' },
-  assistantLink: { minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 28, paddingVertical: 14, paddingHorizontal: 18, backgroundColor: colors.primary50 },
-  assistantText: { flexShrink: 1, fontSize: 16, lineHeight: 23, fontWeight: '500', color: palette.accent },
+  assistantLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 22, paddingVertical: 6, paddingHorizontal: 18, backgroundColor: colors.primary50 },
+  assistantText: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontWeight: '500', color: palette.accent },
   pressed: { backgroundColor: palette.pressed },
 });

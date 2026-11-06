@@ -21,6 +21,6 @@ export const TopBar: React.FC<{ onReviewSymptoms?: () => void }> = ({ onReviewSy
 
 const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  pill: { minHeight: 44, flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, borderRadius: 22, backgroundColor: colors.primary50, borderWidth: 1.5, borderColor: colors.sage },
+  pill: { minHeight: 44, flexShrink: 1, marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, borderRadius: 22, backgroundColor: colors.primary50 },
   text: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontWeight: '700', color: colors.pine },
 });

@@ -206,8 +206,6 @@ const s = StyleSheet.create({
   suggestHint: { fontSize: 16, color: colors.textMuted, marginBottom: 2 },
   suggestChip: {
     minHeight: 44,
-    borderWidth: 1.5,
-    borderColor: colors.sage,
     borderRadius: 22,
     backgroundColor: colors.primary50,
     paddingVertical: 10,
@@ -254,8 +252,6 @@ const s = StyleSheet.create({
     flex: 1,
     maxHeight: 120,
     minHeight: 44,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.card,
     backgroundColor: colors.inputBg,
     color: colors.text,

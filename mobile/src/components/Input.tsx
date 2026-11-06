@@ -43,9 +43,9 @@ const styles = StyleSheet.create({
   wrap: { gap: spacing.xs },
   label: { ...typography.bodyMuted, color: colors.text, fontWeight: '500', fontSize: 16 },
   input: {
-    borderWidth: 1,
-    borderColor: '#B4B4BA',
-    backgroundColor: colors.inputBg,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    backgroundColor: '#F2F2F7',
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: spacing.sm + 4,
@@ -53,8 +53,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     minHeight: touchMin,
   },
-  // Keep the complete field boundary visible on the soft background.
-  inputFocused: { borderColor: colors.primary },
+  // A soft grey field; the blue ring appears only while typing.
+  inputFocused: { borderColor: colors.primary, backgroundColor: '#FFFFFF' },
   inputError: { borderColor: colors.danger },
   error: { color: colors.danger, fontSize: 17 },
 });
